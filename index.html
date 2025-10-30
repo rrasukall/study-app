@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp</title>
+    <title>MyAnkiApp v3.1</title>
     <style>
         * {
             margin: 0;
@@ -328,8 +328,6 @@
         
         #pdfCanvas {
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            max-width: 100%;
-            height: auto;
             display: block;
             margin: 0 auto;
         }
@@ -369,7 +367,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp</h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v3.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -466,6 +464,8 @@
                         </div>
                         
                         <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
+                        
+                        <div id="debugInfo" style="width: 100%; margin-top: 10px; font-size: 12px; color: #666;"></div>
                     </div>
                 </div>
             </div>
@@ -911,19 +911,28 @@
         // ページをレンダリング
         async function renderPage(pageNum) {
             try {
+                const debugEl = document.getElementById('debugInfo');
+                if (debugEl) debugEl.textContent = 'レンダリング開始: scale=' + scale;
+                
+                console.log('Rendering page ' + pageNum + ' at scale ' + scale);
+                
                 const page = await pdfDoc.getPage(pageNum);
                 const canvasContainer = document.querySelector('.pdf-canvas-container');
                 
-                // 古いcanvasを削除して新しく作成（iPhone対応）
+                // 古いcanvasを削除して新しく作成
                 let canvas = document.getElementById('pdfCanvas');
                 const oldCanvas = canvas;
                 canvas = document.createElement('canvas');
                 canvas.id = 'pdfCanvas';
                 oldCanvas.parentNode.replaceChild(canvas, oldCanvas);
                 
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext('2d', { alpha: false });
                 
                 const viewport = page.getViewport({scale: scale});
+                
+                console.log('Canvas size: ' + viewport.width + 'x' + viewport.height);
+                if (debugEl) debugEl.textContent = 'Canvas size: ' + Math.round(viewport.width) + 'x' + Math.round(viewport.height) + ' (scale=' + scale + ')';
+                
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 
@@ -932,14 +941,21 @@
                     viewport: viewport
                 };
                 
-                await page.render(renderContext).promise;
+                const renderTask = page.render(renderContext);
+                await renderTask.promise;
                 
                 // ページ情報を更新
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
                 
+                console.log('Rendering complete');
+                if (debugEl) debugEl.textContent = '表示完了: ' + Math.round(viewport.width) + 'x' + Math.round(viewport.height) + ' px';
+                
             } catch (error) {
                 console.error('ページレンダリングエラー:', error);
+                const debugEl = document.getElementById('debugInfo');
+                if (debugEl) debugEl.textContent = 'エラー: ' + error.message;
+                alert('レンダリングエラー: ' + error.message);
             }
         }
 
@@ -961,16 +977,38 @@
 
         // 拡大
         async function zoomIn() {
+            const oldScale = scale;
             scale += 0.25;
             if (scale > 3) scale = 3;
-            await renderPage(currentPage);
+            
+            const debugEl = document.getElementById('debugInfo');
+            if (debugEl) debugEl.textContent = '拡大: ' + Math.round(oldScale * 100) + '% → ' + Math.round(scale * 100) + '%';
+            
+            console.log('Zoom In: ' + oldScale + ' -> ' + scale);
+            
+            if (oldScale !== scale) {
+                await renderPage(currentPage);
+            } else {
+                if (debugEl) debugEl.textContent = '最大倍率に達しました (300%)';
+            }
         }
 
         // 縮小
         async function zoomOut() {
+            const oldScale = scale;
             scale -= 0.25;
             if (scale < 0.5) scale = 0.5;
-            await renderPage(currentPage);
+            
+            const debugEl = document.getElementById('debugInfo');
+            if (debugEl) debugEl.textContent = '縮小: ' + Math.round(oldScale * 100) + '% → ' + Math.round(scale * 100) + '%';
+            
+            console.log('Zoom Out: ' + oldScale + ' -> ' + scale);
+            
+            if (oldScale !== scale) {
+                await renderPage(currentPage);
+            } else {
+                if (debugEl) debugEl.textContent = '最小倍率に達しました (50%)';
+            }
         }
 
         // PDFを閉じる
