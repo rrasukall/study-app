@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v3.3a</title>
+    <title>MyAnkiApp Phase 3.5 v1.0</title>
     <style>
         * {
             margin: 0;
@@ -416,11 +416,145 @@
             margin-bottom: 15px;
             display: inline-block;
         }
+        
+        /* Phase 3.5 v1.0: 新機能用CSS */
+        
+        /* PDF履歴表示 */
+        .pdf-history {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .pdf-history h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .pdf-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .pdf-history-item {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .pdf-history-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+        
+        .pdf-history-item-name {
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .pdf-history-item-date {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .pdf-history-empty {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        /* マーカーモードボタンの色分け */
+        .btn-mode-on {
+            background: #27ae60 !important;
+        }
+        
+        .btn-mode-on:hover {
+            background: #229954 !important;
+        }
+        
+        .btn-mode-off {
+            background: #95a5a6 !important;
+        }
+        
+        .btn-mode-off:hover {
+            background: #7f8c8d !important;
+        }
+        
+        /* 赤シート色別ボタン */
+        .redsheet-controls {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .redsheet-label {
+            color: #666;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        
+        .redsheet-btn {
+            padding: 8px 16px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            background: #fff;
+        }
+        
+        .redsheet-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .redsheet-btn.active {
+            border-color: #333;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        
+        .redsheet-btn.yellow { color: #f39c12; }
+        .redsheet-btn.red { color: #e74c3c; }
+        .redsheet-btn.green { color: #27ae60; }
+        .redsheet-btn.blue { color: #3498db; }
+        .redsheet-btn.all { 
+            color: white;
+            background: #34495e;
+        }
+        
+        .redsheet-btn.all.active {
+            background: #2c3e50;
+        }
+        
+        /* カーソル変更 */
+        #markerCanvas.edit-mode {
+            cursor: move !important;
+        }
+        
+        #markerCanvas.delete-mode {
+            cursor: not-allowed !important;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v3.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.0</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -491,6 +625,14 @@
             <div class="pdf-viewer">
                 <h2 style="margin-bottom: 20px;">📖 PDF学習</h2>
                 
+                
+                <!-- Phase 3.5 v1.0: PDF履歴表示 -->
+                <div class="pdf-history" id="pdfHistory">
+                    <h3>📚 最近開いたPDF</h3>
+                    <div class="pdf-history-list" id="pdfHistoryList">
+                        <div class="pdf-history-empty">履歴がありません</div>
+                    </div>
+                </div>
                 <div id="pdfUploadArea" class="pdf-upload-area" onclick="document.getElementById('pdfFileInput').click()">
                     <div class="pdf-upload-icon">📄</div>
                     <h3>PDFファイルを選択</h3>
@@ -509,9 +651,20 @@
                             <div class="color-option" style="background: rgba(0, 255, 0, 0.4);" onclick="selectMarkerColor('green')" title="緑"></div>
                             <div class="color-option" style="background: rgba(0, 150, 255, 0.4);" onclick="selectMarkerColor('blue')" title="青"></div>
                         </div>
-                        <button class="btn btn-secondary" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーON</button>
-                        <button class="btn btn-success" onclick="toggleRedSheet()" id="redSheetBtn">赤シートON</button>
+                        <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
+                        <button class="btn btn-mode-off" onclick="toggleEditMode()" id="editModeBtn">📝 修正OFF</button>
+                        <button class="btn btn-mode-off" onclick="toggleDeleteMode()" id="deleteModeBtn">🗑️ 削除OFF</button>
                         <button class="btn btn-danger" onclick="clearPageMarkers()">このページのマーカーを消去</button>
+                    </div>
+                    
+                    <!-- Phase 3.5 v1.0: 赤シート色別制御 -->
+                    <div class="redsheet-controls">
+                        <span class="redsheet-label">赤シート:</span>
+                        <button class="redsheet-btn yellow" id="redsheetYellow" onclick="toggleRedSheetColor('yellow')">黄</button>
+                        <button class="redsheet-btn red" id="redsheetRed" onclick="toggleRedSheetColor('red')">赤</button>
+                        <button class="redsheet-btn green" id="redsheetGreen" onclick="toggleRedSheetColor('green')">緑</button>
+                        <button class="redsheet-btn blue" id="redsheetBlue" onclick="toggleRedSheetColor('blue')">青</button>
+                        <button class="redsheet-btn all" id="redsheetAll" onclick="toggleRedSheetColor('all')">全て</button>
                     </div>
                     
                     <div class="pdf-canvas-container">
@@ -608,6 +761,17 @@
         let isDrawing = false;
         let startX, startY;
         let redSheetMode = false;
+        
+        // Phase 3.5 v1.0: 新機能用変数
+        let editMode = false;
+        let deleteMode = false;
+        let redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
+        let selectedMarkerIndex = null;
+        let selectedMarkerPage = null;
+        let isDraggingMarker = false;
+        let dragStartX, dragStartY;
+        let pdfHistory = [];
+        const MAX_HISTORY = 10;
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -624,6 +788,11 @@
         }, (error) => {
             console.error('Error fetching cards:', error);
             updateSyncStatus('error');
+        });
+        
+        // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
+        window.addEventListener('load', () => {
+            loadPDFHistory();
         });
 
         // 同期ステータスを更新
@@ -971,12 +1140,50 @@
                 // 最初のページを表示
                 await renderPage(currentPage);
                 
+                // Phase 3.5 v1.0: PDF履歴に追加
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    addToPDFHistory(file.name, e.target.result);
+                };
+                reader.readAsDataURL(file);
+                
             } catch (error) {
                 console.error('PDF読み込みエラー:', error);
                 alert('PDFの読み込みに失敗しました');
             }
         }
 
+
+        // Phase 3.5 v1.0: ArrayBufferからPDFを読み込み（履歴から再読み込み用）
+        async function loadPDFFromArrayBuffer(arrayBuffer, fileName) {
+            try {
+                // ファイルハッシュを計算
+                const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                pdfHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                // PDFを読み込み
+                pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                totalPages = pdfDoc.numPages;
+                currentPage = 1;
+                currentPDFFile = { name: fileName };
+                
+                // UIを更新
+                document.getElementById('pdfUploadArea').style.display = 'none';
+                document.getElementById('pdfViewerContainer').style.display = 'block';
+                document.getElementById('pdfFilename').textContent = fileName;
+                
+                // マーカーを読み込み
+                await loadMarkersFromFirebase();
+                
+                // 最初のページを表示
+                await renderPage(currentPage);
+                
+            } catch (error) {
+                console.error('PDF読み込みエラー:', error);
+                alert('PDFの読み込みに失敗しました');
+            }
+        }
         // ファイルのハッシュ値を計算（SHA-256）
         async function calculateFileHash(file) {
             const arrayBuffer = await file.arrayBuffer();
@@ -1095,23 +1302,225 @@
         }
         
         // マーカーモードの切り替え
+        // Phase 3.5 v1.0: マーカーモード切り替え（色分け・排他制御対応）
         function toggleMarkerMode() {
             markerMode = !markerMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('markerModeBtn');
-            if (canvas) {
-                canvas.style.cursor = markerMode ? 'crosshair' : 'default';
+            
+            if (markerMode) {
+                // マーカーモードON
+                btn.textContent = 'マーカーON';
+                btn.className = 'btn btn-mode-on';
+                if (canvas) canvas.style.cursor = 'crosshair';
+                
+                // 他のモードをOFF
+                if (editMode) toggleEditMode();
+                if (deleteMode) toggleDeleteMode();
+            } else {
+                // マーカーモードOFF
+                btn.textContent = 'マーカーOFF';
+                btn.className = 'btn btn-mode-off';
+                if (canvas) canvas.style.cursor = 'default';
             }
-            btn.textContent = markerMode ? 'マーカーOFF' : 'マーカーON';
         }
         
-        // 赤シートモードの切り替え
-        function toggleRedSheet() {
-            redSheetMode = !redSheetMode;
-            const btn = document.getElementById('redSheetBtn');
-            btn.textContent = redSheetMode ? '赤シートOFF' : '赤シートON';
-            btn.className = redSheetMode ? 'btn btn-secondary' : 'btn btn-success';
+        // Phase 3.5 v1.0: 修正モード切り替え
+        function toggleEditMode() {
+            editMode = !editMode;
+            const canvas = document.getElementById('markerCanvas');
+            const btn = document.getElementById('editModeBtn');
+            
+            if (editMode) {
+                // 修正モードON
+                btn.textContent = '📝 修正ON';
+                btn.className = 'btn btn-mode-on';
+                if (canvas) {
+                    canvas.classList.add('edit-mode');
+                    canvas.style.cursor = 'move';
+                }
+                
+                // 他のモードをOFF
+                if (markerMode) toggleMarkerMode();
+                if (deleteMode) toggleDeleteMode();
+            } else {
+                // 修正モードOFF
+                btn.textContent = '📝 修正OFF';
+                btn.className = 'btn btn-mode-off';
+                if (canvas) {
+                    canvas.classList.remove('edit-mode');
+                    canvas.style.cursor = 'default';
+                }
+                
+                // 選択解除
+                selectedMarkerIndex = null;
+                selectedMarkerPage = null;
+                drawMarkers();
+            }
+        }
+        
+        // Phase 3.5 v1.0: 削除モード切り替え
+        function toggleDeleteMode() {
+            deleteMode = !deleteMode;
+            const canvas = document.getElementById('markerCanvas');
+            const btn = document.getElementById('deleteModeBtn');
+            
+            if (deleteMode) {
+                // 削除モードON
+                btn.textContent = '🗑️ 削除ON';
+                btn.className = 'btn btn-mode-on';
+                if (canvas) {
+                    canvas.classList.add('delete-mode');
+                    canvas.style.cursor = 'not-allowed';
+                }
+                
+                // 他のモードをOFF
+                if (markerMode) toggleMarkerMode();
+                if (editMode) toggleEditMode();
+            } else {
+                // 削除モードOFF
+                btn.textContent = '🗑️ 削除OFF';
+                btn.className = 'btn btn-mode-off';
+                if (canvas) {
+                    canvas.classList.remove('delete-mode');
+                    canvas.style.cursor = 'default';
+                }
+            }
+        }
+        
+        // Phase 3.5 v1.0: 赤シート色別制御
+        function toggleRedSheetColor(color) {
+            if (color === 'all') {
+                const newState = !redSheetColors.all;
+                redSheetColors = {
+                    yellow: newState,
+                    red: newState,
+                    green: newState,
+                    blue: newState,
+                    all: newState
+                };
+                
+                // すべてのボタンを更新
+                ['yellow', 'red', 'green', 'blue', 'all'].forEach(c => {
+                    const btn = document.getElementById('redsheet' + c.charAt(0).toUpperCase() + c.slice(1));
+                    if (btn) {
+                        if (newState) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    }
+                });
+            } else {
+                redSheetColors[color] = !redSheetColors[color];
+                const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                
+                if (btn) {
+                    if (redSheetColors[color]) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+                
+                // 全てボタンの状態を更新
+                const allActive = redSheetColors.yellow && redSheetColors.red && 
+                                 redSheetColors.green && redSheetColors.blue;
+                redSheetColors.all = allActive;
+                const allBtn = document.getElementById('redsheetAll');
+                if (allBtn) {
+                    if (allActive) {
+                        allBtn.classList.add('active');
+                    } else {
+                        allBtn.classList.remove('active');
+                    }
+                }
+            }
+            
             drawMarkers();
+        }
+        
+        // 赤シートモードの切り替え（元の関数 - 互換性のため残す）
+        
+        // 赤シートモードの切り替え
+
+        // Phase 3.5 v1.0: PDF履歴管理関数
+        
+        // PDF履歴をロード
+        function loadPDFHistory() {
+            const saved = localStorage.getItem('pdfHistory');
+            if (saved) {
+                pdfHistory = JSON.parse(saved);
+            }
+            displayPDFHistory();
+        }
+        
+        // PDF履歴を保存
+        function savePDFHistory() {
+            localStorage.setItem('pdfHistory', JSON.stringify(pdfHistory));
+        }
+        
+        // PDF履歴に追加
+        function addToPDFHistory(fileName, fileData) {
+            // 既存の履歴から同じファイルを削除
+            pdfHistory = pdfHistory.filter(item => item.fileName !== fileName);
+            
+            // 新しいエントリを先頭に追加
+            pdfHistory.unshift({
+                fileName: fileName,
+                fileData: fileData,
+                timestamp: new Date().toISOString()
+            });
+            
+            // 最大件数を超えたら古いものを削除
+            if (pdfHistory.length > MAX_HISTORY) {
+                pdfHistory = pdfHistory.slice(0, MAX_HISTORY);
+            }
+            
+            savePDFHistory();
+            displayPDFHistory();
+        }
+        
+        // PDF履歴を表示
+        function displayPDFHistory() {
+            const historyList = document.getElementById('pdfHistoryList');
+            if (!historyList) return;
+            
+            if (pdfHistory.length === 0) {
+                historyList.innerHTML = '<div class="pdf-history-empty">履歴がありません</div>';
+                return;
+            }
+            
+            historyList.innerHTML = pdfHistory.map((item, index) => {
+                const date = new Date(item.timestamp);
+                const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                
+                return `
+                    <div class="pdf-history-item" onclick="loadPDFFromHistory(${index})">
+                        <span class="pdf-history-item-name">${item.fileName}</span>
+                        <span class="pdf-history-item-date">${dateStr}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 履歴からPDFを読み込み
+        async function loadPDFFromHistory(index) {
+            const item = pdfHistory[index];
+            
+            // Base64データをBlobに変換
+            const byteString = atob(item.fileData.split(',')[1]);
+            const mimeString = item.fileData.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            const blob = new Blob([ab], { type: mimeString });
+            
+            // PDFを読み込み
+            const arrayBuffer = await blob.arrayBuffer();
+            await loadPDFFromArrayBuffer(arrayBuffer, item.fileName);
         }
         
         // マーカーイベントのセットアップ
@@ -1131,13 +1540,33 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
+        // Phase 3.5 v1.0: マウスダウン処理（修正・削除モード対応）
         function handleMarkerMouseDown(e) {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 削除モード
+            if (deleteMode) {
+                deleteMarkerAt(x, y);
+                return;
+            }
+            
+            // 修正モード
+            if (editMode) {
+                selectMarkerAt(x, y);
+                if (selectedMarkerIndex !== null) {
+                    isDraggingMarker = true;
+                    dragStartX = x;
+                    dragStartY = y;
+                }
+                return;
+            }
+            
             // 赤シートモードでマーカーをクリックした場合、一時的に表示
-            if (redSheetMode) {
-                const rect = e.target.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
+            const anyRedSheetActive = redSheetColors.yellow || redSheetColors.red || 
+                                     redSheetColors.green || redSheetColors.blue;
+            if (anyRedSheetActive) {
                 if (isClickOnMarker(x, y)) {
                     showMarkerTemporarily(x, y);
                     return;
@@ -1146,6 +1575,58 @@
             
             // 通常のマーカー描画
             startDrawing(e);
+        }
+        
+        // Phase 3.5 v1.0: 座標にあるマーカーを選択（修正モード用）
+        function selectMarkerAt(x, y) {
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
+                selectedMarkerIndex = null;
+                return;
+            }
+            
+            const pageMarkers = markers[pdfHash][currentPage];
+            
+            for (let i = pageMarkers.length - 1; i >= 0; i--) {
+                const marker = pageMarkers[i];
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    selectedMarkerIndex = i;
+                    selectedMarkerPage = currentPage;
+                    drawMarkers();
+                    return;
+                }
+            }
+            
+            selectedMarkerIndex = null;
+            drawMarkers();
+        }
+        
+        // Phase 3.5 v1.0: 座標にあるマーカーを削除（削除モード用）
+        function deleteMarkerAt(x, y) {
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
+            
+            const pageMarkers = markers[pdfHash][currentPage];
+            
+            for (let i = pageMarkers.length - 1; i >= 0; i--) {
+                const marker = pageMarkers[i];
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    pageMarkers.splice(i, 1);
+                    drawMarkers();
+                    saveMarkersToFirebase();
+                    return;
+                }
+            }
         }
         
         function isClickOnMarker(x, y) {
@@ -1202,14 +1683,33 @@
             startY = e.clientY - rect.top;
         }
         
+        // Phase 3.5 v1.0: マウス移動処理（マーカードラッグ対応）
         function draw(e) {
-            if (!isDrawing || !markerMode) return;
-            e.preventDefault();
-            
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
             const currentX = e.clientX - rect.left;
             const currentY = e.clientY - rect.top;
+            
+            // マーカードラッグ（修正モード）
+            if (isDraggingMarker && selectedMarkerIndex !== null) {
+                e.preventDefault();
+                const deltaX = currentX - dragStartX;
+                const deltaY = currentY - dragStartY;
+                
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                marker.x += deltaX;
+                marker.y += deltaY;
+                
+                dragStartX = currentX;
+                dragStartY = currentY;
+                
+                drawMarkers();
+                return;
+            }
+            
+            // マーカー描画
+            if (!isDrawing || !markerMode) return;
+            e.preventDefault();
             
             // 一時的な矩形を描画
             drawMarkers();
@@ -1219,7 +1719,16 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
+        // Phase 3.5 v1.0: マウスアップ処理（マーカードラッグ終了対応）
         function stopDrawing(e) {
+            // マーカードラッグ終了
+            if (isDraggingMarker) {
+                isDraggingMarker = false;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            // マーカー描画終了
             if (!isDrawing || !markerMode) return;
             isDrawing = false;
             
@@ -1339,6 +1848,7 @@
         }
         
         // マーカーを描画
+        // Phase 3.5 v1.0: マーカー描画（色別赤シート対応）
         function drawMarkers() {
             const canvas = document.getElementById('markerCanvas');
             if (!canvas) return;
@@ -1348,19 +1858,31 @@
             
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
-            markers[pdfHash][currentPage].forEach(marker => {
+            markers[pdfHash][currentPage].forEach((marker, index) => {
                 // スケール調整
                 const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
                 
-                // 赤シートモードの時は完全に真っ黒で塗りつぶし、それ以外は通常の色
-                ctx.fillStyle = redSheetMode ? '#000000' : getMarkerColor(marker.color);
+                // 赤シートが有効な色の場合は黒で塗りつぶし、それ以外は通常の色
+                if (redSheetColors[marker.color]) {
+                    ctx.fillStyle = '#000000';
+                } else {
+                    ctx.fillStyle = getMarkerColor(marker.color);
+                }
                 
-                ctx.fillRect(
-                    marker.x * scaleRatio, 
-                    marker.y * scaleRatio, 
-                    marker.width * scaleRatio, 
-                    marker.height * scaleRatio
-                );
+                ctx.fillRect(mx, my, mw, mh);
+                
+                // 修正モードで選択されているマーカーに枠を表示
+                if (editMode && selectedMarkerIndex === index) {
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(mx, my, mw, mh);
+                    ctx.setLineDash([]);
+                }
             });
         }
         
@@ -1418,6 +1940,37 @@
                 scale = 1.5;
                 isDrawing = false;
                 redSheetMode = false;
+                
+                // Phase 3.5 v1.0: 新機能の変数をリセット
+                editMode = false;
+                deleteMode = false;
+                redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
+                selectedMarkerIndex = null;
+                selectedMarkerPage = null;
+                isDraggingMarker = false;
+                
+                // ボタンの状態をリセット
+                const markerBtn = document.getElementById('markerModeBtn');
+                const editBtn = document.getElementById('editModeBtn');
+                const deleteBtn = document.getElementById('deleteModeBtn');
+                if (markerBtn) {
+                    markerBtn.textContent = 'マーカーOFF';
+                    markerBtn.className = 'btn btn-mode-off';
+                }
+                if (editBtn) {
+                    editBtn.textContent = '📝 修正OFF';
+                    editBtn.className = 'btn btn-mode-off';
+                }
+                if (deleteBtn) {
+                    deleteBtn.textContent = '🗑️ 削除OFF';
+                    deleteBtn.className = 'btn btn-mode-off';
+                }
+                
+                // 赤シートボタンをリセット
+                ['yellow', 'red', 'green', 'blue', 'all'].forEach(color => {
+                    const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                    if (btn) btn.classList.remove('active');
+                });
                 
                 document.getElementById('pdfUploadArea').style.display = 'block';
                 document.getElementById('pdfViewerContainer').style.display = 'none';
