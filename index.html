@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v3.2</title>
+    <title>MyAnkiApp v3.3</title>
     <style>
         * {
             margin: 0;
@@ -420,7 +420,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v3.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v3.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -509,7 +509,8 @@
                             <div class="color-option" style="background: rgba(0, 255, 0, 0.4);" onclick="selectMarkerColor('green')" title="緑"></div>
                             <div class="color-option" style="background: rgba(0, 150, 255, 0.4);" onclick="selectMarkerColor('blue')" title="青"></div>
                         </div>
-                        <button class="btn btn-secondary" onclick="toggleMarkerMode()">マーカーON/OFF</button>
+                        <button class="btn btn-secondary" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
+                        <button class="btn btn-success" onclick="toggleRedSheet()" id="redSheetBtn">赤シートON</button>
                         <button class="btn btn-danger" onclick="clearPageMarkers()">このページのマーカーを消去</button>
                     </div>
                     
@@ -606,6 +607,7 @@
         let markerMode = true;
         let isDrawing = false;
         let startX, startY;
+        let redSheetMode = false;
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -1096,16 +1098,26 @@
         function toggleMarkerMode() {
             markerMode = !markerMode;
             const canvas = document.getElementById('markerCanvas');
+            const btn = document.getElementById('markerModeBtn');
             if (canvas) {
                 canvas.style.cursor = markerMode ? 'crosshair' : 'default';
             }
-            event.target.textContent = markerMode ? 'マーカーOFF' : 'マーカーON';
+            btn.textContent = markerMode ? 'マーカーOFF' : 'マーカーON';
+        }
+        
+        // 赤シートモードの切り替え
+        function toggleRedSheet() {
+            redSheetMode = !redSheetMode;
+            const btn = document.getElementById('redSheetBtn');
+            btn.textContent = redSheetMode ? '赤シートOFF' : '赤シートON';
+            btn.className = redSheetMode ? 'btn btn-secondary' : 'btn btn-success';
+            drawMarkers();
         }
         
         // マーカーイベントのセットアップ
         function setupMarkerEvents(canvas) {
             // マウスイベント
-            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousedown', handleMarkerMouseDown);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
             canvas.addEventListener('mouseout', stopDrawing);
@@ -1114,6 +1126,69 @@
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        }
+        
+        function handleMarkerMouseDown(e) {
+            // 赤シートモードでマーカーをクリックした場合、一時的に表示
+            if (redSheetMode) {
+                const rect = e.target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (isClickOnMarker(x, y)) {
+                    showMarkerTemporarily(x, y);
+                    return;
+                }
+            }
+            
+            // 通常のマーカー描画
+            startDrawing(e);
+        }
+        
+        function isClickOnMarker(x, y) {
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return false;
+            
+            return markers[pdfHash][currentPage].some(marker => {
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                return x >= mx && x <= mx + mw && y >= my && y <= my + mh;
+            });
+        }
+        
+        function showMarkerTemporarily(x, y) {
+            const canvas = document.getElementById('markerCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
+            
+            markers[pdfHash][currentPage].forEach(marker => {
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                // クリックしたマーカーは通常の色で表示、それ以外は黒
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    ctx.fillStyle = getMarkerColor(marker.color);
+                } else {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                }
+                
+                ctx.fillRect(mx, my, mw, mh);
+            });
+            
+            // 3秒後に元に戻す
+            setTimeout(() => {
+                drawMarkers();
+            }, 3000);
         }
         
         function startDrawing(e) {
@@ -1168,13 +1243,25 @@
         
         // タッチイベントハンドラ
         function handleTouchStart(e) {
-            if (!markerMode) return;
             e.preventDefault();
             const touch = e.touches[0];
             const rect = e.target.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            // 赤シートモードでマーカーをタップした場合
+            if (redSheetMode) {
+                if (isClickOnMarker(x, y)) {
+                    showMarkerTemporarily(x, y);
+                    return;
+                }
+            }
+            
+            // 通常のマーカー描画
+            if (!markerMode) return;
             isDrawing = true;
-            startX = touch.clientX - rect.left;
-            startY = touch.clientY - rect.top;
+            startX = x;
+            startY = y;
         }
         
         function handleTouchMove(e) {
@@ -1261,7 +1348,10 @@
             markers[pdfHash][currentPage].forEach(marker => {
                 // スケール調整
                 const scaleRatio = scale / marker.scale;
-                ctx.fillStyle = getMarkerColor(marker.color);
+                
+                // 赤シートモードの時は黒で塗りつぶし、それ以外は通常の色
+                ctx.fillStyle = redSheetMode ? 'rgba(0, 0, 0, 0.8)' : getMarkerColor(marker.color);
+                
                 ctx.fillRect(
                     marker.x * scaleRatio, 
                     marker.y * scaleRatio, 
@@ -1324,6 +1414,7 @@
                 totalPages = 0;
                 scale = 1.5;
                 isDrawing = false;
+                redSheetMode = false;
                 
                 document.getElementById('pdfUploadArea').style.display = 'block';
                 document.getElementById('pdfViewerContainer').style.display = 'none';
