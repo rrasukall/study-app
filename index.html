@@ -324,12 +324,65 @@
             margin-bottom: 20px;
             overflow: auto;
             max-height: 70vh;
+            position: relative;
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 0 auto;
         }
         
         #pdfCanvas {
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             display: block;
             margin: 0 auto;
+        }
+        
+        #markerCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        
+        .marker-controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .color-selector {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.active {
+            border-color: #333;
+            transform: scale(1.15);
+        }
+        
+        .marker-label {
+            font-weight: bold;
+            color: #333;
         }
         
         .pdf-controls {
@@ -448,8 +501,23 @@
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
+                    <div class="marker-controls">
+                        <span class="marker-label">マーカー色：</span>
+                        <div class="color-selector">
+                            <div class="color-option active" style="background: rgba(255, 255, 0, 0.4);" onclick="selectMarkerColor('yellow')" title="黄色"></div>
+                            <div class="color-option" style="background: rgba(255, 0, 0, 0.4);" onclick="selectMarkerColor('red')" title="赤"></div>
+                            <div class="color-option" style="background: rgba(0, 255, 0, 0.4);" onclick="selectMarkerColor('green')" title="緑"></div>
+                            <div class="color-option" style="background: rgba(0, 150, 255, 0.4);" onclick="selectMarkerColor('blue')" title="青"></div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="toggleMarkerMode()">マーカーON/OFF</button>
+                        <button class="btn btn-danger" onclick="clearPageMarkers()">このページのマーカーを消去</button>
+                    </div>
+                    
                     <div class="pdf-canvas-container">
-                        <canvas id="pdfCanvas"></canvas>
+                        <div class="canvas-wrapper" id="canvasWrapper">
+                            <canvas id="pdfCanvas"></canvas>
+                            <canvas id="markerCanvas"></canvas>
+                        </div>
                     </div>
                     
                     <div class="pdf-controls">
@@ -464,8 +532,6 @@
                         </div>
                         
                         <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
-                        
-                        <div id="debugInfo" style="width: 100%; margin-top: 10px; font-size: 12px; color: #666;"></div>
                     </div>
                 </div>
             </div>
@@ -533,6 +599,13 @@
         let scale = 1.5;
         let pdfHash = null;
         let currentPDFFile = null;
+        
+        // マーカー関連変数
+        let markers = {}; // { pdfHash: { pageNum: [marker objects] } }
+        let currentMarkerColor = 'yellow';
+        let markerMode = true;
+        let isDrawing = false;
+        let startX, startY;
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -890,8 +963,11 @@
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = file.name;
                 
+                // マーカーを読み込み
+                await loadMarkersFromFirebase();
+                
                 // 最初のページを表示
-                renderPage(currentPage);
+                await renderPage(currentPage);
                 
             } catch (error) {
                 console.error('PDF読み込みエラー:', error);
@@ -911,50 +987,58 @@
         // ページをレンダリング
         async function renderPage(pageNum) {
             try {
-                const debugEl = document.getElementById('debugInfo');
-                if (debugEl) debugEl.textContent = 'レンダリング開始: scale=' + scale;
-                
-                console.log('Rendering page ' + pageNum + ' at scale ' + scale);
-                
                 const page = await pdfDoc.getPage(pageNum);
-                const canvasContainer = document.querySelector('.pdf-canvas-container');
                 
-                // 古いcanvasを削除して新しく作成
-                let canvas = document.getElementById('pdfCanvas');
-                const oldCanvas = canvas;
-                canvas = document.createElement('canvas');
-                canvas.id = 'pdfCanvas';
-                oldCanvas.parentNode.replaceChild(canvas, oldCanvas);
+                // PDF canvas
+                let pdfCanvas = document.getElementById('pdfCanvas');
+                const oldPdfCanvas = pdfCanvas;
+                pdfCanvas = document.createElement('canvas');
+                pdfCanvas.id = 'pdfCanvas';
+                oldPdfCanvas.parentNode.replaceChild(pdfCanvas, oldPdfCanvas);
                 
-                const ctx = canvas.getContext('2d', { alpha: false });
+                const pdfCtx = pdfCanvas.getContext('2d', { alpha: false });
                 
                 const viewport = page.getViewport({scale: scale});
                 
-                console.log('Canvas size: ' + viewport.width + 'x' + viewport.height);
-                if (debugEl) debugEl.textContent = 'Canvas size: ' + Math.round(viewport.width) + 'x' + Math.round(viewport.height) + ' (scale=' + scale + ')';
-                
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
+                pdfCanvas.width = viewport.width;
+                pdfCanvas.height = viewport.height;
                 
                 const renderContext = {
-                    canvasContext: ctx,
+                    canvasContext: pdfCtx,
                     viewport: viewport
                 };
                 
                 const renderTask = page.render(renderContext);
                 await renderTask.promise;
                 
+                // マーカー canvas をセットアップ
+                let markerCanvas = document.getElementById('markerCanvas');
+                if (!markerCanvas) {
+                    markerCanvas = document.createElement('canvas');
+                    markerCanvas.id = 'markerCanvas';
+                    document.getElementById('canvasWrapper').appendChild(markerCanvas);
+                } else {
+                    const oldMarkerCanvas = markerCanvas;
+                    markerCanvas = document.createElement('canvas');
+                    markerCanvas.id = 'markerCanvas';
+                    oldMarkerCanvas.parentNode.replaceChild(markerCanvas, oldMarkerCanvas);
+                }
+                
+                markerCanvas.width = viewport.width;
+                markerCanvas.height = viewport.height;
+                
+                // マーカーのイベントリスナーを設定
+                setupMarkerEvents(markerCanvas);
+                
+                // 保存されたマーカーを描画
+                drawMarkers();
+                
                 // ページ情報を更新
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
                 
-                console.log('Rendering complete');
-                if (debugEl) debugEl.textContent = '表示完了: ' + Math.round(viewport.width) + 'x' + Math.round(viewport.height) + ' px';
-                
             } catch (error) {
                 console.error('ページレンダリングエラー:', error);
-                const debugEl = document.getElementById('debugInfo');
-                if (debugEl) debugEl.textContent = 'エラー: ' + error.message;
                 alert('レンダリングエラー: ' + error.message);
             }
         }
@@ -981,15 +1065,8 @@
             scale += 0.25;
             if (scale > 3) scale = 3;
             
-            const debugEl = document.getElementById('debugInfo');
-            if (debugEl) debugEl.textContent = '拡大: ' + Math.round(oldScale * 100) + '% → ' + Math.round(scale * 100) + '%';
-            
-            console.log('Zoom In: ' + oldScale + ' -> ' + scale);
-            
             if (oldScale !== scale) {
                 await renderPage(currentPage);
-            } else {
-                if (debugEl) debugEl.textContent = '最大倍率に達しました (300%)';
             }
         }
 
@@ -999,15 +1076,241 @@
             scale -= 0.25;
             if (scale < 0.5) scale = 0.5;
             
-            const debugEl = document.getElementById('debugInfo');
-            if (debugEl) debugEl.textContent = '縮小: ' + Math.round(oldScale * 100) + '% → ' + Math.round(scale * 100) + '%';
-            
-            console.log('Zoom Out: ' + oldScale + ' -> ' + scale);
-            
             if (oldScale !== scale) {
                 await renderPage(currentPage);
-            } else {
-                if (debugEl) debugEl.textContent = '最小倍率に達しました (50%)';
+            }
+        }
+        
+        // ============ マーカー機能 ============
+        
+        // マーカー色を選択
+        function selectMarkerColor(color) {
+            currentMarkerColor = color;
+            
+            // アクティブな色を更新
+            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        // マーカーモードの切り替え
+        function toggleMarkerMode() {
+            markerMode = !markerMode;
+            const canvas = document.getElementById('markerCanvas');
+            if (canvas) {
+                canvas.style.cursor = markerMode ? 'crosshair' : 'default';
+            }
+            event.target.textContent = markerMode ? 'マーカーOFF' : 'マーカーON';
+        }
+        
+        // マーカーイベントのセットアップ
+        function setupMarkerEvents(canvas) {
+            // マウスイベント
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // タッチイベント（iPhone/iPad対応）
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+        }
+        
+        function startDrawing(e) {
+            if (!markerMode) return;
+            isDrawing = true;
+            const rect = e.target.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+        }
+        
+        function draw(e) {
+            if (!isDrawing || !markerMode) return;
+            e.preventDefault();
+            
+            const canvas = document.getElementById('markerCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // 一時的な矩形を描画
+            drawMarkers();
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = getMarkerColor(currentMarkerColor);
+            ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
+                        Math.abs(currentX - startX), Math.abs(currentY - startY));
+        }
+        
+        function stopDrawing(e) {
+            if (!isDrawing || !markerMode) return;
+            isDrawing = false;
+            
+            const canvas = document.getElementById('markerCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            // マーカーを保存
+            const marker = {
+                x: Math.min(startX, endX),
+                y: Math.min(startY, endY),
+                width: Math.abs(endX - startX),
+                height: Math.abs(endY - startY),
+                color: currentMarkerColor,
+                scale: scale
+            };
+            
+            if (marker.width > 5 && marker.height > 5) { // 小さすぎるマーカーは無視
+                saveMarker(marker);
+                drawMarkers();
+            }
+        }
+        
+        // タッチイベントハンドラ
+        function handleTouchStart(e) {
+            if (!markerMode) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = e.target.getBoundingClientRect();
+            isDrawing = true;
+            startX = touch.clientX - rect.left;
+            startY = touch.clientY - rect.top;
+        }
+        
+        function handleTouchMove(e) {
+            if (!isDrawing || !markerMode) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const canvas = document.getElementById('markerCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const currentX = touch.clientX - rect.left;
+            const currentY = touch.clientY - rect.top;
+            
+            drawMarkers();
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = getMarkerColor(currentMarkerColor);
+            ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
+                        Math.abs(currentX - startX), Math.abs(currentY - startY));
+        }
+        
+        function handleTouchEnd(e) {
+            if (!isDrawing || !markerMode) return;
+            e.preventDefault();
+            isDrawing = false;
+            
+            const touch = e.changedTouches[0];
+            const canvas = document.getElementById('markerCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const endX = touch.clientX - rect.left;
+            const endY = touch.clientY - rect.top;
+            
+            const marker = {
+                x: Math.min(startX, endX),
+                y: Math.min(startY, endY),
+                width: Math.abs(endX - startX),
+                height: Math.abs(endY - startY),
+                color: currentMarkerColor,
+                scale: scale
+            };
+            
+            if (marker.width > 5 && marker.height > 5) {
+                saveMarker(marker);
+                drawMarkers();
+            }
+        }
+        
+        // マーカー色を取得
+        function getMarkerColor(color) {
+            const colors = {
+                'yellow': 'rgba(255, 255, 0, 0.4)',
+                'red': 'rgba(255, 0, 0, 0.4)',
+                'green': 'rgba(0, 255, 0, 0.4)',
+                'blue': 'rgba(0, 150, 255, 0.4)'
+            };
+            return colors[color] || colors['yellow'];
+        }
+        
+        // マーカーを保存
+        function saveMarker(marker) {
+            if (!pdfHash) return;
+            
+            if (!markers[pdfHash]) {
+                markers[pdfHash] = {};
+            }
+            if (!markers[pdfHash][currentPage]) {
+                markers[pdfHash][currentPage] = [];
+            }
+            
+            markers[pdfHash][currentPage].push(marker);
+            
+            // Firebaseに保存
+            saveMarkersToFirebase();
+        }
+        
+        // マーカーを描画
+        function drawMarkers() {
+            const canvas = document.getElementById('markerCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
+            
+            markers[pdfHash][currentPage].forEach(marker => {
+                // スケール調整
+                const scaleRatio = scale / marker.scale;
+                ctx.fillStyle = getMarkerColor(marker.color);
+                ctx.fillRect(
+                    marker.x * scaleRatio, 
+                    marker.y * scaleRatio, 
+                    marker.width * scaleRatio, 
+                    marker.height * scaleRatio
+                );
+            });
+        }
+        
+        // このページのマーカーを消去
+        function clearPageMarkers() {
+            if (!pdfHash) return;
+            
+            if (confirm('このページのマーカーをすべて消去しますか？')) {
+                if (markers[pdfHash] && markers[pdfHash][currentPage]) {
+                    delete markers[pdfHash][currentPage];
+                    drawMarkers();
+                    saveMarkersToFirebase();
+                }
+            }
+        }
+        
+        // Firebaseにマーカーを保存
+        async function saveMarkersToFirebase() {
+            if (!pdfHash) return;
+            
+            try {
+                await db.collection('pdfMarkers').doc(pdfHash).set({
+                    markers: markers[pdfHash] || {},
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error('マーカー保存エラー:', error);
+            }
+        }
+        
+        // Firebaseからマーカーを読み込み
+        async function loadMarkersFromFirebase() {
+            if (!pdfHash) return;
+            
+            try {
+                const doc = await db.collection('pdfMarkers').doc(pdfHash).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    markers[pdfHash] = data.markers || {};
+                    drawMarkers();
+                }
+            } catch (error) {
+                console.error('マーカー読み込みエラー:', error);
             }
         }
 
@@ -1020,6 +1323,7 @@
                 currentPage = 1;
                 totalPages = 0;
                 scale = 1.5;
+                isDrawing = false;
                 
                 document.getElementById('pdfUploadArea').style.display = 'block';
                 document.getElementById('pdfViewerContainer').style.display = 'none';
