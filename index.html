@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>暗記カードアプリ</title>
+    <title>暗記カードアプリ - PDF対応版</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,7 @@
         }
         
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         
@@ -34,6 +34,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .tab {
@@ -69,7 +70,7 @@
             display: block;
         }
         
-        .card-creator, .card-viewer, .card-list {
+        .card-creator, .card-viewer, .card-list, .pdf-viewer {
             background: white;
             padding: 30px;
             border-radius: 15px;
@@ -118,6 +119,7 @@
             font-weight: bold;
             transition: background 0.3s;
             margin-right: 10px;
+            margin-bottom: 10px;
         }
         
         .btn:hover {
@@ -188,11 +190,14 @@
             justify-content: space-between;
             align-items: center;
             margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .nav-buttons {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         
         .card-info {
@@ -224,6 +229,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .card-item-title {
@@ -247,6 +254,7 @@
         .card-item-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         
         .sync-status {
@@ -268,11 +276,92 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .filter-group input,
         .filter-group select {
             flex: 1;
+            min-width: 200px;
+        }
+        
+        /* PDF Viewer Styles */
+        .pdf-upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .pdf-upload-area:hover {
+            background: #e9ecef;
+            border-color: #5568d3;
+        }
+        
+        .pdf-upload-area.dragover {
+            background: #d4e3fc;
+            border-color: #667eea;
+        }
+        
+        .pdf-upload-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        
+        #pdfFileInput {
+            display: none;
+        }
+        
+        .pdf-canvas-container {
+            background: #525659;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            overflow: auto;
+            max-height: 70vh;
+        }
+        
+        #pdfCanvas {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .pdf-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .pdf-info {
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .pdf-filename {
+            background: #e9ecef;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #495057;
+            margin-bottom: 15px;
+            display: inline-block;
         }
     </style>
 </head>
@@ -286,6 +375,7 @@
             <button class="tab active" onclick="switchTab('create')">カード作成</button>
             <button class="tab" onclick="switchTab('study')">学習</button>
             <button class="tab" onclick="switchTab('list')">カード一覧</button>
+            <button class="tab" onclick="switchTab('pdf')">PDF学習</button>
         </div>
         
         <!-- カード作成セクション -->
@@ -342,15 +432,57 @@
                 <div id="cardList"></div>
             </div>
         </div>
+        
+        <!-- PDF学習セクション -->
+        <div id="pdf-section" class="section">
+            <div class="pdf-viewer">
+                <h2 style="margin-bottom: 20px;">📖 PDF学習</h2>
+                
+                <div id="pdfUploadArea" class="pdf-upload-area" onclick="document.getElementById('pdfFileInput').click()">
+                    <div class="pdf-upload-icon">📄</div>
+                    <h3>PDFファイルを選択</h3>
+                    <p style="margin-top: 10px; color: #666;">クリックしてファイルを選択、またはドラッグ&ドロップ</p>
+                    <input type="file" id="pdfFileInput" accept="application/pdf" onchange="loadPDF(event)">
+                </div>
+                
+                <div id="pdfViewerContainer" style="display: none;">
+                    <div class="pdf-filename" id="pdfFilename"></div>
+                    
+                    <div class="pdf-canvas-container">
+                        <canvas id="pdfCanvas"></canvas>
+                    </div>
+                    
+                    <div class="pdf-controls">
+                        <button class="btn" onclick="previousPage()">← 前のページ</button>
+                        <span class="pdf-info" id="pageInfo">1 / 1</span>
+                        <button class="btn" onclick="nextPage()">次のページ →</button>
+                        
+                        <div class="zoom-controls">
+                            <button class="btn btn-secondary" onclick="zoomOut()">縮小 -</button>
+                            <span class="pdf-info" id="zoomInfo">100%</span>
+                            <button class="btn btn-secondary" onclick="zoomIn()">拡大 +</button>
+                        </div>
+                        
+                        <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <script>
+        // PDF.js worker設定
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
         // 🔒 パスワード設定
-        const APP_PASSWORD = "rio1009";  // ← ここを好きなパスワードに変更してください
+        const APP_PASSWORD = "study2024";
         
         // パスワード認証チェック
         (function() {
@@ -391,6 +523,14 @@
         let currentIndex = 0;
         let showingQuestion = true;
         let editingCardId = null;
+        
+        // PDF関連変数
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        let scale = 1.5;
+        let pdfHash = null;
+        let currentPDFFile = null;
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -462,7 +602,6 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // 入力欄をクリア
                 document.getElementById('question').value = '';
                 document.getElementById('answer').value = '';
                 
@@ -619,12 +758,10 @@
             
             editingCardId = cardId;
             
-            // 保存ボタンに変更
             const createSection = document.getElementById('create-section');
             createSection.querySelector('.btn').textContent = '変更を保存';
             createSection.querySelector('.btn').onclick = saveEditedCard;
             
-            // カード作成タブに切り替え
             document.querySelectorAll('.tab')[0].click();
         }
 
@@ -648,11 +785,9 @@
                     answer: answer
                 });
                 
-                // 入力欄をクリア
                 document.getElementById('question').value = '';
                 document.getElementById('answer').value = '';
                 
-                // ボタンを元に戻す
                 const createSection = document.getElementById('create-section');
                 createSection.querySelector('.btn').textContent = 'カードを追加';
                 createSection.querySelector('.btn').onclick = addCard;
@@ -661,7 +796,6 @@
                 
                 alert('カードを更新しました！');
                 
-                // 一覧タブに切り替え
                 document.querySelectorAll('.tab')[2].click();
             } catch (error) {
                 console.error('Error updating card:', error);
@@ -677,7 +811,7 @@
                 return;
             }
             
-            let csv = '\ufeff'; // UTF-8 BOM
+            let csv = '\ufeff';
             cards.forEach(card => {
                 const question = card.question.replace(/"/g, '""');
                 const answer = card.answer.replace(/"/g, '""');
@@ -698,6 +832,151 @@
             document.body.removeChild(link);
             
             alert('CSVファイルをダウンロードしました！');
+        }
+
+        // ============ PDF機能 ============
+
+        // ドラッグ&ドロップ設定
+        const uploadArea = document.getElementById('pdfUploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                loadPDFFromFile(files[0]);
+            } else {
+                alert('PDFファイルを選択してください');
+            }
+        });
+
+        // PDFを読み込む（ファイル選択）
+        async function loadPDF(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                await loadPDFFromFile(file);
+            }
+        }
+
+        // PDFファイルから読み込み
+        async function loadPDFFromFile(file) {
+            try {
+                currentPDFFile = file;
+                
+                // ファイルのハッシュ値を計算
+                pdfHash = await calculateFileHash(file);
+                console.log('PDF Hash:', pdfHash);
+                
+                // PDFを読み込み
+                const arrayBuffer = await file.arrayBuffer();
+                pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                totalPages = pdfDoc.numPages;
+                currentPage = 1;
+                
+                // UIを更新
+                document.getElementById('pdfUploadArea').style.display = 'none';
+                document.getElementById('pdfViewerContainer').style.display = 'block';
+                document.getElementById('pdfFilename').textContent = file.name;
+                
+                // 最初のページを表示
+                renderPage(currentPage);
+                
+            } catch (error) {
+                console.error('PDF読み込みエラー:', error);
+                alert('PDFの読み込みに失敗しました');
+            }
+        }
+
+        // ファイルのハッシュ値を計算（SHA-256）
+        async function calculateFileHash(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        // ページをレンダリング
+        async function renderPage(pageNum) {
+            try {
+                const page = await pdfDoc.getPage(pageNum);
+                const canvas = document.getElementById('pdfCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                const viewport = page.getViewport({scale: scale});
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                
+                await page.render(renderContext).promise;
+                
+                // ページ情報を更新
+                document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+                document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
+                
+            } catch (error) {
+                console.error('ページレンダリングエラー:', error);
+            }
+        }
+
+        // 次のページ
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage(currentPage);
+            }
+        }
+
+        // 前のページ
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+            }
+        }
+
+        // 拡大
+        function zoomIn() {
+            scale += 0.25;
+            if (scale > 3) scale = 3;
+            renderPage(currentPage);
+        }
+
+        // 縮小
+        function zoomOut() {
+            scale -= 0.25;
+            if (scale < 0.5) scale = 0.5;
+            renderPage(currentPage);
+        }
+
+        // PDFを閉じる
+        function closePDF() {
+            if (confirm('PDFを閉じますか？')) {
+                pdfDoc = null;
+                currentPDFFile = null;
+                pdfHash = null;
+                currentPage = 1;
+                totalPages = 0;
+                scale = 1.5;
+                
+                document.getElementById('pdfUploadArea').style.display = 'block';
+                document.getElementById('pdfViewerContainer').style.display = 'none';
+                document.getElementById('pdfFileInput').value = '';
+            }
         }
     </script>
 </body>
