@@ -330,6 +330,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             max-width: 100%;
             height: auto;
+            display: block;
+            margin: 0 auto;
         }
         
         .pdf-controls {
@@ -910,11 +912,16 @@
         async function renderPage(pageNum) {
             try {
                 const page = await pdfDoc.getPage(pageNum);
-                const canvas = document.getElementById('pdfCanvas');
-                const ctx = canvas.getContext('2d');
+                const canvasContainer = document.querySelector('.pdf-canvas-container');
                 
-                // キャンバスをクリア
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // 古いcanvasを削除して新しく作成（iPhone対応）
+                let canvas = document.getElementById('pdfCanvas');
+                const oldCanvas = canvas;
+                canvas = document.createElement('canvas');
+                canvas.id = 'pdfCanvas';
+                oldCanvas.parentNode.replaceChild(canvas, oldCanvas);
+                
+                const ctx = canvas.getContext('2d');
                 
                 const viewport = page.getViewport({scale: scale});
                 canvas.width = viewport.width;
@@ -930,11 +937,6 @@
                 // ページ情報を更新
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
-                
-                // iPhone用：強制的に再描画
-                canvas.style.display = 'none';
-                canvas.offsetHeight; // reflow
-                canvas.style.display = 'block';
                 
             } catch (error) {
                 console.error('ページレンダリングエラー:', error);
