@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>暗記カードアプリ - PDF対応版</title>
+    <title>MyAnkiApp</title>
     <style>
         * {
             margin: 0;
@@ -367,7 +367,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 暗記カードアプリ</h1>
+        <h1>📚 MyAnkiApp</h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -482,7 +482,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
         // 🔒 パスワード設定
-        const APP_PASSWORD = "study2024";
+        const APP_PASSWORD = "rio1009";
         
         // パスワード認証チェック
         (function() {
@@ -913,6 +913,9 @@
                 const canvas = document.getElementById('pdfCanvas');
                 const ctx = canvas.getContext('2d');
                 
+                // キャンバスをクリア
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
                 const viewport = page.getViewport({scale: scale});
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
@@ -928,39 +931,44 @@
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
                 
+                // iPhone用：強制的に再描画
+                canvas.style.display = 'none';
+                canvas.offsetHeight; // reflow
+                canvas.style.display = 'block';
+                
             } catch (error) {
                 console.error('ページレンダリングエラー:', error);
             }
         }
 
         // 次のページ
-        function nextPage() {
+        async function nextPage() {
             if (currentPage < totalPages) {
                 currentPage++;
-                renderPage(currentPage);
+                await renderPage(currentPage);
             }
         }
 
         // 前のページ
-        function previousPage() {
+        async function previousPage() {
             if (currentPage > 1) {
                 currentPage--;
-                renderPage(currentPage);
+                await renderPage(currentPage);
             }
         }
 
         // 拡大
-        function zoomIn() {
+        async function zoomIn() {
             scale += 0.25;
             if (scale > 3) scale = 3;
-            renderPage(currentPage);
+            await renderPage(currentPage);
         }
 
         // 縮小
-        function zoomOut() {
+        async function zoomOut() {
             scale -= 0.25;
             if (scale < 0.5) scale = 0.5;
-            renderPage(currentPage);
+            await renderPage(currentPage);
         }
 
         // PDFを閉じる
