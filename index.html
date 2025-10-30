@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v3.3</title>
+    <title>MyAnkiApp v3.3a</title>
     <style>
         * {
             margin: 0;
@@ -509,7 +509,7 @@
                             <div class="color-option" style="background: rgba(0, 255, 0, 0.4);" onclick="selectMarkerColor('green')" title="緑"></div>
                             <div class="color-option" style="background: rgba(0, 150, 255, 0.4);" onclick="selectMarkerColor('blue')" title="青"></div>
                         </div>
-                        <button class="btn btn-secondary" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
+                        <button class="btn btn-secondary" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーON</button>
                         <button class="btn btn-success" onclick="toggleRedSheet()" id="redSheetBtn">赤シートON</button>
                         <button class="btn btn-danger" onclick="clearPageMarkers()">このページのマーカーを消去</button>
                     </div>
@@ -604,7 +604,7 @@
         // マーカー関連変数
         let markers = {}; // { pdfHash: { pageNum: [marker objects] } }
         let currentMarkerColor = 'yellow';
-        let markerMode = true;
+        let markerMode = false; // デフォルトOFF
         let isDrawing = false;
         let startX, startY;
         let redSheetMode = false;
@@ -1116,6 +1116,9 @@
         
         // マーカーイベントのセットアップ
         function setupMarkerEvents(canvas) {
+            // デフォルトのカーソルを設定
+            canvas.style.cursor = markerMode ? 'crosshair' : 'default';
+            
             // マウスイベント
             canvas.addEventListener('mousedown', handleMarkerMouseDown);
             canvas.addEventListener('mousemove', draw);
@@ -1175,11 +1178,11 @@
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
-                // クリックしたマーカーは通常の色で表示、それ以外は黒
+                // クリックしたマーカーは通常の色で表示、それ以外は完全に真っ黒
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
                     ctx.fillStyle = getMarkerColor(marker.color);
                 } else {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.fillStyle = '#000000';
                 }
                 
                 ctx.fillRect(mx, my, mw, mh);
@@ -1349,8 +1352,8 @@
                 // スケール調整
                 const scaleRatio = scale / marker.scale;
                 
-                // 赤シートモードの時は黒で塗りつぶし、それ以外は通常の色
-                ctx.fillStyle = redSheetMode ? 'rgba(0, 0, 0, 0.8)' : getMarkerColor(marker.color);
+                // 赤シートモードの時は完全に真っ黒で塗りつぶし、それ以外は通常の色
+                ctx.fillStyle = redSheetMode ? '#000000' : getMarkerColor(marker.color);
                 
                 ctx.fillRect(
                     marker.x * scaleRatio, 
