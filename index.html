@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>暗記カードアプリ - Firebase同期版</title>
+    <title>暗記カードアプリ</title>
     <style>
         * {
             margin: 0;
@@ -349,16 +349,39 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script>
-        // ⚠️ ここにあなたのFirebase設定を貼り付けてください ⚠️
+        // 🔒 パスワード設定
+        const APP_PASSWORD = "rio1009";  // ← ここを好きなパスワードに変更してください
+        
+        // パスワード認証チェック
+        (function() {
+            const isAuthenticated = sessionStorage.getItem('authenticated');
+            if (!isAuthenticated) {
+                showPasswordPrompt();
+            }
+        })();
+        
+        function showPasswordPrompt() {
+            const password = prompt('パスワードを入力してください');
+            if (password === APP_PASSWORD) {
+                sessionStorage.setItem('authenticated', 'true');
+            } else if (password === null) {
+                alert('パスワードが必要です');
+                showPasswordPrompt();
+            } else {
+                alert('パスワードが間違っています');
+                showPasswordPrompt();
+            }
+        }
+        
+        // Firebase設定
         const firebaseConfig = {
-  		apiKey: "AIzaSyBxtut_pGgtNSGmUZ6wXC4aqNufkGjbxQQ",
-		authDomain: "myankiapp.firebaseapp.com",
-  		projectId: "myankiapp",
-		storageBucket: "myankiapp.firebasestorage.app",
-		messagingSenderId: "407986420613",
-		appId: "1:407986420613:web:02caaf05b825fb4a2ce2ec"
-	};
-
+            apiKey: "AIzaSyBxtut_pGgtNSGmUZ6wXC4aqNufkGjbxQQ",
+            authDomain: "myankiapp.firebaseapp.com",
+            projectId: "myankiapp",
+            storageBucket: "myankiapp.firebasestorage.app",
+            messagingSenderId: "407986420613",
+            appId: "1:407986420613:web:02caaf05b825fb4a2ce2ec"
+        };
 
         // Firebase初期化
         firebase.initializeApp(firebaseConfig);
