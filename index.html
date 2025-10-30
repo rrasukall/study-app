@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 3.5 v1.1</title>
+    <title>MyAnkiApp Phase 3.5 v1.2</title>
     <style>
         * {
             margin: 0;
@@ -417,7 +417,7 @@
             display: inline-block;
         }
         
-        /* Phase 3.5 v1.1: 新機能用CSS */
+        /* Phase 3.5 v1.0: 新機能用CSS */
         
         /* PDF履歴表示 */
         .pdf-history {
@@ -473,20 +473,20 @@
             padding: 10px;
         }
         
-        /* Phase 3.5 v1.1: 新UI配置用CSS（3行構成） */
+        /* Phase 3.5 v1.2: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
-            gap: 8px;
+            gap: 5px;
+            flex-wrap: wrap;
             align-items: center;
             background: #f0f0f0;
-            padding: 12px 15px;
+            padding: 10px;
             border-radius: 8px;
             margin-bottom: 10px;
-            flex-wrap: wrap;
         }
         
         .row-label {
-            color: #333;
+            color: #666;
             font-weight: bold;
             font-size: 14px;
             margin-right: 5px;
@@ -498,9 +498,9 @@
             margin: 0 5px;
         }
         
-        /* 色ボタン（マーカー色・シート色共通スタイル） */
+        /* 色ボタン */
         .color-btn, .sheet-btn {
-            padding: 8px 20px;
+            padding: 8px 16px;
             border: 2px solid transparent;
             border-radius: 6px;
             cursor: pointer;
@@ -634,7 +634,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -706,7 +706,7 @@
                 <h2 style="margin-bottom: 20px;">📖 PDF学習</h2>
                 
                 
-                <!-- Phase 3.5 v1.1: PDF履歴表示 -->
+                <!-- Phase 3.5 v1.0: PDF履歴表示 -->
                 <div class="pdf-history" id="pdfHistory">
                     <h3>📚 最近開いたPDF</h3>
                     <div class="pdf-history-list" id="pdfHistoryList">
@@ -723,7 +723,7 @@
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 3.5 v1.1: 新UI配置（3行構成） -->
+                    <!-- Phase 3.5 v1.2: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -752,25 +752,6 @@
                         <button class="sheet-btn green" id="redsheetGreen" onclick="toggleRedSheetColor('green')">緑</button>
                         <button class="sheet-btn blue" id="redsheetBlue" onclick="toggleRedSheetColor('blue')">青</button>
                         <button class="sheet-btn all" id="redsheetAll" onclick="toggleRedSheetColor('all')">全て</button>
-                    </div>
-                            <div class="color-option" style="background: rgba(255, 0, 0, 0.4);" onclick="selectMarkerColor('red')" title="赤"></div>
-                            <div class="color-option" style="background: rgba(0, 255, 0, 0.4);" onclick="selectMarkerColor('green')" title="緑"></div>
-                            <div class="color-option" style="background: rgba(0, 150, 255, 0.4);" onclick="selectMarkerColor('blue')" title="青"></div>
-                        </div>
-                        <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
-                        <button class="btn btn-mode-off" onclick="toggleEditMode()" id="editModeBtn">📝 修正OFF</button>
-                        <button class="btn btn-mode-off" onclick="toggleDeleteMode()" id="deleteModeBtn">🗑️ 削除OFF</button>
-                        <button class="btn btn-danger" onclick="clearPageMarkers()">このページのマーカーを消去</button>
-                    </div>
-                    
-                    <!-- Phase 3.5 v1.1: 赤シート色別制御 -->
-                    <div class="redsheet-controls">
-                        <span class="redsheet-label">赤シート:</span>
-                        <button class="redsheet-btn yellow" id="redsheetYellow" onclick="toggleRedSheetColor('yellow')">黄</button>
-                        <button class="redsheet-btn red" id="redsheetRed" onclick="toggleRedSheetColor('red')">赤</button>
-                        <button class="redsheet-btn green" id="redsheetGreen" onclick="toggleRedSheetColor('green')">緑</button>
-                        <button class="redsheet-btn blue" id="redsheetBlue" onclick="toggleRedSheetColor('blue')">青</button>
-                        <button class="redsheet-btn all" id="redsheetAll" onclick="toggleRedSheetColor('all')">全て</button>
                     </div>
                     
                     <div class="pdf-canvas-container">
@@ -868,7 +849,7 @@
         let startX, startY;
         let redSheetMode = false;
         
-        // Phase 3.5 v1.1: 新機能用変数
+        // Phase 3.5 v1.0: 新機能用変数
         let editMode = false;
         let deleteMode = false;
         let redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
@@ -878,8 +859,8 @@
         let dragStartX, dragStartY;
         let pdfHistory = [];
         const MAX_HISTORY = 10;
-        let instantDeleteMode = false; // Phase 3.5 v1.1: 即削除モード
-        let resizingHandle = null; // Phase 3.5 v1.1: リサイズ中のハンドル
+        let instantDeleteMode = false; // Phase 3.5 v1.2: 即削除モード
+        let resizingHandle = null; // Phase 3.5 v1.2: リサイズ中のハンドル
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -898,10 +879,10 @@
             updateSyncStatus('error');
         });
         
-        // Phase 3.5 v1.1: ページ読み込み時にPDF履歴をロード
+        // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', () => {
             loadPDFHistory();
-            loadInstantDeleteSetting();
+            loadInstantDeleteSetting(); // Phase 3.5 v1.2
         });
 
         // 同期ステータスを更新
@@ -1249,7 +1230,7 @@
                 // 最初のページを表示
                 await renderPage(currentPage);
                 
-                // Phase 3.5 v1.1: PDF履歴に追加
+                // Phase 3.5 v1.0: PDF履歴に追加
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     addToPDFHistory(file.name, e.target.result);
@@ -1263,7 +1244,7 @@
         }
 
 
-        // Phase 3.5 v1.1: ArrayBufferからPDFを読み込み（履歴から再読み込み用）
+        // Phase 3.5 v1.0: ArrayBufferからPDFを読み込み（履歴から再読み込み用）
         async function loadPDFFromArrayBuffer(arrayBuffer, fileName) {
             try {
                 // ファイルハッシュを計算
@@ -1411,7 +1392,7 @@
         }
         
         // マーカーモードの切り替え
-        // Phase 3.5 v1.1: マーカーモード切り替え（色分け・排他制御対応）
+        // Phase 3.5 v1.0: マーカーモード切り替え（色分け・排他制御対応）
         function toggleMarkerMode() {
             markerMode = !markerMode;
             const canvas = document.getElementById('markerCanvas');
@@ -1434,7 +1415,7 @@
             }
         }
         
-        // Phase 3.5 v1.1: 修正モード切り替え
+        // Phase 3.5 v1.0: 修正モード切り替え
         function toggleEditMode() {
             editMode = !editMode;
             const canvas = document.getElementById('markerCanvas');
@@ -1468,7 +1449,7 @@
             }
         }
         
-        // Phase 3.5 v1.1: 削除モード切り替え
+        // Phase 3.5 v1.0: 削除モード切り替え
         function toggleDeleteMode() {
             deleteMode = !deleteMode;
             const canvas = document.getElementById('markerCanvas');
@@ -1497,7 +1478,7 @@
             }
         }
         
-        // Phase 3.5 v1.1: 赤シート色別制御
+        // Phase 3.5 v1.0: 赤シート色別制御
         function toggleRedSheetColor(color) {
             if (color === 'all') {
                 const newState = !redSheetColors.all;
@@ -1553,8 +1534,24 @@
         
         // 赤シートモードの切り替え
 
-        // Phase 3.5 v1.1: PDF履歴管理関数
+        // Phase 3.5 v1.0: PDF履歴管理関数
         
+        // Phase 3.5 v1.2: 即削除モード設定管理
+        function loadInstantDeleteSetting() {
+            const saved = localStorage.getItem('instantDeleteMode');
+            instantDeleteMode = saved === 'true';
+            const checkbox = document.getElementById('instantDeleteCheckbox');
+            if (checkbox) {
+                checkbox.checked = instantDeleteMode;
+            }
+        }
+        
+        function saveInstantDeleteSetting() {
+            const checkbox = document.getElementById('instantDeleteCheckbox');
+            instantDeleteMode = checkbox.checked;
+            localStorage.setItem('instantDeleteMode', instantDeleteMode);
+        }
+
         // PDF履歴をロード
         function loadPDFHistory() {
             const saved = localStorage.getItem('pdfHistory');
@@ -1649,7 +1646,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 3.5 v1.1: マウスダウン処理（修正・削除モード対応）
+        // Phase 3.5 v1.2: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -1661,14 +1658,24 @@
                 return;
             }
             
-            // 修正モード
-            if (editMode) {
-                selectMarkerAt(x, y);
-                if (selectedMarkerIndex !== null) {
-                    isDraggingMarker = true;
+            // 修正モード（ハンドル検出）
+            if (editMode && selectedMarkerIndex !== null) {
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                const scaleRatio = scale / marker.scale;
+                const handle = detectHandle(x, y, marker, scaleRatio);
+                
+                if (handle) {
+                    // ハンドルがクリックされた
+                    resizingHandle = handle;
                     dragStartX = x;
                     dragStartY = y;
+                    return;
                 }
+            }
+            
+            // 修正モード（マーカー選択）
+            if (editMode) {
+                selectMarkerAt(x, y);
                 return;
             }
             
@@ -1686,7 +1693,34 @@
             startDrawing(e);
         }
         
-        // Phase 3.5 v1.1: 座標にあるマーカーを選択（修正モード用）
+        // Phase 3.5 v1.2: ハンドル検出（修正モード用）
+        function detectHandle(x, y, marker, scaleRatio) {
+            const mx = marker.x * scaleRatio;
+            const my = marker.y * scaleRatio;
+            const mw = marker.width * scaleRatio;
+            const mh = marker.height * scaleRatio;
+            
+            const handleSize = 10; // ハンドルのクリック範囲
+            
+            // 四隅のハンドル位置
+            const handles = {
+                nw: { x: mx, y: my },
+                ne: { x: mx + mw, y: my },
+                sw: { x: mx, y: my + mh },
+                se: { x: mx + mw, y: my + mh }
+            };
+            
+            // ハンドルのクリック判定
+            for (const [name, pos] of Object.entries(handles)) {
+                if (Math.abs(x - pos.x) <= handleSize && Math.abs(y - pos.y) <= handleSize) {
+                    return name;
+                }
+            }
+            
+            return null;
+        }
+
+        // Phase 3.5 v1.2: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -1715,7 +1749,7 @@
             drawMarkers();
         }
         
-        // Phase 3.5 v1.1: 座標にあるマーカーを削除（削除モード用）
+        // Phase 3.5 v1.2: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -1730,9 +1764,12 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    pageMarkers.splice(i, 1);
-                    drawMarkers();
-                    saveMarkersToFirebase();
+                    // Phase 3.5 v1.2: 即削除モードまたは確認ダイアログでOKの場合のみ削除
+                    if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
+                        pageMarkers.splice(i, 1);
+                        drawMarkers();
+                        saveMarkersToFirebase();
+                    }
                     return;
                 }
             }
@@ -1792,22 +1829,48 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 3.5 v1.1: マウス移動処理（マーカードラッグ対応）
+        // Phase 3.5 v1.2: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
             const currentX = e.clientX - rect.left;
             const currentY = e.clientY - rect.top;
             
-            // マーカードラッグ（修正モード）
-            if (isDraggingMarker && selectedMarkerIndex !== null) {
+            // ハンドルドラッグによるサイズ変更（修正モード）
+            if (resizingHandle && selectedMarkerIndex !== null) {
                 e.preventDefault();
                 const deltaX = currentX - dragStartX;
                 const deltaY = currentY - dragStartY;
                 
                 const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
-                marker.x += deltaX;
-                marker.y += deltaY;
+                
+                // ハンドルの種類に応じてサイズ変更（対角の点が固定点）
+                switch (resizingHandle) {
+                    case 'nw': // 左上ハンドル → 右下が固定点
+                        marker.x += deltaX;
+                        marker.y += deltaY;
+                        marker.width -= deltaX;
+                        marker.height -= deltaY;
+                        break;
+                    case 'ne': // 右上ハンドル → 左下が固定点
+                        marker.y += deltaY;
+                        marker.width += deltaX;
+                        marker.height -= deltaY;
+                        break;
+                    case 'sw': // 左下ハンドル → 右上が固定点
+                        marker.x += deltaX;
+                        marker.width -= deltaX;
+                        marker.height += deltaY;
+                        break;
+                    case 'se': // 右下ハンドル → 左上が固定点
+                        marker.width += deltaX;
+                        marker.height += deltaY;
+                        break;
+                }
+                
+                // 最小サイズを確保
+                if (marker.width < 10) marker.width = 10;
+                if (marker.height < 10) marker.height = 10;
                 
                 dragStartX = currentX;
                 dragStartY = currentY;
@@ -1828,9 +1891,16 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v1.1: マウスアップ処理（マーカードラッグ終了対応）
+        // Phase 3.5 v1.2: マウスアップ処理（ハンドルドラッグ終了対応）
         function stopDrawing(e) {
-            // マーカードラッグ終了
+            // ハンドルドラッグ終了
+            if (resizingHandle) {
+                resizingHandle = null;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            // マーカードラッグ終了（削除予定、互換性のため残す）
             if (isDraggingMarker) {
                 isDraggingMarker = false;
                 saveMarkersToFirebase();
@@ -1957,7 +2027,7 @@
         }
         
         // マーカーを描画
-        // Phase 3.5 v1.1: マーカー描画（色別赤シート対応）
+        // Phase 3.5 v1.0: マーカー描画（色別赤シート対応）
         function drawMarkers() {
             const canvas = document.getElementById('markerCanvas');
             if (!canvas) return;
@@ -1993,7 +2063,7 @@
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // 四隅にハンドルを描画
+                    // Phase 3.5 v1.2: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
                         { x: mx, y: my }, // 左上
@@ -2070,14 +2140,14 @@
                 isDrawing = false;
                 redSheetMode = false;
                 
-                // Phase 3.5 v1.1: 新機能の変数をリセット
+                // Phase 3.5 v1.0: 新機能の変数をリセット
                 editMode = false;
                 deleteMode = false;
                 redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null;
+                resizingHandle = null; // Phase 3.5 v1.2
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
