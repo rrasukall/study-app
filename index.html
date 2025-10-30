@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 3.5 v1.3</title>
+    <title>MyAnkiApp Phase 3.5 v1.4</title>
     <style>
         * {
             margin: 0;
@@ -331,7 +331,7 @@
             position: relative;
             display: inline-block;
             margin: 0 auto;
-            transition: transform 0.05s ease-out; /* Phase 3.5 v1.3: パン移動スムーズ化 */
+            transition: transform 0.05s ease-out; /* Phase 3.5 v1.4: パン移動スムーズ化 */
         }
         
         #pdfCanvas {
@@ -428,7 +428,7 @@
             margin-bottom: 20px;
         }
         
-        /* Phase 3.5 v1.3: File System Access API非対応環境では履歴を非表示 */
+        /* Phase 3.5 v1.4: File System Access API非対応環境では履歴を非表示 */
         .pdf-history.hidden {
             display: none;
         }
@@ -479,7 +479,7 @@
             padding: 10px;
         }
         
-        /* Phase 3.5 v1.3: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
+        /* Phase 3.5 v1.4: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
             gap: 5px;
@@ -640,7 +640,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -719,17 +719,17 @@
                         <div class="pdf-history-empty">履歴がありません</div>
                     </div>
                 </div>
-                <div id="pdfUploadArea" class="pdf-upload-area" onclick="document.getElementById('pdfFileInput').click()">
+                <div id="pdfUploadArea" class="pdf-upload-area" onclick="handlePDFUploadClick()">
                     <div class="pdf-upload-icon">📄</div>
                     <h3>PDFファイルを選択</h3>
                     <p style="margin-top: 10px; color: #666;">クリックしてファイルを選択、またはドラッグ&ドロップ</p>
-                    <input type="file" id="pdfFileInput" accept="application/pdf" onchange="loadPDF(event)">
+                    <input type="file" id="pdfFileInput" accept="application/pdf" onchange="loadPDF(event)" style="display: none;">
                 </div>
                 
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 3.5 v1.3: 新UI配置（3行構成） -->
+                    <!-- Phase 3.5 v1.4: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -865,10 +865,14 @@
         let dragStartX, dragStartY;
         let pdfHistory = [];
         const MAX_HISTORY = 10;
-        let instantDeleteMode = false; // Phase 3.5 v1.3: 即削除モード
-        let resizingHandle = null; // Phase 3.5 v1.3: リサイズ中のハンドル
+        let instantDeleteMode = false; // Phase 3.5 v1.4: 即削除モード
+        let resizingHandle = null; // Phase 3.5 v1.4: リサイズ中のハンドル
         
-        // Phase 3.5 v1.3: PDFパン移動用変数
+        // Phase 3.5 v1.4: File System Access API用変数
+        let db = null; // IndexedDB
+        let useFileSystemAPI = false; // File System Access API対応フラグ
+        
+        // Phase 3.5 v1.4: PDFパン移動用変数
         let isPanning = false;
         let panStartX, panStartY;
         let offsetX = 0, offsetY = 0;
@@ -891,17 +895,20 @@
         });
         
         // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
-        window.addEventListener('load', () => {
-            loadPDFHistory();
-            loadInstantDeleteSetting(); // Phase 3.5 v1.3
-            
-            // Phase 3.5 v1.3: File System Access API非対応環境では履歴を非表示
-            if (!('showOpenFilePicker' in window)) {
+        window.addEventListener('load', async () => {
+            // Phase 3.5 v1.4: IndexedDB初期化とFile System Access API判定
+            if ('showOpenFilePicker' in window) {
+                await initIndexedDB();
+            } else {
+                useFileSystemAPI = false;
                 const pdfHistory = document.getElementById('pdfHistory');
                 if (pdfHistory) {
                     pdfHistory.classList.add('hidden');
                 }
             }
+            
+            await loadPDFHistory();
+            loadInstantDeleteSetting(); // Phase 3.5 v1.4
         });
 
         // 同期ステータスを更新
@@ -1216,15 +1223,48 @@
         });
 
         // PDFを読み込む（ファイル選択）
-        async function loadPDF(event) {
-            const file = event.target.files[0];
-            if (file && file.type === 'application/pdf') {
-                await loadPDFFromFile(file);
+        // Phase 3.5 v1.4: PDFアップロードエリアクリック処理
+        function handlePDFUploadClick() {
+            if (useFileSystemAPI && window.showOpenFilePicker) {
+                // File System Access API版
+                loadPDF(null);
+            } else {
+                // 従来版（input file使用）
+                document.getElementById('pdfFileInput').click();
             }
         }
 
-        // PDFファイルから読み込み
-        async function loadPDFFromFile(file) {
+        // Phase 3.5 v1.4: PDFファイルを選択（File System Access API対応）
+        async function loadPDF(event) {
+            if (useFileSystemAPI && window.showOpenFilePicker) {
+                // File System Access API版
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'PDF Files',
+                            accept: { 'application/pdf': ['.pdf'] }
+                        }],
+                        multiple: false
+                    });
+                    
+                    const file = await fileHandle.getFile();
+                    await loadPDFFromFile(file, fileHandle);
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error('ファイル選択エラー:', error);
+                    }
+                }
+            } else if (event && event.target && event.target.files) {
+                // 従来版（input file使用）
+                const file = event.target.files[0];
+                if (file && file.type === 'application/pdf') {
+                    await loadPDFFromFile(file, null);
+                }
+            }
+        }
+
+        // Phase 3.5 v1.4: PDFファイルから読み込み（fileHandle対応）
+        async function loadPDFFromFile(file, fileHandle = null) {
             try {
                 currentPDFFile = file;
                 
@@ -1249,12 +1289,19 @@
                 // 最初のページを表示
                 await renderPage(currentPage);
                 
-                // Phase 3.5 v1.0: PDF履歴に追加
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    addToPDFHistory(file.name, e.target.result);
-                };
-                reader.readAsDataURL(file);
+                // Phase 3.5 v1.4: PDF履歴に追加（File System Access API対応）
+                if (useFileSystemAPI && fileHandle) {
+                    // File System Access API版：ファイルハンドルをIndexedDBに保存
+                    await savePDFHistoryToDB(file.name, fileHandle);
+                    await loadPDFHistory(); // 履歴表示を更新
+                } else {
+                    // 従来版：Base64データをlocalStorageに保存
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        addToPDFHistory(file.name, e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
                 
             } catch (error) {
                 console.error('PDF読み込みエラー:', error);
@@ -1351,7 +1398,7 @@
                 // 保存されたマーカーを描画
                 drawMarkers();
                 
-                // Phase 3.5 v1.3: パン移動オフセットをリセット
+                // Phase 3.5 v1.4: パン移動オフセットをリセット
                 offsetX = 0;
                 offsetY = 0;
                 updateCanvasPosition();
@@ -1560,7 +1607,7 @@
 
         // Phase 3.5 v1.0: PDF履歴管理関数
         
-        // Phase 3.5 v1.3: 即削除モード設定管理
+        // Phase 3.5 v1.4: 即削除モード設定管理
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -1576,11 +1623,112 @@
             localStorage.setItem('instantDeleteMode', instantDeleteMode);
         }
 
-        // PDF履歴をロード
-        function loadPDFHistory() {
-            const saved = localStorage.getItem('pdfHistory');
-            if (saved) {
-                pdfHistory = JSON.parse(saved);
+        // Phase 3.5 v1.4: IndexedDBセットアップ（File System Access API用）
+        function initIndexedDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('MyAnkiAppDB', 1);
+                
+                request.onerror = () => {
+                    console.error('IndexedDB open error');
+                    useFileSystemAPI = false;
+                    resolve();
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    useFileSystemAPI = true;
+                    resolve();
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('pdfHistory')) {
+                        database.createObjectStore('pdfHistory', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        // Phase 3.5 v1.4: PDF履歴をIndexedDBに保存（File System Access API版）
+        async function savePDFHistoryToDB(fileName, fileHandle) {
+            if (!db || !useFileSystemAPI) return;
+            
+            const transaction = db.transaction(['pdfHistory'], 'readwrite');
+            const store = transaction.objectStore('pdfHistory');
+            
+            // 既存の同名ファイルを削除
+            const getAllRequest = store.getAll();
+            getAllRequest.onsuccess = () => {
+                const allRecords = getAllRequest.result;
+                allRecords.forEach(record => {
+                    if (record.fileName === fileName) {
+                        store.delete(record.id);
+                    }
+                });
+                
+                // 新しいレコードを追加
+                store.add({
+                    fileName: fileName,
+                    fileHandle: fileHandle,
+                    timestamp: new Date().toISOString()
+                });
+            };
+            
+            // 履歴数制限
+            const countRequest = store.count();
+            countRequest.onsuccess = () => {
+                if (countRequest.result > MAX_HISTORY) {
+                    const getAllRequest2 = store.getAll();
+                    getAllRequest2.onsuccess = () => {
+                        const allRecords = getAllRequest2.result.sort((a, b) => 
+                            new Date(b.timestamp) - new Date(a.timestamp)
+                        );
+                        for (let i = MAX_HISTORY; i < allRecords.length; i++) {
+                            store.delete(allRecords[i].id);
+                        }
+                    };
+                }
+            };
+        }
+
+        // Phase 3.5 v1.4: PDF履歴をIndexedDBから読み込み
+        async function loadPDFHistoryFromDB() {
+            if (!db || !useFileSystemAPI) return [];
+            
+            return new Promise((resolve) => {
+                const transaction = db.transaction(['pdfHistory'], 'readonly');
+                const store = transaction.objectStore('pdfHistory');
+                const request = store.getAll();
+                
+                request.onsuccess = () => {
+                    const records = request.result.sort((a, b) => 
+                        new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    resolve(records);
+                };
+                
+                request.onerror = () => {
+                    resolve([]);
+                };
+            });
+        }
+
+        // Phase 3.5 v1.4: PDF履歴をロード（File System Access API対応）
+        async function loadPDFHistory() {
+            if (useFileSystemAPI) {
+                // File System Access API版：IndexedDBから読み込み
+                const records = await loadPDFHistoryFromDB();
+                pdfHistory = records.map(r => ({
+                    fileName: r.fileName,
+                    fileHandle: r.fileHandle,
+                    timestamp: r.timestamp
+                }));
+            } else {
+                // 従来版：localStorageから読み込み
+                const saved = localStorage.getItem('pdfHistory');
+                if (saved) {
+                    pdfHistory = JSON.parse(saved);
+                }
             }
             displayPDFHistory();
         }
@@ -1634,23 +1782,35 @@
             }).join('');
         }
         
-        // 履歴からPDFを読み込み
+        // Phase 3.5 v1.4: 履歴からPDFを読み込み（File System Access API対応）
         async function loadPDFFromHistory(index) {
             const item = pdfHistory[index];
             
-            // Base64データをBlobに変換
-            const byteString = atob(item.fileData.split(',')[1]);
-            const mimeString = item.fileData.split(',')[0].split(':')[1].split(';')[0];
-            const ab = new ArrayBuffer(byteString.length);
-            const ia = new Uint8Array(ab);
-            for (let i = 0; i < byteString.length; i++) {
-                ia[i] = byteString.charCodeAt(i);
+            if (useFileSystemAPI && item.fileHandle) {
+                // File System Access API版：ファイルハンドルから読み込み
+                try {
+                    const file = await item.fileHandle.getFile();
+                    const arrayBuffer = await file.arrayBuffer();
+                    await loadPDFFromArrayBuffer(arrayBuffer, file.name);
+                } catch (error) {
+                    console.error('ファイル読み込みエラー:', error);
+                    alert('ファイルにアクセスできません。ファイルが移動または削除された可能性があります。');
+                }
+            } else if (item.fileData) {
+                // 従来版：Base64データをBlobに変換
+                const byteString = atob(item.fileData.split(',')[1]);
+                const mimeString = item.fileData.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: mimeString });
+                
+                // PDFを読み込み
+                const arrayBuffer = await blob.arrayBuffer();
+                await loadPDFFromArrayBuffer(arrayBuffer, item.fileName);
             }
-            const blob = new Blob([ab], { type: mimeString });
-            
-            // PDFを読み込み
-            const arrayBuffer = await blob.arrayBuffer();
-            await loadPDFFromArrayBuffer(arrayBuffer, item.fileName);
         }
         
         // マーカーイベントのセットアップ
@@ -1670,7 +1830,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 3.5 v1.3: マウスダウン処理（ハンドル検出対応）
+        // Phase 3.5 v1.4: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -1717,7 +1877,7 @@
             startDrawing(e);
         }
         
-        // Phase 3.5 v1.3: ハンドル検出（修正モード用）
+        // Phase 3.5 v1.4: ハンドル検出（修正モード用）
         function detectHandle(x, y, marker, scaleRatio) {
             const mx = marker.x * scaleRatio;
             const my = marker.y * scaleRatio;
@@ -1744,7 +1904,7 @@
             return null;
         }
 
-        // Phase 3.5 v1.3: 座標にあるマーカーを選択（修正モード用）
+        // Phase 3.5 v1.4: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -1773,7 +1933,7 @@
             drawMarkers();
         }
         
-        // Phase 3.5 v1.3: 座標にあるマーカーを削除（確認ダイアログ対応）
+        // Phase 3.5 v1.4: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -1788,7 +1948,7 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // Phase 3.5 v1.3: 即削除モードまたは確認ダイアログでOKの場合のみ削除
+                    // Phase 3.5 v1.4: 即削除モードまたは確認ダイアログでOKの場合のみ削除
                     if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
                         pageMarkers.splice(i, 1);
                         drawMarkers();
@@ -1853,7 +2013,7 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 3.5 v1.3: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
+        // Phase 3.5 v1.4: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
@@ -1915,7 +2075,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v1.3: マウスアップ処理（ハンドルドラッグ終了対応）
+        // Phase 3.5 v1.4: マウスアップ処理（ハンドルドラッグ終了対応）
         function stopDrawing(e) {
             // ハンドルドラッグ終了
             if (resizingHandle) {
@@ -1963,7 +2123,7 @@
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
             
-            // Phase 3.5 v1.3: 2本指タッチ = パン移動開始
+            // Phase 3.5 v1.4: 2本指タッチ = パン移動開始
             if (e.touches.length === 2) {
                 e.preventDefault();
                 isPanning = true;
@@ -2019,7 +2179,7 @@
         }
         
         function handleTouchMove(e) {
-            // Phase 3.5 v1.3: 2本指パン移動
+            // Phase 3.5 v1.4: 2本指パン移動
             if (isPanning && e.touches.length === 2) {
                 e.preventDefault();
                 const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -2096,7 +2256,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v1.3: canvasの位置を更新（パン移動対応）
+        // Phase 3.5 v1.4: canvasの位置を更新（パン移動対応）
         function updateCanvasPosition() {
             const wrapper = document.getElementById('canvasWrapper');
             if (wrapper) {
@@ -2105,7 +2265,7 @@
         }
         
         function handleTouchEnd(e) {
-            // Phase 3.5 v1.3: パン移動終了
+            // Phase 3.5 v1.4: パン移動終了
             if (isPanning) {
                 isPanning = false;
                 return;
@@ -2210,7 +2370,7 @@
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // Phase 3.5 v1.3: 四隅にハンドルを描画
+                    // Phase 3.5 v1.4: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
                         { x: mx, y: my }, // 左上
@@ -2294,10 +2454,10 @@
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null; // Phase 3.5 v1.3
-                isPanning = false; // Phase 3.5 v1.3
-                offsetX = 0; // Phase 3.5 v1.3
-                offsetY = 0; // Phase 3.5 v1.3
+                resizingHandle = null; // Phase 3.5 v1.4
+                isPanning = false; // Phase 3.5 v1.4
+                offsetX = 0; // Phase 3.5 v1.4
+                offsetY = 0; // Phase 3.5 v1.4
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
