@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 3.5 v1.2</title>
+    <title>MyAnkiApp Phase 3.5 v1.3</title>
     <style>
         * {
             margin: 0;
@@ -331,6 +331,7 @@
             position: relative;
             display: inline-block;
             margin: 0 auto;
+            transition: transform 0.05s ease-out; /* Phase 3.5 v1.3: パン移動スムーズ化 */
         }
         
         #pdfCanvas {
@@ -427,6 +428,11 @@
             margin-bottom: 20px;
         }
         
+        /* Phase 3.5 v1.3: File System Access API非対応環境では履歴を非表示 */
+        .pdf-history.hidden {
+            display: none;
+        }
+        
         .pdf-history h3 {
             color: #333;
             margin-bottom: 10px;
@@ -473,7 +479,7 @@
             padding: 10px;
         }
         
-        /* Phase 3.5 v1.2: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
+        /* Phase 3.5 v1.3: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
             gap: 5px;
@@ -634,7 +640,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -723,7 +729,7 @@
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 3.5 v1.2: 新UI配置（3行構成） -->
+                    <!-- Phase 3.5 v1.3: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -859,8 +865,13 @@
         let dragStartX, dragStartY;
         let pdfHistory = [];
         const MAX_HISTORY = 10;
-        let instantDeleteMode = false; // Phase 3.5 v1.2: 即削除モード
-        let resizingHandle = null; // Phase 3.5 v1.2: リサイズ中のハンドル
+        let instantDeleteMode = false; // Phase 3.5 v1.3: 即削除モード
+        let resizingHandle = null; // Phase 3.5 v1.3: リサイズ中のハンドル
+        
+        // Phase 3.5 v1.3: PDFパン移動用変数
+        let isPanning = false;
+        let panStartX, panStartY;
+        let offsetX = 0, offsetY = 0;
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -882,7 +893,15 @@
         // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', () => {
             loadPDFHistory();
-            loadInstantDeleteSetting(); // Phase 3.5 v1.2
+            loadInstantDeleteSetting(); // Phase 3.5 v1.3
+            
+            // Phase 3.5 v1.3: File System Access API非対応環境では履歴を非表示
+            if (!('showOpenFilePicker' in window)) {
+                const pdfHistory = document.getElementById('pdfHistory');
+                if (pdfHistory) {
+                    pdfHistory.classList.add('hidden');
+                }
+            }
         });
 
         // 同期ステータスを更新
@@ -1332,6 +1351,11 @@
                 // 保存されたマーカーを描画
                 drawMarkers();
                 
+                // Phase 3.5 v1.3: パン移動オフセットをリセット
+                offsetX = 0;
+                offsetY = 0;
+                updateCanvasPosition();
+                
                 // ページ情報を更新
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
@@ -1536,7 +1560,7 @@
 
         // Phase 3.5 v1.0: PDF履歴管理関数
         
-        // Phase 3.5 v1.2: 即削除モード設定管理
+        // Phase 3.5 v1.3: 即削除モード設定管理
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -1646,7 +1670,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 3.5 v1.2: マウスダウン処理（ハンドル検出対応）
+        // Phase 3.5 v1.3: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -1693,7 +1717,7 @@
             startDrawing(e);
         }
         
-        // Phase 3.5 v1.2: ハンドル検出（修正モード用）
+        // Phase 3.5 v1.3: ハンドル検出（修正モード用）
         function detectHandle(x, y, marker, scaleRatio) {
             const mx = marker.x * scaleRatio;
             const my = marker.y * scaleRatio;
@@ -1720,7 +1744,7 @@
             return null;
         }
 
-        // Phase 3.5 v1.2: 座標にあるマーカーを選択（修正モード用）
+        // Phase 3.5 v1.3: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -1749,7 +1773,7 @@
             drawMarkers();
         }
         
-        // Phase 3.5 v1.2: 座標にあるマーカーを削除（確認ダイアログ対応）
+        // Phase 3.5 v1.3: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -1764,7 +1788,7 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // Phase 3.5 v1.2: 即削除モードまたは確認ダイアログでOKの場合のみ削除
+                    // Phase 3.5 v1.3: 即削除モードまたは確認ダイアログでOKの場合のみ削除
                     if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
                         pageMarkers.splice(i, 1);
                         drawMarkers();
@@ -1829,7 +1853,7 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 3.5 v1.2: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
+        // Phase 3.5 v1.3: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
@@ -1891,7 +1915,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v1.2: マウスアップ処理（ハンドルドラッグ終了対応）
+        // Phase 3.5 v1.3: マウスアップ処理（ハンドルドラッグ終了対応）
         function stopDrawing(e) {
             // ハンドルドラッグ終了
             if (resizingHandle) {
@@ -1934,14 +1958,53 @@
         
         // タッチイベントハンドラ
         function handleTouchStart(e) {
-            e.preventDefault();
             const touch = e.touches[0];
             const rect = e.target.getBoundingClientRect();
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
             
+            // Phase 3.5 v1.3: 2本指タッチ = パン移動開始
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                isPanning = true;
+                panStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                panStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // 削除モード
+            if (deleteMode) {
+                deleteMarkerAt(x, y);
+                return;
+            }
+            
+            // 修正モード（ハンドル検出）
+            if (editMode && selectedMarkerIndex !== null) {
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                const scaleRatio = scale / marker.scale;
+                const handle = detectHandle(x, y, marker, scaleRatio);
+                
+                if (handle) {
+                    // ハンドルがタッチされた
+                    resizingHandle = handle;
+                    dragStartX = x;
+                    dragStartY = y;
+                    return;
+                }
+            }
+            
+            // 修正モード（マーカー選択）
+            if (editMode) {
+                selectMarkerAt(x, y);
+                return;
+            }
+            
             // 赤シートモードでマーカーをタップした場合
-            if (redSheetMode) {
+            const anyRedSheetActive = redSheetColors.yellow || redSheetColors.red || 
+                                     redSheetColors.green || redSheetColors.blue;
+            if (anyRedSheetActive) {
                 if (isClickOnMarker(x, y)) {
                     showMarkerTemporarily(x, y);
                     return;
@@ -1956,14 +2019,75 @@
         }
         
         function handleTouchMove(e) {
-            if (!isDrawing || !markerMode) return;
-            e.preventDefault();
+            // Phase 3.5 v1.3: 2本指パン移動
+            if (isPanning && e.touches.length === 2) {
+                e.preventDefault();
+                const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const deltaX = currentX - panStartX;
+                const deltaY = currentY - panStartY;
+                
+                offsetX += deltaX;
+                offsetY += deltaY;
+                
+                panStartX = currentX;
+                panStartY = currentY;
+                
+                updateCanvasPosition();
+                return;
+            }
             
             const touch = e.touches[0];
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
             const currentX = touch.clientX - rect.left;
             const currentY = touch.clientY - rect.top;
+            
+            // ハンドルドラッグによるサイズ変更（修正モード）
+            if (resizingHandle && selectedMarkerIndex !== null) {
+                e.preventDefault();
+                const deltaX = currentX - dragStartX;
+                const deltaY = currentY - dragStartY;
+                
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                
+                // ハンドルの種類に応じてサイズ変更
+                switch (resizingHandle) {
+                    case 'nw':
+                        marker.x += deltaX;
+                        marker.y += deltaY;
+                        marker.width -= deltaX;
+                        marker.height -= deltaY;
+                        break;
+                    case 'ne':
+                        marker.y += deltaY;
+                        marker.width += deltaX;
+                        marker.height -= deltaY;
+                        break;
+                    case 'sw':
+                        marker.x += deltaX;
+                        marker.width -= deltaX;
+                        marker.height += deltaY;
+                        break;
+                    case 'se':
+                        marker.width += deltaX;
+                        marker.height += deltaY;
+                        break;
+                }
+                
+                if (marker.width < 10) marker.width = 10;
+                if (marker.height < 10) marker.height = 10;
+                
+                dragStartX = currentX;
+                dragStartY = currentY;
+                
+                drawMarkers();
+                return;
+            }
+            
+            // 通常のマーカー描画
+            if (!isDrawing || !markerMode) return;
+            e.preventDefault();
             
             drawMarkers();
             const ctx = canvas.getContext('2d');
@@ -1972,7 +2096,30 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
+        // Phase 3.5 v1.3: canvasの位置を更新（パン移動対応）
+        function updateCanvasPosition() {
+            const wrapper = document.getElementById('canvasWrapper');
+            if (wrapper) {
+                wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            }
+        }
+        
         function handleTouchEnd(e) {
+            // Phase 3.5 v1.3: パン移動終了
+            if (isPanning) {
+                isPanning = false;
+                return;
+            }
+            
+            // ハンドルドラッグ終了
+            if (resizingHandle) {
+                e.preventDefault();
+                resizingHandle = null;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            // 通常のマーカー描画終了
             if (!isDrawing || !markerMode) return;
             e.preventDefault();
             isDrawing = false;
@@ -2063,7 +2210,7 @@
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // Phase 3.5 v1.2: 四隅にハンドルを描画
+                    // Phase 3.5 v1.3: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
                         { x: mx, y: my }, // 左上
@@ -2147,7 +2294,10 @@
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null; // Phase 3.5 v1.2
+                resizingHandle = null; // Phase 3.5 v1.3
+                isPanning = false; // Phase 3.5 v1.3
+                offsetX = 0; // Phase 3.5 v1.3
+                offsetY = 0; // Phase 3.5 v1.3
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
