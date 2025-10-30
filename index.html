@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 3.5 v1.0</title>
+    <title>MyAnkiApp Phase 3.5 v1.1</title>
     <style>
         * {
             margin: 0;
@@ -417,7 +417,7 @@
             display: inline-block;
         }
         
-        /* Phase 3.5 v1.0: 新機能用CSS */
+        /* Phase 3.5 v1.1: 新機能用CSS */
         
         /* PDF履歴表示 */
         .pdf-history {
@@ -471,6 +471,86 @@
             font-style: italic;
             text-align: center;
             padding: 10px;
+        }
+        
+        /* Phase 3.5 v1.1: 新UI配置用CSS（3行構成） */
+        .pdf-controls-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: #f0f0f0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .row-label {
+            color: #333;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        
+        .separator {
+            color: #999;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+        
+        /* 色ボタン（マーカー色・シート色共通スタイル） */
+        .color-btn, .sheet-btn {
+            padding: 8px 20px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            background: #fff;
+        }
+        
+        .color-btn:hover, .sheet-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .color-btn.active, .sheet-btn.active {
+            border-color: #333;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        
+        .color-btn.yellow, .sheet-btn.yellow { color: #f39c12; }
+        .color-btn.red, .sheet-btn.red { color: #e74c3c; }
+        .color-btn.green, .sheet-btn.green { color: #27ae60; }
+        .color-btn.blue, .sheet-btn.blue { color: #3498db; }
+        
+        .sheet-btn.all { 
+            color: white;
+            background: #34495e;
+        }
+        
+        .sheet-btn.all.active {
+            background: #2c3e50;
+        }
+        
+        /* 即削除チェックボックス */
+        .instant-delete-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .instant-delete-label input[type="checkbox"] {
+            width: auto;
+            height: auto;
+            cursor: pointer;
         }
         
         /* マーカーモードボタンの色分け */
@@ -554,7 +634,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v1.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -626,7 +706,7 @@
                 <h2 style="margin-bottom: 20px;">📖 PDF学習</h2>
                 
                 
-                <!-- Phase 3.5 v1.0: PDF履歴表示 -->
+                <!-- Phase 3.5 v1.1: PDF履歴表示 -->
                 <div class="pdf-history" id="pdfHistory">
                     <h3>📚 最近開いたPDF</h3>
                     <div class="pdf-history-list" id="pdfHistoryList">
@@ -643,10 +723,36 @@
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <div class="marker-controls">
-                        <span class="marker-label">マーカー色：</span>
-                        <div class="color-selector">
-                            <div class="color-option active" style="background: rgba(255, 255, 0, 0.4);" onclick="selectMarkerColor('yellow')" title="黄色"></div>
+                    <!-- Phase 3.5 v1.1: 新UI配置（3行構成） -->
+                    <div class="pdf-controls-row">
+                        <span class="row-label">マーカー：</span>
+                        <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
+                        <button class="color-btn red" onclick="selectMarkerColor('red')">赤</button>
+                        <button class="color-btn green" onclick="selectMarkerColor('green')">緑</button>
+                        <button class="color-btn blue" onclick="selectMarkerColor('blue')">青</button>
+                        <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
+                        <span class="separator">//</span>
+                        <button class="btn btn-danger" onclick="clearPageMarkers()">ページ内マーカー全削除</button>
+                    </div>
+
+                    <div class="pdf-controls-row">
+                        <span class="row-label">操作：</span>
+                        <button class="btn btn-mode-off" onclick="toggleEditMode()" id="editModeBtn">📝 修正OFF</button>
+                        <button class="btn btn-mode-off" onclick="toggleDeleteMode()" id="deleteModeBtn">🗑️ 削除OFF</button>
+                        <label class="instant-delete-label">
+                            <input type="checkbox" id="instantDeleteCheckbox" onchange="saveInstantDeleteSetting()">
+                            <span>即削除</span>
+                        </label>
+                    </div>
+
+                    <div class="pdf-controls-row">
+                        <span class="row-label">シート：</span>
+                        <button class="sheet-btn yellow" id="redsheetYellow" onclick="toggleRedSheetColor('yellow')">黄</button>
+                        <button class="sheet-btn red" id="redsheetRed" onclick="toggleRedSheetColor('red')">赤</button>
+                        <button class="sheet-btn green" id="redsheetGreen" onclick="toggleRedSheetColor('green')">緑</button>
+                        <button class="sheet-btn blue" id="redsheetBlue" onclick="toggleRedSheetColor('blue')">青</button>
+                        <button class="sheet-btn all" id="redsheetAll" onclick="toggleRedSheetColor('all')">全て</button>
+                    </div>
                             <div class="color-option" style="background: rgba(255, 0, 0, 0.4);" onclick="selectMarkerColor('red')" title="赤"></div>
                             <div class="color-option" style="background: rgba(0, 255, 0, 0.4);" onclick="selectMarkerColor('green')" title="緑"></div>
                             <div class="color-option" style="background: rgba(0, 150, 255, 0.4);" onclick="selectMarkerColor('blue')" title="青"></div>
@@ -657,7 +763,7 @@
                         <button class="btn btn-danger" onclick="clearPageMarkers()">このページのマーカーを消去</button>
                     </div>
                     
-                    <!-- Phase 3.5 v1.0: 赤シート色別制御 -->
+                    <!-- Phase 3.5 v1.1: 赤シート色別制御 -->
                     <div class="redsheet-controls">
                         <span class="redsheet-label">赤シート:</span>
                         <button class="redsheet-btn yellow" id="redsheetYellow" onclick="toggleRedSheetColor('yellow')">黄</button>
@@ -762,7 +868,7 @@
         let startX, startY;
         let redSheetMode = false;
         
-        // Phase 3.5 v1.0: 新機能用変数
+        // Phase 3.5 v1.1: 新機能用変数
         let editMode = false;
         let deleteMode = false;
         let redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
@@ -772,6 +878,8 @@
         let dragStartX, dragStartY;
         let pdfHistory = [];
         const MAX_HISTORY = 10;
+        let instantDeleteMode = false; // Phase 3.5 v1.1: 即削除モード
+        let resizingHandle = null; // Phase 3.5 v1.1: リサイズ中のハンドル
 
         // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
@@ -790,9 +898,10 @@
             updateSyncStatus('error');
         });
         
-        // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
+        // Phase 3.5 v1.1: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', () => {
             loadPDFHistory();
+            loadInstantDeleteSetting();
         });
 
         // 同期ステータスを更新
@@ -1140,7 +1249,7 @@
                 // 最初のページを表示
                 await renderPage(currentPage);
                 
-                // Phase 3.5 v1.0: PDF履歴に追加
+                // Phase 3.5 v1.1: PDF履歴に追加
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     addToPDFHistory(file.name, e.target.result);
@@ -1154,7 +1263,7 @@
         }
 
 
-        // Phase 3.5 v1.0: ArrayBufferからPDFを読み込み（履歴から再読み込み用）
+        // Phase 3.5 v1.1: ArrayBufferからPDFを読み込み（履歴から再読み込み用）
         async function loadPDFFromArrayBuffer(arrayBuffer, fileName) {
             try {
                 // ファイルハッシュを計算
@@ -1297,12 +1406,12 @@
             currentMarkerColor = color;
             
             // アクティブな色を更新
-            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.color-btn').forEach(el => el.classList.remove('active'));
             event.target.classList.add('active');
         }
         
         // マーカーモードの切り替え
-        // Phase 3.5 v1.0: マーカーモード切り替え（色分け・排他制御対応）
+        // Phase 3.5 v1.1: マーカーモード切り替え（色分け・排他制御対応）
         function toggleMarkerMode() {
             markerMode = !markerMode;
             const canvas = document.getElementById('markerCanvas');
@@ -1325,7 +1434,7 @@
             }
         }
         
-        // Phase 3.5 v1.0: 修正モード切り替え
+        // Phase 3.5 v1.1: 修正モード切り替え
         function toggleEditMode() {
             editMode = !editMode;
             const canvas = document.getElementById('markerCanvas');
@@ -1359,7 +1468,7 @@
             }
         }
         
-        // Phase 3.5 v1.0: 削除モード切り替え
+        // Phase 3.5 v1.1: 削除モード切り替え
         function toggleDeleteMode() {
             deleteMode = !deleteMode;
             const canvas = document.getElementById('markerCanvas');
@@ -1388,7 +1497,7 @@
             }
         }
         
-        // Phase 3.5 v1.0: 赤シート色別制御
+        // Phase 3.5 v1.1: 赤シート色別制御
         function toggleRedSheetColor(color) {
             if (color === 'all') {
                 const newState = !redSheetColors.all;
@@ -1444,7 +1553,7 @@
         
         // 赤シートモードの切り替え
 
-        // Phase 3.5 v1.0: PDF履歴管理関数
+        // Phase 3.5 v1.1: PDF履歴管理関数
         
         // PDF履歴をロード
         function loadPDFHistory() {
@@ -1540,7 +1649,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 3.5 v1.0: マウスダウン処理（修正・削除モード対応）
+        // Phase 3.5 v1.1: マウスダウン処理（修正・削除モード対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -1577,7 +1686,7 @@
             startDrawing(e);
         }
         
-        // Phase 3.5 v1.0: 座標にあるマーカーを選択（修正モード用）
+        // Phase 3.5 v1.1: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -1606,7 +1715,7 @@
             drawMarkers();
         }
         
-        // Phase 3.5 v1.0: 座標にあるマーカーを削除（削除モード用）
+        // Phase 3.5 v1.1: 座標にあるマーカーを削除（削除モード用）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -1683,7 +1792,7 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 3.5 v1.0: マウス移動処理（マーカードラッグ対応）
+        // Phase 3.5 v1.1: マウス移動処理（マーカードラッグ対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
@@ -1719,7 +1828,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v1.0: マウスアップ処理（マーカードラッグ終了対応）
+        // Phase 3.5 v1.1: マウスアップ処理（マーカードラッグ終了対応）
         function stopDrawing(e) {
             // マーカードラッグ終了
             if (isDraggingMarker) {
@@ -1848,7 +1957,7 @@
         }
         
         // マーカーを描画
-        // Phase 3.5 v1.0: マーカー描画（色別赤シート対応）
+        // Phase 3.5 v1.1: マーカー描画（色別赤シート対応）
         function drawMarkers() {
             const canvas = document.getElementById('markerCanvas');
             if (!canvas) return;
@@ -1875,13 +1984,33 @@
                 
                 ctx.fillRect(mx, my, mw, mh);
                 
-                // 修正モードで選択されているマーカーに枠を表示
+                // 修正モードで選択されているマーカーに枠とハンドルを表示
                 if (editMode && selectedMarkerIndex === index) {
+                    // 枠を表示
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 3;
                     ctx.setLineDash([5, 5]);
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
+                    
+                    // 四隅にハンドルを描画
+                    const handleSize = 10;
+                    const handles = [
+                        { x: mx, y: my }, // 左上
+                        { x: mx + mw, y: my }, // 右上
+                        { x: mx, y: my + mh }, // 左下
+                        { x: mx + mw, y: my + mh } // 右下
+                    ];
+                    
+                    handles.forEach(handle => {
+                        ctx.fillStyle = 'white';
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(handle.x, handle.y, handleSize / 2, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+                    });
                 }
             });
         }
@@ -1941,13 +2070,14 @@
                 isDrawing = false;
                 redSheetMode = false;
                 
-                // Phase 3.5 v1.0: 新機能の変数をリセット
+                // Phase 3.5 v1.1: 新機能の変数をリセット
                 editMode = false;
                 deleteMode = false;
                 redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
+                resizingHandle = null;
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
