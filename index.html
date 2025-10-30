@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>暗記カードアプリ - Firebase同期版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Meirio, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+        
+        .tab:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .tab.active:hover {
+            background: white;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        .card-creator, .card-viewer, .card-list {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 300px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .card:hover {
+            transform: scale(1.02);
+        }
+        
+        .card-content {
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            word-wrap: break-word;
+        }
+        
+        .card-category {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .card-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .card-info {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state h2 {
+            margin-bottom: 10px;
+            color: #666;
+        }
+        
+        .card-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .card-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .card-item-title {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .card-item-category {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .card-item-content {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .card-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .sync-status {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .sync-status.synced {
+            color: #2ecc71;
+        }
+        
+        .sync-status.syncing {
+            color: #f39c12;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group input,
+        .filter-group select {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 暗記カードアプリ</h1>
+        
+        <div class="sync-status" id="syncStatus">🔄 同期中...</div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('create')">カード作成</button>
+            <button class="tab" onclick="switchTab('study')">学習</button>
+            <button class="tab" onclick="switchTab('list')">カード一覧</button>
+        </div>
+        
+        <!-- カード作成セクション -->
+        <div id="create-section" class="section active">
+            <div class="card-creator">
+                <h2 style="margin-bottom: 20px;">新しいカードを作成</h2>
+                <div class="input-group">
+                    <label for="category">カテゴリ（科目）</label>
+                    <select id="category">
+                        <option value="数学">数学</option>
+                        <option value="英語">英語</option>
+                        <option value="国語">国語</option>
+                        <option value="理科">理科</option>
+                        <option value="社会">社会</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="question">問題</label>
+                    <textarea id="question" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="answer">答え</label>
+                    <textarea id="answer" placeholder="例：1603年"></textarea>
+                </div>
+                <button class="btn" onclick="addCard()">カードを追加</button>
+                <button class="btn btn-success" onclick="exportToAnki()">Anki用CSV出力</button>
+            </div>
+        </div>
+        
+        <!-- 学習セクション -->
+        <div id="study-section" class="section">
+            <div class="card-viewer">
+                <div id="cardDisplay"></div>
+            </div>
+        </div>
+        
+        <!-- カード一覧セクション -->
+        <div id="list-section" class="section">
+            <div class="card-list">
+                <h2 style="margin-bottom: 20px;">カード一覧</h2>
+                <div class="filter-group">
+                    <input type="text" id="searchInput" placeholder="検索..." onkeyup="filterCards()">
+                    <select id="categoryFilter" onchange="filterCards()">
+                        <option value="">すべてのカテゴリ</option>
+                        <option value="数学">数学</option>
+                        <option value="英語">英語</option>
+                        <option value="国語">国語</option>
+                        <option value="理科">理科</option>
+                        <option value="社会">社会</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div id="cardList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ⚠️ ここにあなたのFirebase設定を貼り付けてください ⚠️
+        const firebaseConfig = {
+  		apiKey: "AIzaSyBxtut_pGgtNSGmUZ6wXC4aqNufkGjbxQQ",
+		authDomain: "myankiapp.firebaseapp.com",
+  		projectId: "myankiapp",
+		storageBucket: "myankiapp.firebasestorage.app",
+		messagingSenderId: "407986420613",
+		appId: "1:407986420613:web:02caaf05b825fb4a2ce2ec"
+	};
+
+
+        // Firebase初期化
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        let cards = [];
+        let currentIndex = 0;
+        let showingQuestion = true;
+        let editingCardId = null;
+
+        // Firestoreからカードをリアルタイムで取得
+        db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+            cards = [];
+            snapshot.forEach((doc) => {
+                cards.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            updateSyncStatus('synced');
+            displayCard();
+            displayCardList();
+        }, (error) => {
+            console.error('Error fetching cards:', error);
+            updateSyncStatus('error');
+        });
+
+        // 同期ステータスを更新
+        function updateSyncStatus(status) {
+            const statusEl = document.getElementById('syncStatus');
+            if (status === 'synced') {
+                statusEl.textContent = '✅ 同期完了';
+                statusEl.className = 'sync-status synced';
+            } else if (status === 'syncing') {
+                statusEl.textContent = '🔄 同期中...';
+                statusEl.className = 'sync-status syncing';
+            } else {
+                statusEl.textContent = '⚠️ 同期エラー';
+                statusEl.className = 'sync-status';
+            }
+        }
+
+        // タブ切り替え
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + '-section').classList.add('active');
+            
+            if (tab === 'study') {
+                currentIndex = 0;
+                showingQuestion = true;
+                displayCard();
+            } else if (tab === 'list') {
+                displayCardList();
+            }
+        }
+
+        // カードを追加
+        async function addCard() {
+            const category = document.getElementById('category').value;
+            const question = document.getElementById('question').value.trim();
+            const answer = document.getElementById('answer').value.trim();
+            
+            if (!question || !answer) {
+                alert('問題と答えの両方を入力してください');
+                return;
+            }
+            
+            updateSyncStatus('syncing');
+            
+            try {
+                await db.collection('flashcards').add({
+                    category: category,
+                    question: question,
+                    answer: answer,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 入力欄をクリア
+                document.getElementById('question').value = '';
+                document.getElementById('answer').value = '';
+                
+                alert('カードを追加しました！');
+            } catch (error) {
+                console.error('Error adding card:', error);
+                alert('カードの追加に失敗しました');
+                updateSyncStatus('error');
+            }
+        }
+
+        // カードを表示（学習モード）
+        function displayCard() {
+            const display = document.getElementById('cardDisplay');
+            
+            if (cards.length === 0) {
+                display.innerHTML = `
+                    <div class="empty-state">
+                        <h2>カードがありません</h2>
+                        <p>「カード作成」タブから新しいカードを作成してください</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const card = cards[currentIndex];
+            const content = showingQuestion ? card.question : card.answer;
+            
+            display.innerHTML = `
+                <div class="card" onclick="flipCard()" style="position: relative;">
+                    <div class="card-category">${card.category}</div>
+                    <div class="card-content">
+                        ${content}
+                    </div>
+                </div>
+                <div class="card-controls">
+                    <div class="nav-buttons">
+                        <button class="btn" onclick="previousCard()">← 前へ</button>
+                        <button class="btn" onclick="nextCard()">次へ →</button>
+                    </div>
+                    <div class="card-info">
+                        ${currentIndex + 1} / ${cards.length}
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                </div>
+            `;
+        }
+
+        // カード一覧を表示
+        function displayCardList() {
+            const listEl = document.getElementById('cardList');
+            
+            if (cards.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <h2>カードがありません</h2>
+                        <p>「カード作成」タブから新しいカードを作成してください</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            cards.forEach(card => {
+                html += `
+                    <div class="card-item">
+                        <div class="card-item-header">
+                            <span class="card-item-title">問題: ${card.question}</span>
+                            <span class="card-item-category">${card.category}</span>
+                        </div>
+                        <div class="card-item-content">答え: ${card.answer}</div>
+                        <div class="card-item-actions">
+                            <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                            <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            listEl.innerHTML = html;
+        }
+
+        // カード検索とフィルター
+        function filterCards() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            
+            const items = document.querySelectorAll('.card-item');
+            items.forEach((item, index) => {
+                const card = cards[index];
+                const matchesSearch = card.question.toLowerCase().includes(searchText) || 
+                                    card.answer.toLowerCase().includes(searchText);
+                const matchesCategory = !categoryFilter || card.category === categoryFilter;
+                
+                if (matchesSearch && matchesCategory) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // カードをめくる
+        function flipCard() {
+            showingQuestion = !showingQuestion;
+            displayCard();
+        }
+
+        // 次のカード
+        function nextCard() {
+            if (currentIndex < cards.length - 1) {
+                currentIndex++;
+                showingQuestion = true;
+                displayCard();
+            }
+        }
+
+        // 前のカード
+        function previousCard() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                showingQuestion = true;
+                displayCard();
+            }
+        }
+
+        // カードを削除
+        async function deleteCard(cardId) {
+            if (confirm('このカードを削除しますか？')) {
+                updateSyncStatus('syncing');
+                try {
+                    await db.collection('flashcards').doc(cardId).delete();
+                    
+                    if (currentIndex >= cards.length && currentIndex > 0) {
+                        currentIndex--;
+                    }
+                    showingQuestion = true;
+                } catch (error) {
+                    console.error('Error deleting card:', error);
+                    alert('カードの削除に失敗しました');
+                    updateSyncStatus('error');
+                }
+            }
+        }
+
+        // カードを編集
+        function editCard(cardId) {
+            const card = cards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            document.getElementById('category').value = card.category;
+            document.getElementById('question').value = card.question;
+            document.getElementById('answer').value = card.answer;
+            
+            editingCardId = cardId;
+            
+            // 保存ボタンに変更
+            const createSection = document.getElementById('create-section');
+            createSection.querySelector('.btn').textContent = '変更を保存';
+            createSection.querySelector('.btn').onclick = saveEditedCard;
+            
+            // カード作成タブに切り替え
+            document.querySelectorAll('.tab')[0].click();
+        }
+
+        // 編集したカードを保存
+        async function saveEditedCard() {
+            const category = document.getElementById('category').value;
+            const question = document.getElementById('question').value.trim();
+            const answer = document.getElementById('answer').value.trim();
+            
+            if (!question || !answer) {
+                alert('問題と答えの両方を入力してください');
+                return;
+            }
+            
+            updateSyncStatus('syncing');
+            
+            try {
+                await db.collection('flashcards').doc(editingCardId).update({
+                    category: category,
+                    question: question,
+                    answer: answer
+                });
+                
+                // 入力欄をクリア
+                document.getElementById('question').value = '';
+                document.getElementById('answer').value = '';
+                
+                // ボタンを元に戻す
+                const createSection = document.getElementById('create-section');
+                createSection.querySelector('.btn').textContent = 'カードを追加';
+                createSection.querySelector('.btn').onclick = addCard;
+                
+                editingCardId = null;
+                
+                alert('カードを更新しました！');
+                
+                // 一覧タブに切り替え
+                document.querySelectorAll('.tab')[2].click();
+            } catch (error) {
+                console.error('Error updating card:', error);
+                alert('カードの更新に失敗しました');
+                updateSyncStatus('error');
+            }
+        }
+
+        // Anki用CSVをエクスポート
+        function exportToAnki() {
+            if (cards.length === 0) {
+                alert('エクスポートするカードがありません');
+                return;
+            }
+            
+            let csv = '\ufeff'; // UTF-8 BOM
+            cards.forEach(card => {
+                const question = card.question.replace(/"/g, '""');
+                const answer = card.answer.replace(/"/g, '""');
+                const category = card.category.replace(/"/g, '""');
+                csv += `"${question}","${answer}","${category}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'anki_cards.csv');
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert('CSVファイルをダウンロードしました！');
+        }
+    </script>
+</body>
+</html>
