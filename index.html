@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.01.1</title>
+    <title>MyAnkiApp v5.02</title>
     <style>
         * {
             margin: 0;
@@ -389,6 +389,86 @@
             border-radius: 12px;
             font-size: 12px;
             margin-left: 5px;
+        }
+        
+        /* v5.02: タイピング式バッジ */
+        .card-item-typing-badge {
+            background: #16a085;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        /* v5.02: タイピング入力フィールド */
+        .typing-input-container {
+            margin: 20px 0;
+        }
+        
+        .typing-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            text-align: center;
+        }
+        
+        .typing-input:focus {
+            outline: none;
+            border-color: white;
+            background: white;
+        }
+        
+        .typing-input.correct {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+        
+        .typing-input.incorrect {
+            border-color: #e74c3c;
+            background: #fadbd8;
+        }
+        
+        .typing-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .typing-result.correct {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .typing-result.incorrect {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .typing-answers-list {
+            margin-top: 10px;
+        }
+        
+        .typing-answer-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .typing-answer-item input {
+            flex: 1;
+        }
+        
+        .typing-answer-item button {
+            padding: 8px 16px;
         }
         
         .card-item-content {
@@ -847,7 +927,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.01.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -876,6 +956,7 @@
                     <div class="card-type-tabs">
                         <button class="card-type-tab active" onclick="switchCardType('basic')">基本カード</button>
                         <button class="card-type-tab" onclick="switchCardType('cloze')">穴埋めカード</button>
+                        <button class="card-type-tab" onclick="switchCardType('typing')">タイピング式カード</button>
                     </div>
                     
                     <div class="input-group">
@@ -919,6 +1000,22 @@
                         <div class="cloze-preview">
                             <div class="cloze-preview-label">プレビュー:</div>
                             <div id="clozePreview" class="cloze-text">テキストを入力してください</div>
+                        </div>
+                    </div>
+                    
+                    <!-- v5.02: タイピング式カード入力エリア -->
+                    <div id="typingCardInputs" style="display: none;">
+                        <div class="input-group">
+                            <label for="typingQuestion">問題</label>
+                            <textarea id="typingQuestion" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label for="typingAnswers">正解（複数可・改行で区切る）</label>
+                            <textarea id="typingAnswers" placeholder="例：&#10;1603年&#10;1603&#10;慶長8年"></textarea>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="typingCaseSensitive">
+                            <label for="typingCaseSensitive">大文字小文字を区別する</label>
                         </div>
                     </div>
                     
@@ -1191,13 +1288,17 @@
             event.target.classList.add('active');
             
             // 入力エリアの表示切り替え
+            document.getElementById('basicCardInputs').style.display = 'none';
+            document.getElementById('clozeCardInputs').style.display = 'none';
+            document.getElementById('typingCardInputs').style.display = 'none';
+            
             if (type === 'basic') {
                 document.getElementById('basicCardInputs').style.display = 'block';
-                document.getElementById('clozeCardInputs').style.display = 'none';
             } else if (type === 'cloze') {
-                document.getElementById('basicCardInputs').style.display = 'none';
                 document.getElementById('clozeCardInputs').style.display = 'block';
                 updateClozePreview();
+            } else if (type === 'typing') {
+                document.getElementById('typingCardInputs').style.display = 'block';
             }
         }
 
@@ -1356,6 +1457,42 @@
                     document.getElementById('clozeText').value = '';
                     clozeCounter = 1;
                     updateClozePreview();
+                    
+                } else if (currentCardType === 'typing') {
+                    // v5.02: タイピング式カード
+                    const question = document.getElementById('typingQuestion').value.trim();
+                    const answersText = document.getElementById('typingAnswers').value.trim();
+                    const caseSensitive = document.getElementById('typingCaseSensitive').checked;
+                    
+                    if (!question || !answersText) {
+                        alert('問題と正解の両方を入力してください');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
+                    // 改行で分割して正解リストを作成
+                    const answers = answersText.split('\n')
+                        .map(a => a.trim())
+                        .filter(a => a.length > 0);
+                    
+                    if (answers.length === 0) {
+                        alert('正解を少なくとも1つ入力してください');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
+                    await db.collection('flashcards').add({
+                        type: 'typing',
+                        category: category,
+                        question: question,
+                        answers: answers,
+                        caseSensitive: caseSensitive,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    document.getElementById('typingQuestion').value = '';
+                    document.getElementById('typingAnswers').value = '';
+                    document.getElementById('typingCaseSensitive').checked = false;
                 }
                 
                 alert('カードを追加しました！');
@@ -1381,6 +1518,69 @@
             }
             
             const card = cards[currentIndex];
+            
+            // v5.02: タイピング式カードの処理
+            if (card.type === 'typing') {
+                if (showingQuestion) {
+                    // 問題表示：入力フィールドを表示
+                    display.innerHTML = `
+                        <div class="card" style="cursor: default;">
+                            <div class="card-category">${card.category}</div>
+                            <div class="card-type-badge">⌨️ タイピング</div>
+                            <div class="card-content" style="font-size: 20px; line-height: 1.8;">
+                                ${card.question}
+                            </div>
+                        </div>
+                        <div class="typing-input-container">
+                            <input type="text" class="typing-input" id="typingInput" placeholder="答えを入力してください" onkeypress="if(event.key==='Enter') checkTypingAnswer()">
+                            <div id="typingResult"></div>
+                        </div>
+                        <div class="card-controls">
+                            <div class="nav-buttons">
+                                <button class="btn" onclick="previousCard()">← 前へ</button>
+                                <button class="btn" onclick="checkTypingAnswer()">判定</button>
+                                <button class="btn" onclick="flipCard()">答えを表示</button>
+                                <button class="btn" onclick="nextCard()">次へ →</button>
+                            </div>
+                            <div class="card-info">
+                                ${currentIndex + 1} / ${cards.length}
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                        </div>
+                    `;
+                    // 入力フィールドにフォーカス
+                    setTimeout(() => {
+                        const input = document.getElementById('typingInput');
+                        if (input) input.focus();
+                    }, 100);
+                } else {
+                    // 答え表示：正解一覧を表示
+                    display.innerHTML = `
+                        <div class="card" onclick="flipCard()">
+                            <div class="card-category">${card.category}</div>
+                            <div class="card-type-badge">⌨️ タイピング</div>
+                            <div class="card-content" style="font-size: 20px; line-height: 1.8;">
+                                <div style="margin-bottom: 20px;">${card.question}</div>
+                                <div style="font-size: 18px; color: rgba(255,255,255,0.9);">
+                                    <strong>正解:</strong><br>
+                                    ${card.answers.map(a => `• ${a}`).join('<br>')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-controls">
+                            <div class="nav-buttons">
+                                <button class="btn" onclick="previousCard()">← 前へ</button>
+                                <button class="btn" onclick="nextCard()">次へ →</button>
+                            </div>
+                            <div class="card-info">
+                                ${currentIndex + 1} / ${cards.length}
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                        </div>
+                    `;
+                }
+                return;
+            }
             
             // v5.01: 穴埋めカードの処理
             if (card.type === 'cloze') {
@@ -1525,6 +1725,50 @@
             `;
         }
 
+        // v5.02: タイピング式カードの入力判定
+        function checkTypingAnswer() {
+            const card = cards[currentIndex];
+            if (card.type !== 'typing') return;
+            
+            const input = document.getElementById('typingInput');
+            const result = document.getElementById('typingResult');
+            
+            if (!input || !result) return;
+            
+            const userAnswer = input.value.trim();
+            
+            if (!userAnswer) {
+                alert('答えを入力してください');
+                return;
+            }
+            
+            // 判定処理
+            let isCorrect = false;
+            if (card.caseSensitive) {
+                // 大文字小文字を区別
+                isCorrect = card.answers.some(ans => ans === userAnswer);
+            } else {
+                // 大文字小文字を区別しない
+                const userLower = userAnswer.toLowerCase();
+                isCorrect = card.answers.some(ans => ans.toLowerCase() === userLower);
+            }
+            
+            // 結果表示
+            input.className = 'typing-input ' + (isCorrect ? 'correct' : 'incorrect');
+            input.disabled = true;
+            
+            if (isCorrect) {
+                result.innerHTML = '<div class="typing-result correct">✅ 正解！</div>';
+            } else {
+                result.innerHTML = `
+                    <div class="typing-result incorrect">
+                        ❌ 不正解<br>
+                        <span style="font-size: 16px;">正解: ${card.answers.join(', ')}</span>
+                    </div>
+                `;
+            }
+        }
+
         // v5.01: カード一覧表示（穴埋め対応）
         function displayCardList() {
             const listEl = document.getElementById('cardList');
@@ -1541,7 +1785,28 @@
             
             let html = '';
             cards.forEach(card => {
-                if (card.type === 'cloze') {
+                if (card.type === 'typing') {
+                    // v5.02: タイピング式カードの表示
+                    html += `
+                        <div class="card-item">
+                            <div class="card-item-header">
+                                <span class="card-item-title">タイピング: ${card.question}</span>
+                                <div>
+                                    <span class="card-item-category">${card.category}</span>
+                                    <span class="card-item-typing-badge">⌨️ タイピング</span>
+                                </div>
+                            </div>
+                            <div class="card-item-content">
+                                正解: ${card.answers.join(', ')}
+                                ${card.caseSensitive ? ' <span style="color: #e67e22;">(大文字小文字区別)</span>' : ''}
+                            </div>
+                            <div class="card-item-actions">
+                                <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (card.type === 'cloze') {
                     // v5.01: 穴埋めカードの表示
                     const clozeRegex = /\{\{c\d+::([^}]+)\}\}/g;
                     const displayText = card.text.replace(clozeRegex, (match, answer) => {
@@ -1597,7 +1862,11 @@
                 const card = cards[index];
                 let matchesSearch = false;
                 
-                if (card.type === 'cloze') {
+                if (card.type === 'typing') {
+                    // v5.02: タイピング式カードの検索
+                    matchesSearch = card.question.toLowerCase().includes(searchText) ||
+                                  card.answers.some(a => a.toLowerCase().includes(searchText));
+                } else if (card.type === 'cloze') {
                     matchesSearch = card.text.toLowerCase().includes(searchText);
                 } else {
                     matchesSearch = card.question.toLowerCase().includes(searchText) || 
@@ -1666,10 +1935,21 @@
             
             document.getElementById('editCategory').value = card.category;
             
-            if (card.type === 'cloze') {
+            // 全ての入力エリアを非表示に
+            document.getElementById('editBasicInputs').style.display = 'none';
+            document.getElementById('editClozeInputs').style.display = 'none';
+            document.getElementById('editTypingInputs').style.display = 'none';
+            
+            if (card.type === 'typing') {
+                // v5.02: タイピング式カード編集
+                document.getElementById('editCardType').value = 'typing';
+                document.getElementById('editTypingInputs').style.display = 'block';
+                document.getElementById('editTypingQuestion').value = card.question;
+                document.getElementById('editTypingAnswers').value = card.answers.join('\n');
+                document.getElementById('editTypingCaseSensitive').checked = card.caseSensitive || false;
+            } else if (card.type === 'cloze') {
                 // v5.01: 穴埋めカード編集
                 document.getElementById('editCardType').value = 'cloze';
-                document.getElementById('editBasicInputs').style.display = 'none';
                 document.getElementById('editClozeInputs').style.display = 'block';
                 document.getElementById('editClozeText').value = card.text;
                 updateEditClozePreview();
@@ -1677,7 +1957,6 @@
                 // 基本カード編集
                 document.getElementById('editCardType').value = 'basic';
                 document.getElementById('editBasicInputs').style.display = 'block';
-                document.getElementById('editClozeInputs').style.display = 'none';
                 document.getElementById('editQuestion').value = card.question;
                 document.getElementById('editAnswer').value = card.answer;
                 document.getElementById('editEnableReverse').checked = card.enableReverse || false;
@@ -1696,28 +1975,59 @@
         // v5.01: 編集カードタイプ切り替え（テキスト保持機能付き）
         function switchEditCardType() {
             const type = document.getElementById('editCardType').value;
+            
+            // 全ての入力エリアを非表示に
+            document.getElementById('editBasicInputs').style.display = 'none';
+            document.getElementById('editClozeInputs').style.display = 'none';
+            document.getElementById('editTypingInputs').style.display = 'none';
+            
             if (type === 'basic') {
-                // 穴埋め→基本カードに切り替え：穴埋めタグを除去して問題欄に設定
+                // 他のタイプ→基本カードに切り替え
                 const clozeText = document.getElementById('editClozeText').value;
+                const typingQuestion = document.getElementById('editTypingQuestion').value;
+                
                 if (clozeText && clozeText.trim()) {
-                    // {{cN::答え}}を除去したテキストを作成
                     const plainText = clozeText.replace(/\{\{c\d+::([^}]+)\}\}/g, '$1');
                     document.getElementById('editQuestion').value = plainText;
-                    document.getElementById('editAnswer').value = ''; // 答えは空にする
+                    document.getElementById('editAnswer').value = '';
+                } else if (typingQuestion && typingQuestion.trim()) {
+                    document.getElementById('editQuestion').value = typingQuestion;
+                    const answers = document.getElementById('editTypingAnswers').value;
+                    document.getElementById('editAnswer').value = answers.split('\n')[0] || '';
                 }
                 
                 document.getElementById('editBasicInputs').style.display = 'block';
-                document.getElementById('editClozeInputs').style.display = 'none';
-            } else {
-                // 基本カード→穴埋めカードに切り替え：問題文をテキストに設定
-                const question = document.getElementById('editQuestion').value;
-                if (question && question.trim()) {
-                    document.getElementById('editClozeText').value = question;
+                
+            } else if (type === 'cloze') {
+                // 他のタイプ→穴埋めカードに切り替え
+                const basicQuestion = document.getElementById('editQuestion').value;
+                const typingQuestion = document.getElementById('editTypingQuestion').value;
+                
+                if (basicQuestion && basicQuestion.trim()) {
+                    document.getElementById('editClozeText').value = basicQuestion;
+                } else if (typingQuestion && typingQuestion.trim()) {
+                    document.getElementById('editClozeText').value = typingQuestion;
                 }
                 
-                document.getElementById('editBasicInputs').style.display = 'none';
                 document.getElementById('editClozeInputs').style.display = 'block';
                 updateEditClozePreview();
+                
+            } else if (type === 'typing') {
+                // 他のタイプ→タイピング式カードに切り替え
+                const basicQuestion = document.getElementById('editQuestion').value;
+                const basicAnswer = document.getElementById('editAnswer').value;
+                const clozeText = document.getElementById('editClozeText').value;
+                
+                if (basicQuestion && basicQuestion.trim()) {
+                    document.getElementById('editTypingQuestion').value = basicQuestion;
+                    document.getElementById('editTypingAnswers').value = basicAnswer || '';
+                } else if (clozeText && clozeText.trim()) {
+                    const plainText = clozeText.replace(/\{\{c\d+::([^}]+)\}\}/g, '$1');
+                    document.getElementById('editTypingQuestion').value = plainText;
+                    document.getElementById('editTypingAnswers').value = '';
+                }
+                
+                document.getElementById('editTypingInputs').style.display = 'block';
             }
         }
 
@@ -1863,6 +2173,42 @@
                         clozes: clozes,
                         question: firebase.firestore.FieldValue.delete(),
                         answer: firebase.firestore.FieldValue.delete(),
+                        enableReverse: firebase.firestore.FieldValue.delete(),
+                        answers: firebase.firestore.FieldValue.delete(),
+                        caseSensitive: firebase.firestore.FieldValue.delete()
+                    });
+                    
+                } else if (cardType === 'typing') {
+                    // v5.02: タイピング式カード更新
+                    const question = document.getElementById('editTypingQuestion').value.trim();
+                    const answersText = document.getElementById('editTypingAnswers').value.trim();
+                    const caseSensitive = document.getElementById('editTypingCaseSensitive').checked;
+                    
+                    if (!question || !answersText) {
+                        alert('問題と正解の両方を入力してください');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
+                    const answers = answersText.split('\n')
+                        .map(a => a.trim())
+                        .filter(a => a.length > 0);
+                    
+                    if (answers.length === 0) {
+                        alert('正解を少なくとも1つ入力してください');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
+                    await db.collection('flashcards').doc(editingCardId).update({
+                        type: 'typing',
+                        category: category,
+                        question: question,
+                        answers: answers,
+                        caseSensitive: caseSensitive,
+                        text: firebase.firestore.FieldValue.delete(),
+                        clozes: firebase.firestore.FieldValue.delete(),
+                        answer: firebase.firestore.FieldValue.delete(),
                         enableReverse: firebase.firestore.FieldValue.delete()
                     });
                 }
@@ -1888,7 +2234,12 @@
             cards.forEach(card => {
                 const category = card.category.replace(/"/g, '""');
                 
-                if (card.type === 'cloze') {
+                if (card.type === 'typing') {
+                    // v5.02: タイピング式カードは問題と正解（カンマ区切り）を出力
+                    const question = card.question.replace(/"/g, '""');
+                    const answers = card.answers.join(', ').replace(/"/g, '""');
+                    csv += `"${question}","${answers}","${category}"\n`;
+                } else if (card.type === 'cloze') {
                     // v5.01: 穴埋めカードはテキストをそのまま出力
                     const text = card.text.replace(/"/g, '""');
                     csv += `"${text}","${category}"\n`;
@@ -3232,6 +3583,7 @@
                 <select id="editCardType" onchange="switchEditCardType()">
                     <option value="basic">基本カード</option>
                     <option value="cloze">穴埋めカード</option>
+                    <option value="typing">タイピング式カード</option>
                 </select>
             </div>
             
@@ -3264,6 +3616,22 @@
                 <div class="cloze-preview">
                     <div class="cloze-preview-label">プレビュー:</div>
                     <div id="editClozePreview" class="cloze-text">テキストを入力してください</div>
+                </div>
+            </div>
+            
+            <!-- v5.02: タイピング式カード編集 -->
+            <div id="editTypingInputs" style="display: none;">
+                <div class="input-group">
+                    <label for="editTypingQuestion">問題</label>
+                    <textarea id="editTypingQuestion" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="editTypingAnswers">正解（複数可・改行で区切る）</label>
+                    <textarea id="editTypingAnswers" placeholder="例：&#10;1603年&#10;1603&#10;慶長8年"></textarea>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="editTypingCaseSensitive">
+                    <label for="editTypingCaseSensitive">大文字小文字を区別する</label>
                 </div>
             </div>
             
