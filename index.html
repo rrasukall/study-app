@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 4.1a v1.0</title>
+    <title>MyAnkiApp Phase 4.1a v1.1</title>
     <style>
         * {
             margin: 0;
@@ -331,7 +331,7 @@
             position: relative;
             display: inline-block;
             margin: 0 auto;
-            transition: transform 0.05s ease-out; /* Phase 4.1a v1.0: パン移動スムーズ化 */
+            transition: transform 0.05s ease-out; /* Phase 4.1a v1.1: パン移動スムーズ化 */
         }
         
         #pdfCanvas {
@@ -421,7 +421,7 @@
         /* Phase 3.5 v1.0: 新機能用CSS */
         
         /* PDF履歴表示 */
-        /* Phase 4.1a v1.0: プルダウン形式の履歴 */
+        /* Phase 4.1a v1.1: プルダウン形式の履歴 */
         .pdf-history-dropdown {
             background: #f8f9fa;
             padding: 12px 15px;
@@ -471,7 +471,7 @@
             padding: 10px;
         }
         
-        /* Phase 4.1a v1.0: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
+        /* Phase 4.1a v1.1: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
             gap: 5px;
@@ -629,7 +629,7 @@
             cursor: not-allowed !important;
         }
         
-        /* Phase 4.1a v1.0: テキストレイヤー用CSS */
+        /* Phase 4.1a v1.1: テキストレイヤー用CSS */
         .textLayer {
             position: absolute;
             left: 0;
@@ -653,7 +653,7 @@
             background: rgba(0, 0, 255, 0.3);
         }
         
-        /* Phase 4.1a v1.0: デッキ管理・カード管理用CSS */
+        /* Phase 4.1a v1.1: デッキ管理・カード管理用CSS */
         .deck-manager, .card-manager {
             background: white;
             padding: 30px;
@@ -765,7 +765,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 4.1a v1.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 4.1a v1.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -775,7 +775,7 @@
             <button class="tab" onclick="switchTab('cards')">カード管理</button>
         </div>
         
-        <!-- Phase 4.1a v1.0: ホームセクション（デッキ一覧） -->
+        <!-- Phase 4.1a v1.1: ホームセクション（デッキ一覧） -->
         <div id="home-section" class="section active">
             <div class="deck-manager">
                 <h2 style="margin-bottom: 20px;">デッキ一覧</h2>
@@ -784,7 +784,7 @@
             </div>
         </div>
         
-        <!-- Phase 4.1a v1.0: カード管理セクション -->
+        <!-- Phase 4.1a v1.1: カード管理セクション -->
         <div id="cards-section" class="section">
             <div class="card-manager">
                 <h2 style="margin-bottom: 20px;">カード管理</h2>
@@ -860,18 +860,10 @@
                     <input type="file" id="pdfFileInput" accept="application/pdf" onchange="loadPDF(event)" style="display: none;">
                 </div>
                 
-                <!-- Phase 4.1a v1.0: 初期画面にも履歴を表示 -->
-                <div class="pdf-history-dropdown" id="pdfHistoryUpload" style="margin-top: 20px;">
-                    <label for="pdfHistorySelectUpload">📚 最近開いたPDF：</label>
-                    <select id="pdfHistorySelectUpload" onchange="loadPDFFromHistoryDropdown(this.value)">
-                        <option value="">履歴がありません</option>
-                    </select>
-                </div>
-                
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 4.1a v1.0: 新UI配置（3行構成） -->
+                    <!-- Phase 4.1a v1.1: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -905,7 +897,7 @@
                     <div class="pdf-canvas-container">
                         <div class="canvas-wrapper" id="canvasWrapper">
                             <canvas id="pdfCanvas"></canvas>
-                            <!-- Phase 4.1a v1.0: テキストレイヤー -->
+                            <!-- Phase 4.1a v1.1: テキストレイヤー -->
                             <div id="textLayer" class="textLayer"></div>
                             <canvas id="markerCanvas"></canvas>
                         </div>
@@ -925,7 +917,7 @@
                         <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
                     </div>
                     
-                    <!-- Phase 4.1a v1.0: プルダウン形式の履歴（ボタンの下に配置） -->
+                    <!-- Phase 4.1a v1.1: プルダウン形式の履歴（ボタンの下に配置） -->
                     <div class="pdf-history-dropdown" id="pdfHistory">
                         <label for="pdfHistorySelect">📚 最近開いたPDF：</label>
                         <select id="pdfHistorySelect" onchange="loadPDFFromHistoryDropdown(this.value)">
@@ -991,7 +983,7 @@
         let showingQuestion = true;
         let editingCardId = null;
         
-        // Phase 4.1a v1.0: デッキ管理用変数
+        // Phase 4.1a v1.1: デッキ管理用変数
         let decks = [];
         let currentEditingDeckId = null;
         const MAX_DECK_DEPTH = 3;
@@ -1022,14 +1014,14 @@
         let dragStartX, dragStartY;
         let pdfHistory = [];
         const MAX_HISTORY = 10;
-        let instantDeleteMode = false; // Phase 4.1a v1.0: 即削除モード
-        let resizingHandle = null; // Phase 4.1a v1.0: リサイズ中のハンドル
+        let instantDeleteMode = false; // Phase 4.1a v1.1: 即削除モード
+        let resizingHandle = null; // Phase 4.1a v1.1: リサイズ中のハンドル
         
-        // Phase 4.1a v1.0: File System Access API用変数
+        // Phase 4.1a v1.1: File System Access API用変数
         let pdfDB = null; // IndexedDB（変数名変更：Firebaseのdbと競合回避）
         let useFileSystemAPI = false; // File System Access API対応フラグ
         
-        // Phase 4.1a v1.0: PDFパン移動用変数
+        // Phase 4.1a v1.1: PDFパン移動用変数
         let isPanning = false;
         let panStartX, panStartY;
         let offsetX = 0, offsetY = 0;
@@ -1053,7 +1045,7 @@
         
         // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', async () => {
-            // Phase 4.1a v1.0: IndexedDB初期化とFile System Access API判定
+            // Phase 4.1a v1.1: IndexedDB初期化とFile System Access API判定
             if ('showOpenFilePicker' in window) {
                 await initIndexedDB();
             } else {
@@ -1070,7 +1062,7 @@
             }
             
             await loadPDFHistory();
-            loadInstantDeleteSetting(); // Phase 4.1a v1.0
+            loadInstantDeleteSetting(); // Phase 4.1a v1.1
         });
 
         // 同期ステータスを更新
@@ -1283,11 +1275,13 @@
             
             editingCardId = cardId;
             
-            const createSection = document.getElementById('create-section');
-            createSection.querySelector('.btn').textContent = '変更を保存';
-            createSection.querySelector('.btn').onclick = saveEditedCard;
+            const cardsSection = document.getElementById('cards-section');
+            const cardCreatorBtn = cardsSection.querySelector('.card-creator .btn');
+            cardCreatorBtn.textContent = '変更を保存';
+            cardCreatorBtn.onclick = saveEditedCard;
             
-            document.querySelectorAll('.tab')[0].click();
+            // カード管理タブ（3番目のタブ）をクリック
+            document.querySelectorAll('.tab')[2].click();
         }
 
         // 編集したカードを保存
@@ -1313,9 +1307,10 @@
                 document.getElementById('question').value = '';
                 document.getElementById('answer').value = '';
                 
-                const createSection = document.getElementById('create-section');
-                createSection.querySelector('.btn').textContent = 'カードを追加';
-                createSection.querySelector('.btn').onclick = addCard;
+                const cardsSection = document.getElementById('cards-section');
+                const cardCreatorBtn = cardsSection.querySelector('.card-creator .btn');
+                cardCreatorBtn.textContent = 'カードを追加';
+                cardCreatorBtn.onclick = addCard;
                 
                 editingCardId = null;
                 
@@ -1386,7 +1381,7 @@
         });
 
         // PDFを読み込む（ファイル選択）
-        // Phase 4.1a v1.0: PDFアップロードエリアクリック処理
+        // Phase 4.1a v1.1: PDFアップロードエリアクリック処理
         function handlePDFUploadClick() {
             if (useFileSystemAPI && window.showOpenFilePicker) {
                 // File System Access API版
@@ -1397,7 +1392,7 @@
             }
         }
 
-        // Phase 4.1a v1.0: PDFファイルを選択（File System Access API対応）
+        // Phase 4.1a v1.1: PDFファイルを選択（File System Access API対応）
         async function loadPDF(event) {
             if (useFileSystemAPI && window.showOpenFilePicker) {
                 // File System Access API版
@@ -1426,7 +1421,7 @@
             }
         }
 
-        // Phase 4.1a v1.0: PDFファイルから読み込み（fileHandle対応）
+        // Phase 4.1a v1.1: PDFファイルから読み込み（fileHandle対応）
         async function loadPDFFromFile(file, fileHandle = null) {
             try {
                 currentPDFFile = file;
@@ -1437,7 +1432,7 @@
                 
                 // PDFを読み込み
                 const arrayBuffer = await file.arrayBuffer();
-                // Phase 4.1a v1.0: フォント設定とCMap設定を追加（日本語対応）
+                // Phase 4.1a v1.1: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1460,7 +1455,7 @@
                 // 最初のページを表示
                 await renderPage(currentPage);
                 
-                // Phase 4.1a v1.0: PDF履歴に追加（File System Access API対応）
+                // Phase 4.1a v1.1: PDF履歴に追加（File System Access API対応）
                 if (useFileSystemAPI && fileHandle) {
                     // File System Access API版：ファイルハンドルをIndexedDBに保存
                     await savePDFHistoryToDB(file.name, fileHandle);
@@ -1491,7 +1486,7 @@
                 pdfHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                 
                 // PDFを読み込み
-                // Phase 4.1a v1.0: フォント設定とCMap設定を追加（日本語対応）
+                // Phase 4.1a v1.1: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1542,7 +1537,7 @@
                 pdfCanvas.id = 'pdfCanvas';
                 oldPdfCanvas.parentNode.replaceChild(pdfCanvas, oldPdfCanvas);
                 
-                // Phase 4.1a v1.0: alpha: false を削除（テキストレンダリング改善）
+                // Phase 4.1a v1.1: alpha: false を削除（テキストレンダリング改善）
                 const pdfCtx = pdfCanvas.getContext('2d');
                 
                 const viewport = page.getViewport({scale: scale});
@@ -1550,7 +1545,7 @@
                 pdfCanvas.width = viewport.width;
                 pdfCanvas.height = viewport.height;
                 
-                // Phase 4.1a v1.0: レンダリング設定（テキスト表示改善）
+                // Phase 4.1a v1.1: レンダリング設定（テキスト表示改善）
                 const renderContext = {
                     canvasContext: pdfCtx,
                     viewport: viewport,
@@ -1582,10 +1577,10 @@
                 // 保存されたマーカーを描画
                 drawMarkers();
                 
-                // Phase 4.1a v1.0: テキストレイヤーをレンダリング
+                // Phase 4.1a v1.1: テキストレイヤーをレンダリング
                 await renderTextLayer(page, viewport);
                 
-                // Phase 4.1a v1.0: パン移動オフセットをリセット
+                // Phase 4.1a v1.1: パン移動オフセットをリセット
                 offsetX = 0;
                 offsetY = 0;
                 updateCanvasPosition();
@@ -1600,7 +1595,7 @@
             }
         }
 
-        // Phase 4.1a v1.0: テキストレイヤーをレンダリング
+        // Phase 4.1a v1.1: テキストレイヤーをレンダリング
         async function renderTextLayer(page, viewport) {
             try {
                 const textLayer = document.getElementById('textLayer');
@@ -1611,7 +1606,7 @@
                 textLayer.style.width = viewport.width + 'px';
                 textLayer.style.height = viewport.height + 'px';
                 
-                // Phase 4.1a v1.0: --scale-factor CSS変数を設定
+                // Phase 4.1a v1.1: --scale-factor CSS変数を設定
                 textLayer.style.setProperty('--scale-factor', viewport.scale);
                 
                 // テキストコンテンツを取得
@@ -1824,7 +1819,7 @@
 
         // Phase 3.5 v1.0: PDF履歴管理関数
         
-        // Phase 4.1a v1.0: 即削除モード設定管理
+        // Phase 4.1a v1.1: 即削除モード設定管理
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -1840,7 +1835,7 @@
             localStorage.setItem('instantDeleteMode', instantDeleteMode);
         }
 
-        // Phase 4.1a v1.0: IndexedDBセットアップ（File System Access API用）
+        // Phase 4.1a v1.1: IndexedDBセットアップ（File System Access API用）
         function initIndexedDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('MyAnkiAppDB', 1);
@@ -1866,7 +1861,7 @@
             });
         }
 
-        // Phase 4.1a v1.0: PDF履歴をIndexedDBに保存（File System Access API版）
+        // Phase 4.1a v1.1: PDF履歴をIndexedDBに保存（File System Access API版）
         async function savePDFHistoryToDB(fileName, fileHandle) {
             if (!pdfDB || !useFileSystemAPI) return;
             
@@ -1908,7 +1903,7 @@
             };
         }
 
-        // Phase 4.1a v1.0: PDF履歴をIndexedDBから読み込み
+        // Phase 4.1a v1.1: PDF履歴をIndexedDBから読み込み
         async function loadPDFHistoryFromDB() {
             if (!pdfDB || !useFileSystemAPI) return [];
             
@@ -1930,7 +1925,7 @@
             });
         }
 
-        // Phase 4.1a v1.0: PDF履歴をロード（File System Access API対応）
+        // Phase 4.1a v1.1: PDF履歴をロード（File System Access API対応）
         async function loadPDFHistory() {
             if (useFileSystemAPI) {
                 // File System Access API版：IndexedDBから読み込み
@@ -1977,7 +1972,7 @@
         }
         
         // PDF履歴を表示
-        // Phase 4.1a v1.0: PDF履歴をプルダウンに表示（両画面対応）
+        // Phase 4.1a v1.1: PDF履歴をプルダウンに表示（両画面対応）
         function displayPDFHistory() {
             const historySelect = document.getElementById('pdfHistorySelect');
             const historySelectUpload = document.getElementById('pdfHistorySelectUpload');
@@ -2002,7 +1997,7 @@
             }
         }
         
-        // Phase 4.1a v1.0: プルダウンから履歴を読み込み（両画面対応）
+        // Phase 4.1a v1.1: プルダウンから履歴を読み込み（両画面対応）
         function loadPDFFromHistoryDropdown(value) {
             if (value === '') return;
             const index = parseInt(value);
@@ -2014,7 +2009,7 @@
             if (historySelectUpload) historySelectUpload.value = '';
         }
         
-        // Phase 4.1a v1.0: 履歴からPDFを読み込み（File System Access API対応）
+        // Phase 4.1a v1.1: 履歴からPDFを読み込み（File System Access API対応）
         async function loadPDFFromHistory(index) {
             const item = pdfHistory[index];
             
@@ -2062,7 +2057,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 4.1a v1.0: マウスダウン処理（ハンドル検出対応）
+        // Phase 4.1a v1.1: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -2109,7 +2104,7 @@
             startDrawing(e);
         }
         
-        // Phase 4.1a v1.0: ハンドル検出（修正モード用）
+        // Phase 4.1a v1.1: ハンドル検出（修正モード用）
         function detectHandle(x, y, marker, scaleRatio) {
             const mx = marker.x * scaleRatio;
             const my = marker.y * scaleRatio;
@@ -2136,7 +2131,7 @@
             return null;
         }
 
-        // Phase 4.1a v1.0: 座標にあるマーカーを選択（修正モード用）
+        // Phase 4.1a v1.1: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -2165,7 +2160,7 @@
             drawMarkers();
         }
         
-        // Phase 4.1a v1.0: 座標にあるマーカーを削除（確認ダイアログ対応）
+        // Phase 4.1a v1.1: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -2180,7 +2175,7 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // Phase 4.1a v1.0: 即削除モードまたは確認ダイアログでOKの場合のみ削除
+                    // Phase 4.1a v1.1: 即削除モードまたは確認ダイアログでOKの場合のみ削除
                     if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
                         pageMarkers.splice(i, 1);
                         drawMarkers();
@@ -2245,7 +2240,7 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 4.1a v1.0: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
+        // Phase 4.1a v1.1: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
@@ -2307,7 +2302,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 4.1a v1.0: マウスアップ処理（ハンドルドラッグ終了対応）
+        // Phase 4.1a v1.1: マウスアップ処理（ハンドルドラッグ終了対応）
         function stopDrawing(e) {
             // ハンドルドラッグ終了
             if (resizingHandle) {
@@ -2355,7 +2350,7 @@
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
             
-            // Phase 4.1a v1.0: 2本指タッチ = パン移動開始
+            // Phase 4.1a v1.1: 2本指タッチ = パン移動開始
             if (e.touches.length === 2) {
                 e.preventDefault();
                 isPanning = true;
@@ -2411,7 +2406,7 @@
         }
         
         function handleTouchMove(e) {
-            // Phase 4.1a v1.0: 2本指パン移動
+            // Phase 4.1a v1.1: 2本指パン移動
             if (isPanning && e.touches.length === 2) {
                 e.preventDefault();
                 const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -2488,7 +2483,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 4.1a v1.0: canvasの位置を更新（パン移動対応）
+        // Phase 4.1a v1.1: canvasの位置を更新（パン移動対応）
         function updateCanvasPosition() {
             const wrapper = document.getElementById('canvasWrapper');
             if (wrapper) {
@@ -2497,7 +2492,7 @@
         }
         
         function handleTouchEnd(e) {
-            // Phase 4.1a v1.0: パン移動終了
+            // Phase 4.1a v1.1: パン移動終了
             if (isPanning) {
                 isPanning = false;
                 return;
@@ -2602,7 +2597,7 @@
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // Phase 4.1a v1.0: 四隅にハンドルを描画
+                    // Phase 4.1a v1.1: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
                         { x: mx, y: my }, // 左上
@@ -2686,10 +2681,10 @@
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null; // Phase 4.1a v1.0
-                isPanning = false; // Phase 4.1a v1.0
-                offsetX = 0; // Phase 4.1a v1.0
-                offsetY = 0; // Phase 4.1a v1.0
+                resizingHandle = null; // Phase 4.1a v1.1
+                isPanning = false; // Phase 4.1a v1.1
+                offsetX = 0; // Phase 4.1a v1.1
+                offsetY = 0; // Phase 4.1a v1.1
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
@@ -2720,7 +2715,7 @@
             }
         }
         
-        // Phase 4.1a v1.0: デッキ管理機能
+        // Phase 4.1a v1.1: デッキ管理機能
         
         // デッキをFirestoreから読み込み
         async function loadDecks() {
@@ -2806,8 +2801,8 @@
             currentEditingDeckId = null;
             document.getElementById('deckModalTitle').textContent = 'サブデッキ作成';
             document.getElementById('deckName').value = '';
-            document.getElementById('parentDeckId').value = parentId;
             updateParentDeckOptions(null);
+            document.getElementById('parentDeckId').value = parentId;
             document.getElementById('deckModal').style.display = 'block';
         }
         
@@ -2831,6 +2826,11 @@
             
             decks.forEach(deck => {
                 if (currentDeckId && (deck.id === currentDeckId || isDescendant(deck.id, currentDeckId))) {
+                    return;
+                }
+                
+                // 孫デッキ（深さ2）は親として選択できない
+                if (getDeckDepth(deck.id) >= 2) {
                     return;
                 }
                 
@@ -2970,7 +2970,7 @@
         });
     </script>
     
-    <!-- Phase 4.1a v1.0: デッキ編集モーダル -->
+    <!-- Phase 4.1a v1.1: デッキ編集モーダル -->
     <div id="deckModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -2993,5 +2993,3 @@
     </div>
 </body>
 </html>
-
-
