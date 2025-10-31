@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.02.2</title>
+    <title>MyAnkiApp v5.02.3</title>
     <style>
         * {
             margin: 0;
@@ -970,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1069,6 +1069,7 @@
                 
                 <div class="card-preview">
                     <h3 style="margin-bottom: 15px;">プレビュー</h3>
+                    <div id="cardControls" style="margin-bottom: 20px;"></div>
                     <div id="cardDisplay"></div>
                 </div>
                 
@@ -1538,6 +1539,7 @@
         // v5.01: カード表示（穴埋め対応）
         function displayCard() {
             const display = document.getElementById('cardDisplay');
+            const controls = document.getElementById('cardControls');
             
             if (cards.length === 0) {
                 display.innerHTML = `
@@ -1546,6 +1548,7 @@
                         <p>「カード作成」タブから新しいカードを作成してください</p>
                     </div>
                 `;
+                controls.innerHTML = '';
                 return;
             }
             
@@ -1567,6 +1570,9 @@
                             <input type="text" class="typing-input" id="typingInput" placeholder="答えを入力してください" onkeypress="if(event.key==='Enter') checkTypingAnswer()">
                             <div id="typingResult"></div>
                         </div>
+                    `;
+                    
+                    controls.innerHTML = `
                         <div class="card-controls">
                             <div class="nav-buttons">
                                 <button class="btn" onclick="previousCard()">← 前へ</button>
@@ -1580,6 +1586,7 @@
                             <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
                         </div>
                     `;
+                    
                     // 入力フィールドにフォーカス
                     setTimeout(() => {
                         const input = document.getElementById('typingInput');
@@ -1599,6 +1606,9 @@
                                 </div>
                             </div>
                         </div>
+                    `;
+                    
+                    controls.innerHTML = `
                         <div class="card-controls">
                             <div class="nav-buttons">
                                 <button class="btn" onclick="previousCard()">← 前へ</button>
@@ -1632,6 +1642,9 @@
                                 ${displayText}
                             </div>
                         </div>
+                    `;
+                    
+                    controls.innerHTML = `
                         <div class="card-controls">
                             <div class="nav-buttons">
                                 <button class="btn" onclick="previousCard()">← 前へ</button>
@@ -1659,6 +1672,9 @@
                                 ${displayText}
                             </div>
                         </div>
+                    `;
+                    
+                    controls.innerHTML = `
                         <div class="card-controls">
                             <div class="nav-buttons">
                                 <button class="btn" onclick="previousCard()">← 前へ</button>
@@ -1706,6 +1722,9 @@
                         ${content}
                     </div>
                 </div>
+            `;
+            
+            controls.innerHTML = `
                 <div class="card-controls">
                     <div class="nav-buttons">
                         <button class="btn" onclick="previousCard()">← 前へ</button>
@@ -1735,6 +1754,8 @@
             });
             
             const display = document.getElementById('cardDisplay');
+            const controls = document.getElementById('cardControls');
+            
             display.innerHTML = `
                 <div class="card" style="cursor: default;">
                     <div class="card-category">${card.category}</div>
@@ -1743,6 +1764,9 @@
                         ${displayText}
                     </div>
                 </div>
+            `;
+            
+            controls.innerHTML = `
                 <div class="card-controls">
                     <div class="nav-buttons">
                         <button class="btn" onclick="previousCard()">← 前へ</button>
