@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 4.1a v1.3</title>
+    <title>MyAnkiApp Phase 4.1a v1.4</title>
     <style>
         * {
             margin: 0;
@@ -331,7 +331,7 @@
             position: relative;
             display: inline-block;
             margin: 0 auto;
-            transition: transform 0.05s ease-out; /* Phase 4.1a v1.3: パン移動スムーズ化 */
+            transition: transform 0.05s ease-out; /* Phase 4.1a v1.4: パン移動スムーズ化 */
         }
         
         #pdfCanvas {
@@ -421,57 +421,9 @@
         /* Phase 3.5 v1.0: 新機能用CSS */
         
         /* PDF履歴表示 */
-        /* Phase 4.1a v1.3: プルダウン形式の履歴 */
-        .pdf-history-dropdown {
-            background: #f8f9fa;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        /* Phase 4.1a v1.4: プルダウン形式の履歴 */
         
-        .pdf-history-dropdown.hidden {
-            display: none;
-        }
-        
-        .pdf-history-dropdown label {
-            color: #333;
-            font-weight: bold;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-        
-        .pdf-history-dropdown select {
-            flex: 1;
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-            cursor: pointer;
-            transition: border-color 0.3s;
-        }
-        
-        .pdf-history-dropdown select:hover {
-            border-color: #667eea;
-        }
-        
-        .pdf-history-dropdown select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .pdf-history-empty {
-            color: #999;
-            font-style: italic;
-            text-align: center;
-            padding: 10px;
-        }
-        
-        /* Phase 4.1a v1.3: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
+        /* Phase 4.1a v1.4: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
             gap: 5px;
@@ -629,7 +581,7 @@
             cursor: not-allowed !important;
         }
         
-        /* Phase 4.1a v1.3: テキストレイヤー用CSS */
+        /* Phase 4.1a v1.4: テキストレイヤー用CSS */
         .textLayer {
             position: absolute;
             left: 0;
@@ -653,7 +605,7 @@
             background: rgba(0, 0, 255, 0.3);
         }
         
-        /* Phase 4.1a v1.3: デッキ管理・カード管理用CSS */
+        /* Phase 4.1a v1.4: デッキ管理・カード管理用CSS */
         .deck-manager, .card-manager {
             background: white;
             padding: 30px;
@@ -765,7 +717,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 4.1a v1.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 4.1a v1.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -775,7 +727,7 @@
             <button class="tab" onclick="switchTab('cards')">カード管理</button>
         </div>
         
-        <!-- Phase 4.1a v1.3: ホームセクション（デッキ一覧） -->
+        <!-- Phase 4.1a v1.4: ホームセクション（デッキ一覧） -->
         <div id="home-section" class="section active">
             <div class="deck-manager">
                 <h2 style="margin-bottom: 20px;">デッキ一覧</h2>
@@ -784,7 +736,7 @@
             </div>
         </div>
         
-        <!-- Phase 4.1a v1.3: カード管理セクション -->
+        <!-- Phase 4.1a v1.4: カード管理セクション -->
         <div id="cards-section" class="section">
             <div class="card-manager">
                 <h2 style="margin-bottom: 20px;">カード管理</h2>
@@ -860,18 +812,10 @@
                     <input type="file" id="pdfFileInput" accept="application/pdf" onchange="loadPDF(event)" style="display: none;">
                 </div>
                 
-                <!-- Phase 4.1a v1.3: 未選択状態での履歴表示 -->
-                <div class="pdf-history-dropdown" id="pdfHistoryUpload" style="margin-top: 20px;">
-                    <label for="pdfHistorySelectUpload">📚 最近開いたPDF：</label>
-                    <select id="pdfHistorySelectUpload" onchange="loadPDFFromHistoryDropdown(this.value)">
-                        <option value="">履歴がありません</option>
-                    </select>
-                </div>
-                
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 4.1a v1.3: 新UI配置（3行構成） -->
+                    <!-- Phase 4.1a v1.4: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -905,7 +849,7 @@
                     <div class="pdf-canvas-container">
                         <div class="canvas-wrapper" id="canvasWrapper">
                             <canvas id="pdfCanvas"></canvas>
-                            <!-- Phase 4.1a v1.3: テキストレイヤー -->
+                            <!-- Phase 4.1a v1.4: テキストレイヤー -->
                             <div id="textLayer" class="textLayer"></div>
                             <canvas id="markerCanvas"></canvas>
                         </div>
@@ -923,14 +867,6 @@
                         </div>
                         
                         <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
-                    </div>
-                    
-                    <!-- Phase 4.1a v1.3: プルダウン形式の履歴（ボタンの下に配置） -->
-                    <div class="pdf-history-dropdown" id="pdfHistory">
-                        <label for="pdfHistorySelect">📚 最近開いたPDF：</label>
-                        <select id="pdfHistorySelect" onchange="loadPDFFromHistoryDropdown(this.value)">
-                            <option value="">履歴がありません</option>
-                        </select>
                     </div>
                 </div>
             </div>
@@ -991,7 +927,7 @@
         let showingQuestion = true;
         let editingCardId = null;
         
-        // Phase 4.1a v1.3: デッキ管理用変数
+        // Phase 4.1a v1.4: デッキ管理用変数
         let decks = [];
         let currentEditingDeckId = null;
         const MAX_DECK_DEPTH = 3;
@@ -1020,16 +956,14 @@
         let selectedMarkerPage = null;
         let isDraggingMarker = false;
         let dragStartX, dragStartY;
-        let pdfHistory = [];
-        const MAX_HISTORY = 10;
-        let instantDeleteMode = false; // Phase 4.1a v1.3: 即削除モード
-        let resizingHandle = null; // Phase 4.1a v1.3: リサイズ中のハンドル
+        let instantDeleteMode = false; // Phase 4.1a v1.4: 即削除モード
+        let resizingHandle = null; // Phase 4.1a v1.4: リサイズ中のハンドル
         
-        // Phase 4.1a v1.3: File System Access API用変数
+        // Phase 4.1a v1.4: File System Access API用変数
         let pdfDB = null; // IndexedDB（変数名変更：Firebaseのdbと競合回避）
         let useFileSystemAPI = false; // File System Access API対応フラグ
         
-        // Phase 4.1a v1.3: PDFパン移動用変数
+        // Phase 4.1a v1.4: PDFパン移動用変数
         let isPanning = false;
         let panStartX, panStartY;
         let offsetX = 0, offsetY = 0;
@@ -1053,24 +987,14 @@
         
         // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', async () => {
-            // Phase 4.1a v1.3: IndexedDB初期化とFile System Access API判定
+            // Phase 4.1a v1.4: IndexedDB初期化とFile System Access API判定
             if ('showOpenFilePicker' in window) {
                 await initIndexedDB();
             } else {
                 useFileSystemAPI = false;
-                // iPhone/Safari等では両方の履歴を非表示
-                const pdfHistory = document.getElementById('pdfHistory');
-                const pdfHistoryUpload = document.getElementById('pdfHistoryUpload');
-                if (pdfHistory) {
-                    pdfHistory.classList.add('hidden');
-                }
-                if (pdfHistoryUpload) {
-                    pdfHistoryUpload.classList.add('hidden');
-                }
             }
             
-            await loadPDFHistory();
-            loadInstantDeleteSetting(); // Phase 4.1a v1.3
+            loadInstantDeleteSetting(); // Phase 4.1a v1.4
         });
 
         // 同期ステータスを更新
@@ -1382,7 +1306,7 @@
         });
 
         // PDFを読み込む（ファイル選択）
-        // Phase 4.1a v1.3: PDFアップロードエリアクリック処理
+        // Phase 4.1a v1.4: PDFアップロードエリアクリック処理
         function handlePDFUploadClick() {
             if (useFileSystemAPI && window.showOpenFilePicker) {
                 // File System Access API版
@@ -1393,7 +1317,7 @@
             }
         }
 
-        // Phase 4.1a v1.3: PDFファイルを選択（File System Access API対応）
+        // Phase 4.1a v1.4: PDFファイルを選択（File System Access API対応）
         async function loadPDF(event) {
             if (useFileSystemAPI && window.showOpenFilePicker) {
                 // File System Access API版
@@ -1422,7 +1346,7 @@
             }
         }
 
-        // Phase 4.1a v1.3: PDFファイルから読み込み（fileHandle対応）
+        // Phase 4.1a v1.4: PDFファイルから読み込み（fileHandle対応）
         async function loadPDFFromFile(file, fileHandle = null) {
             try {
                 currentPDFFile = file;
@@ -1433,7 +1357,7 @@
                 
                 // PDFを読み込み
                 const arrayBuffer = await file.arrayBuffer();
-                // Phase 4.1a v1.3: フォント設定とCMap設定を追加（日本語対応）
+                // Phase 4.1a v1.4: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1447,7 +1371,6 @@
                 
                 // UIを更新
                 document.getElementById('pdfUploadArea').style.display = 'none';
-                document.getElementById('pdfHistoryUpload').style.display = 'none';
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = file.name;
                 
@@ -1456,20 +1379,6 @@
                 
                 // 最初のページを表示
                 await renderPage(currentPage);
-                
-                // Phase 4.1a v1.3: PDF履歴に追加（File System Access API対応）
-                if (useFileSystemAPI && fileHandle) {
-                    // File System Access API版：ファイルハンドルをIndexedDBに保存
-                    await savePDFHistoryToDB(file.name, fileHandle);
-                    await loadPDFHistory(); // 履歴表示を更新
-                } else {
-                    // 従来版：Base64データをlocalStorageに保存
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        addToPDFHistory(file.name, e.target.result);
-                    };
-                    reader.readAsDataURL(file);
-                }
                 
             } catch (error) {
                 console.error('PDF読み込みエラー (loadPDFFromFile):', error);
@@ -1488,7 +1397,7 @@
                 pdfHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                 
                 // PDFを読み込み
-                // Phase 4.1a v1.3: フォント設定とCMap設定を追加（日本語対応）
+                // Phase 4.1a v1.4: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1503,7 +1412,6 @@
                 
                 // UIを更新
                 document.getElementById('pdfUploadArea').style.display = 'none';
-                document.getElementById('pdfHistoryUpload').style.display = 'none';
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = fileName;
                 
@@ -1540,7 +1448,7 @@
                 pdfCanvas.id = 'pdfCanvas';
                 oldPdfCanvas.parentNode.replaceChild(pdfCanvas, oldPdfCanvas);
                 
-                // Phase 4.1a v1.3: alpha: false を削除（テキストレンダリング改善）
+                // Phase 4.1a v1.4: alpha: false を削除（テキストレンダリング改善）
                 const pdfCtx = pdfCanvas.getContext('2d');
                 
                 const viewport = page.getViewport({scale: scale});
@@ -1548,7 +1456,7 @@
                 pdfCanvas.width = viewport.width;
                 pdfCanvas.height = viewport.height;
                 
-                // Phase 4.1a v1.3: レンダリング設定（テキスト表示改善）
+                // Phase 4.1a v1.4: レンダリング設定（テキスト表示改善）
                 const renderContext = {
                     canvasContext: pdfCtx,
                     viewport: viewport,
@@ -1580,10 +1488,10 @@
                 // 保存されたマーカーを描画
                 drawMarkers();
                 
-                // Phase 4.1a v1.3: テキストレイヤーをレンダリング
+                // Phase 4.1a v1.4: テキストレイヤーをレンダリング
                 await renderTextLayer(page, viewport);
                 
-                // Phase 4.1a v1.3: パン移動オフセットをリセット
+                // Phase 4.1a v1.4: パン移動オフセットをリセット
                 offsetX = 0;
                 offsetY = 0;
                 updateCanvasPosition();
@@ -1598,7 +1506,7 @@
             }
         }
 
-        // Phase 4.1a v1.3: テキストレイヤーをレンダリング
+        // Phase 4.1a v1.4: テキストレイヤーをレンダリング
         async function renderTextLayer(page, viewport) {
             try {
                 const textLayer = document.getElementById('textLayer');
@@ -1609,7 +1517,7 @@
                 textLayer.style.width = viewport.width + 'px';
                 textLayer.style.height = viewport.height + 'px';
                 
-                // Phase 4.1a v1.3: --scale-factor CSS変数を設定
+                // Phase 4.1a v1.4: --scale-factor CSS変数を設定
                 textLayer.style.setProperty('--scale-factor', viewport.scale);
                 
                 // テキストコンテンツを取得
@@ -1822,7 +1730,7 @@
 
         // Phase 3.5 v1.0: PDF履歴管理関数
         
-        // Phase 4.1a v1.3: 即削除モード設定管理
+        // Phase 4.1a v1.4: 即削除モード設定管理
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -1838,7 +1746,7 @@
             localStorage.setItem('instantDeleteMode', instantDeleteMode);
         }
 
-        // Phase 4.1a v1.3: IndexedDBセットアップ（File System Access API用）
+        // Phase 4.1a v1.4: IndexedDBセットアップ（File System Access API用）
         function initIndexedDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('MyAnkiAppDB', 1);
@@ -1857,192 +1765,12 @@
                 
                 request.onupgradeneeded = (event) => {
                     const database = event.target.result;
-                    if (!database.objectStoreNames.contains('pdfHistory')) {
-                        database.createObjectStore('pdfHistory', { keyPath: 'id', autoIncrement: true });
-                    }
                 };
             });
         }
 
-        // Phase 4.1a v1.3: PDF履歴をIndexedDBに保存（File System Access API版）
-        async function savePDFHistoryToDB(fileName, fileHandle) {
-            if (!pdfDB || !useFileSystemAPI) return;
-            
-            const transaction = pdfDB.transaction(['pdfHistory'], 'readwrite');
-            const store = transaction.objectStore('pdfHistory');
-            
-            // 既存の同名ファイルを削除
-            const getAllRequest = store.getAll();
-            getAllRequest.onsuccess = () => {
-                const allRecords = getAllRequest.result;
-                allRecords.forEach(record => {
-                    if (record.fileName === fileName) {
-                        store.delete(record.id);
-                    }
-                });
-                
-                // 新しいレコードを追加
-                store.add({
-                    fileName: fileName,
-                    fileHandle: fileHandle,
-                    timestamp: new Date().toISOString()
-                });
-            };
-            
-            // 履歴数制限
-            const countRequest = store.count();
-            countRequest.onsuccess = () => {
-                if (countRequest.result > MAX_HISTORY) {
-                    const getAllRequest2 = store.getAll();
-                    getAllRequest2.onsuccess = () => {
-                        const allRecords = getAllRequest2.result.sort((a, b) => 
-                            new Date(b.timestamp) - new Date(a.timestamp)
-                        );
-                        for (let i = MAX_HISTORY; i < allRecords.length; i++) {
-                            store.delete(allRecords[i].id);
-                        }
-                    };
-                }
-            };
-        }
+        // Phase 4.1a v1.4: PDF履歴をIndexedDBに保存（File System Access API版）
 
-        // Phase 4.1a v1.3: PDF履歴をIndexedDBから読み込み
-        async function loadPDFHistoryFromDB() {
-            if (!pdfDB || !useFileSystemAPI) return [];
-            
-            return new Promise((resolve) => {
-                const transaction = pdfDB.transaction(['pdfHistory'], 'readonly');
-                const store = transaction.objectStore('pdfHistory');
-                const request = store.getAll();
-                
-                request.onsuccess = () => {
-                    const records = request.result.sort((a, b) => 
-                        new Date(b.timestamp) - new Date(a.timestamp)
-                    );
-                    resolve(records);
-                };
-                
-                request.onerror = () => {
-                    resolve([]);
-                };
-            });
-        }
-
-        // Phase 4.1a v1.3: PDF履歴をロード（File System Access API対応）
-        async function loadPDFHistory() {
-            if (useFileSystemAPI) {
-                // File System Access API版：IndexedDBから読み込み
-                const records = await loadPDFHistoryFromDB();
-                pdfHistory = records.map(r => ({
-                    fileName: r.fileName,
-                    fileHandle: r.fileHandle,
-                    timestamp: r.timestamp
-                }));
-            } else {
-                // 従来版：localStorageから読み込み
-                const saved = localStorage.getItem('pdfHistory');
-                if (saved) {
-                    pdfHistory = JSON.parse(saved);
-                }
-            }
-            displayPDFHistory();
-        }
-        
-        // PDF履歴を保存
-        function savePDFHistory() {
-            localStorage.setItem('pdfHistory', JSON.stringify(pdfHistory));
-        }
-        
-        // PDF履歴に追加
-        function addToPDFHistory(fileName, fileData) {
-            // 既存の履歴から同じファイルを削除
-            pdfHistory = pdfHistory.filter(item => item.fileName !== fileName);
-            
-            // 新しいエントリを先頭に追加
-            pdfHistory.unshift({
-                fileName: fileName,
-                fileData: fileData,
-                timestamp: new Date().toISOString()
-            });
-            
-            // 最大件数を超えたら古いものを削除
-            if (pdfHistory.length > MAX_HISTORY) {
-                pdfHistory = pdfHistory.slice(0, MAX_HISTORY);
-            }
-            
-            savePDFHistory();
-            displayPDFHistory();
-        }
-        
-        // PDF履歴を表示
-        // Phase 4.1a v1.3: PDF履歴をプルダウンに表示（両画面対応）
-        function displayPDFHistory() {
-            const historySelect = document.getElementById('pdfHistorySelect');
-            const historySelectUpload = document.getElementById('pdfHistorySelectUpload');
-            
-            const emptyHTML = '<option value="">履歴がありません</option>';
-            const historyHTML = pdfHistory.length === 0 ? emptyHTML :
-                '<option value="">履歴から選択...</option>' + 
-                pdfHistory.map((item, index) => {
-                    const date = new Date(item.timestamp);
-                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-                    return `<option value="${index}">${item.fileName} (${dateStr})</option>`;
-                }).join('');
-            
-            // PDF表示画面の履歴プルダウン
-            if (historySelect) {
-                historySelect.innerHTML = historyHTML;
-            }
-            
-            // アップロード画面の履歴プルダウン
-            if (historySelectUpload) {
-                historySelectUpload.innerHTML = historyHTML;
-            }
-        }
-        
-        // Phase 4.1a v1.3: プルダウンから履歴を読み込み（両画面対応）
-        function loadPDFFromHistoryDropdown(value) {
-            if (value === '') return;
-            const index = parseInt(value);
-            loadPDFFromHistory(index);
-            // 両方のプルダウンの選択をリセット
-            const historySelect = document.getElementById('pdfHistorySelect');
-            const historySelectUpload = document.getElementById('pdfHistorySelectUpload');
-            if (historySelect) historySelect.value = '';
-            if (historySelectUpload) historySelectUpload.value = '';
-        }
-        
-        // Phase 4.1a v1.3: 履歴からPDFを読み込み（File System Access API対応）
-        async function loadPDFFromHistory(index) {
-            const item = pdfHistory[index];
-            
-            if (useFileSystemAPI && item.fileHandle) {
-                // File System Access API版：ファイルハンドルから読み込み
-                try {
-                    const file = await item.fileHandle.getFile();
-                    const arrayBuffer = await file.arrayBuffer();
-                    await loadPDFFromArrayBuffer(arrayBuffer, file.name);
-                } catch (error) {
-                    console.error('ファイル読み込みエラー:', error);
-                    alert('ファイルにアクセスできません。ファイルが移動または削除された可能性があります。');
-                }
-            } else if (item.fileData) {
-                // 従来版：Base64データをBlobに変換
-                const byteString = atob(item.fileData.split(',')[1]);
-                const mimeString = item.fileData.split(',')[0].split(':')[1].split(';')[0];
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) {
-                    ia[i] = byteString.charCodeAt(i);
-                }
-                const blob = new Blob([ab], { type: mimeString });
-                
-                // PDFを読み込み
-                const arrayBuffer = await blob.arrayBuffer();
-                await loadPDFFromArrayBuffer(arrayBuffer, item.fileName);
-            }
-        }
-        
         // マーカーイベントのセットアップ
         function setupMarkerEvents(canvas) {
             // デフォルトのカーソルを設定
@@ -2060,7 +1788,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 4.1a v1.3: マウスダウン処理（ハンドル検出対応）
+        // Phase 4.1a v1.4: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -2107,7 +1835,7 @@
             startDrawing(e);
         }
         
-        // Phase 4.1a v1.3: ハンドル検出（修正モード用）
+        // Phase 4.1a v1.4: ハンドル検出（修正モード用）
         function detectHandle(x, y, marker, scaleRatio) {
             const mx = marker.x * scaleRatio;
             const my = marker.y * scaleRatio;
@@ -2134,7 +1862,7 @@
             return null;
         }
 
-        // Phase 4.1a v1.3: 座標にあるマーカーを選択（修正モード用）
+        // Phase 4.1a v1.4: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -2163,7 +1891,7 @@
             drawMarkers();
         }
         
-        // Phase 4.1a v1.3: 座標にあるマーカーを削除（確認ダイアログ対応）
+        // Phase 4.1a v1.4: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -2178,7 +1906,7 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // Phase 4.1a v1.3: 即削除モードまたは確認ダイアログでOKの場合のみ削除
+                    // Phase 4.1a v1.4: 即削除モードまたは確認ダイアログでOKの場合のみ削除
                     if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
                         pageMarkers.splice(i, 1);
                         drawMarkers();
@@ -2243,7 +1971,7 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 4.1a v1.3: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
+        // Phase 4.1a v1.4: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
@@ -2305,7 +2033,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 4.1a v1.3: マウスアップ処理（ハンドルドラッグ終了対応）
+        // Phase 4.1a v1.4: マウスアップ処理（ハンドルドラッグ終了対応）
         function stopDrawing(e) {
             // ハンドルドラッグ終了
             if (resizingHandle) {
@@ -2353,7 +2081,7 @@
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
             
-            // Phase 4.1a v1.3: 2本指タッチ = パン移動開始
+            // Phase 4.1a v1.4: 2本指タッチ = パン移動開始
             if (e.touches.length === 2) {
                 e.preventDefault();
                 isPanning = true;
@@ -2409,7 +2137,7 @@
         }
         
         function handleTouchMove(e) {
-            // Phase 4.1a v1.3: 2本指パン移動
+            // Phase 4.1a v1.4: 2本指パン移動
             if (isPanning && e.touches.length === 2) {
                 e.preventDefault();
                 const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -2486,7 +2214,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 4.1a v1.3: canvasの位置を更新（パン移動対応）
+        // Phase 4.1a v1.4: canvasの位置を更新（パン移動対応）
         function updateCanvasPosition() {
             const wrapper = document.getElementById('canvasWrapper');
             if (wrapper) {
@@ -2495,7 +2223,7 @@
         }
         
         function handleTouchEnd(e) {
-            // Phase 4.1a v1.3: パン移動終了
+            // Phase 4.1a v1.4: パン移動終了
             if (isPanning) {
                 isPanning = false;
                 return;
@@ -2600,7 +2328,7 @@
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // Phase 4.1a v1.3: 四隅にハンドルを描画
+                    // Phase 4.1a v1.4: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
                         { x: mx, y: my }, // 左上
@@ -2684,10 +2412,10 @@
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null; // Phase 4.1a v1.3
-                isPanning = false; // Phase 4.1a v1.3
-                offsetX = 0; // Phase 4.1a v1.3
-                offsetY = 0; // Phase 4.1a v1.3
+                resizingHandle = null; // Phase 4.1a v1.4
+                isPanning = false; // Phase 4.1a v1.4
+                offsetX = 0; // Phase 4.1a v1.4
+                offsetY = 0; // Phase 4.1a v1.4
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
@@ -2713,13 +2441,12 @@
                 });
                 
                 document.getElementById('pdfUploadArea').style.display = 'block';
-                document.getElementById('pdfHistoryUpload').style.display = 'block';
                 document.getElementById('pdfViewerContainer').style.display = 'none';
                 document.getElementById('pdfFileInput').value = '';
             }
         }
         
-        // Phase 4.1a v1.3: デッキ管理機能
+        // Phase 4.1a v1.4: デッキ管理機能
         
         // デッキをFirestoreから読み込み
         async function loadDecks() {
@@ -2974,7 +2701,7 @@
         });
     </script>
     
-    <!-- Phase 4.1a v1.3: デッキ編集モーダル -->
+    <!-- Phase 4.1a v1.4: デッキ編集モーダル -->
     <div id="deckModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -2996,7 +2723,7 @@
         </div>
     </div>
     
-    <!-- Phase 4.1a v1.3: カード編集モーダル -->
+    <!-- Phase 4.1a v1.4: カード編集モーダル -->
     <div id="cardEditModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
