@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.01</title>
+    <title>MyAnkiApp v5.01.1</title>
     <style>
         * {
             margin: 0;
@@ -847,7 +847,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.01</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.01.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1142,6 +1142,12 @@
             const clozeText = document.getElementById('clozeText');
             if (clozeText) {
                 clozeText.addEventListener('input', updateClozePreview);
+                updateClozePreview(); // 初期プレビュー表示
+            }
+            
+            const editClozeText = document.getElementById('editClozeText');
+            if (editClozeText) {
+                editClozeText.addEventListener('input', updateEditClozePreview);
             }
         });
 
@@ -1207,9 +1213,9 @@
             
             // {{c1::答え}}形式を検出して表示
             const clozeRegex = /\{\{c(\d+)::([^}]+)\}\}/g;
-            let hasCloz = false;
+            let hasCloze = false;
             const displayText = text.replace(clozeRegex, (match, num, answer) => {
-                hasCloz = true;
+                hasCloze = true;
                 return `<span class="cloze-blank">[穴${num}]</span>`;
             });
             
@@ -1687,13 +1693,28 @@
             editingCardId = null;
         }
 
-        // v5.01: 編集カードタイプ切り替え
+        // v5.01: 編集カードタイプ切り替え（テキスト保持機能付き）
         function switchEditCardType() {
             const type = document.getElementById('editCardType').value;
             if (type === 'basic') {
+                // 穴埋め→基本カードに切り替え：穴埋めタグを除去して問題欄に設定
+                const clozeText = document.getElementById('editClozeText').value;
+                if (clozeText && clozeText.trim()) {
+                    // {{cN::答え}}を除去したテキストを作成
+                    const plainText = clozeText.replace(/\{\{c\d+::([^}]+)\}\}/g, '$1');
+                    document.getElementById('editQuestion').value = plainText;
+                    document.getElementById('editAnswer').value = ''; // 答えは空にする
+                }
+                
                 document.getElementById('editBasicInputs').style.display = 'block';
                 document.getElementById('editClozeInputs').style.display = 'none';
             } else {
+                // 基本カード→穴埋めカードに切り替え：問題文をテキストに設定
+                const question = document.getElementById('editQuestion').value;
+                if (question && question.trim()) {
+                    document.getElementById('editClozeText').value = question;
+                }
+                
                 document.getElementById('editBasicInputs').style.display = 'none';
                 document.getElementById('editClozeInputs').style.display = 'block';
                 updateEditClozePreview();
