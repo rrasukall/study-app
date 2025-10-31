@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.02.1</title>
+    <title>MyAnkiApp v5.02.2</title>
     <style>
         * {
             margin: 0;
@@ -970,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1821,9 +1821,7 @@
                 }
             }
             
-            // 結果表示
-            input.disabled = true;
-            
+            // 結果表示（入力フィールドは無効化しない）
             let resultHTML = '';
             
             if (isCorrect) {
@@ -1849,6 +1847,9 @@
             }
             
             result.innerHTML = resultHTML;
+            
+            // 再入力のためフォーカスを維持
+            input.focus();
         }
 
         // v5.01: カード一覧表示（穴埋め対応）
