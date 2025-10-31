@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 4.1a v1.4</title>
+    <title>MyAnkiApp v5.00</title>
     <style>
         * {
             margin: 0;
@@ -108,6 +108,25 @@
             border-color: #667eea;
         }
         
+        /* v5.00: チェックボックス用スタイル */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+        
         .btn {
             background: #667eea;
             color: white;
@@ -161,6 +180,7 @@
             transition: transform 0.3s;
             padding: 40px;
             margin-bottom: 20px;
+            position: relative;
         }
         
         .card:hover {
@@ -183,6 +203,19 @@
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 14px;
+        }
+        
+        /* v5.00: カード方向バッジ */
+        .card-direction {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
         }
         
         .card-controls {
@@ -244,6 +277,16 @@
             padding: 4px 12px;
             border-radius: 12px;
             font-size: 12px;
+        }
+        
+        /* v5.00: 逆転カードバッジ */
+        .card-item-reverse-badge {
+            background: #f39c12;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 5px;
         }
         
         .card-item-content {
@@ -331,7 +374,7 @@
             position: relative;
             display: inline-block;
             margin: 0 auto;
-            transition: transform 0.05s ease-out; /* Phase 4.1a v1.4: パン移動スムーズ化 */
+            transition: transform 0.05s ease-out;
         }
         
         #pdfCanvas {
@@ -418,12 +461,6 @@
             display: inline-block;
         }
         
-        /* Phase 3.5 v1.0: 新機能用CSS */
-        
-        /* PDF履歴表示 */
-        /* Phase 4.1a v1.4: プルダウン形式の履歴 */
-        
-        /* Phase 4.1a v1.4: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
             gap: 5px;
@@ -448,7 +485,6 @@
             margin: 0 5px;
         }
         
-        /* 色ボタン */
         .color-btn, .sheet-btn {
             padding: 8px 16px;
             border: 2px solid transparent;
@@ -483,7 +519,6 @@
             background: #2c3e50;
         }
         
-        /* 即削除チェックボックス */
         .instant-delete-label {
             display: flex;
             align-items: center;
@@ -503,7 +538,6 @@
             cursor: pointer;
         }
         
-        /* マーカーモードボタンの色分け */
         .btn-mode-on {
             background: #27ae60 !important;
         }
@@ -520,7 +554,6 @@
             background: #7f8c8d !important;
         }
         
-        /* 赤シート色別ボタン */
         .redsheet-controls {
             display: flex;
             gap: 5px;
@@ -572,7 +605,6 @@
             background: #2c3e50;
         }
         
-        /* カーソル変更 */
         #markerCanvas.edit-mode {
             cursor: move !important;
         }
@@ -581,7 +613,6 @@
             cursor: not-allowed !important;
         }
         
-        /* Phase 4.1a v1.4: テキストレイヤー用CSS */
         .textLayer {
             position: absolute;
             left: 0;
@@ -605,7 +636,6 @@
             background: rgba(0, 0, 255, 0.3);
         }
         
-        /* Phase 4.1a v1.4: デッキ管理・カード管理用CSS */
         .deck-manager, .card-manager {
             background: white;
             padding: 30px;
@@ -670,7 +700,6 @@
             margin-right: 5px;
         }
         
-        /* モーダルダイアログ */
         .modal {
             display: none;
             position: fixed;
@@ -717,7 +746,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 4.1a v1.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.00</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -727,7 +756,6 @@
             <button class="tab" onclick="switchTab('cards')">カード管理</button>
         </div>
         
-        <!-- Phase 4.1a v1.4: ホームセクション（デッキ一覧） -->
         <div id="home-section" class="section active">
             <div class="deck-manager">
                 <h2 style="margin-bottom: 20px;">デッキ一覧</h2>
@@ -736,12 +764,10 @@
             </div>
         </div>
         
-        <!-- Phase 4.1a v1.4: カード管理セクション -->
         <div id="cards-section" class="section">
             <div class="card-manager">
                 <h2 style="margin-bottom: 20px;">カード管理</h2>
                 
-                <!-- カード作成 -->
                 <div class="card-creator">
                     <h3 style="margin-bottom: 15px;">新しいカードを作成</h3>
                     <div class="input-group">
@@ -763,12 +789,16 @@
                         <label for="answer">答え</label>
                         <textarea id="answer" placeholder="例：1603年"></textarea>
                     </div>
+                    <!-- v5.00: 逆方向学習チェックボックス -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enableReverse">
+                        <label for="enableReverse">逆方向も学習（答え→問題）</label>
+                    </div>
                     <button class="btn" onclick="addCard()">カードを追加</button>
                 </div>
                 
                 <hr style="margin: 30px 0; border: none; border-top: 2px solid #eee;">
                 
-                <!-- プレビュー -->
                 <div class="card-preview">
                     <h3 style="margin-bottom: 15px;">プレビュー</h3>
                     <div id="cardDisplay"></div>
@@ -776,7 +806,6 @@
                 
                 <hr style="margin: 30px 0; border: none; border-top: 2px solid #eee;">
                 
-                <!-- カード一覧 -->
                 <div class="card-list">
                     <h3 style="margin-bottom: 15px;">カード一覧</h3>
                     <div style="margin-bottom: 20px;">
@@ -799,7 +828,6 @@
             </div>
         </div>
         
-        <!-- PDF学習セクション -->
         <div id="pdf-section" class="section">
             <div class="pdf-viewer">
                 <h2 style="margin-bottom: 20px;">📖 PDF学習</h2>
@@ -815,7 +843,6 @@
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 4.1a v1.4: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -849,7 +876,6 @@
                     <div class="pdf-canvas-container">
                         <div class="canvas-wrapper" id="canvasWrapper">
                             <canvas id="pdfCanvas"></canvas>
-                            <!-- Phase 4.1a v1.4: テキストレイヤー -->
                             <div id="textLayer" class="textLayer"></div>
                             <canvas id="markerCanvas"></canvas>
                         </div>
@@ -873,21 +899,15 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    
-    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <script>
-        // PDF.js worker設定
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
-        // 🔒 パスワード設定
         const APP_PASSWORD = "rio1009";
         
-        // パスワード認証チェック
         (function() {
             const isAuthenticated = sessionStorage.getItem('authenticated');
             if (!isAuthenticated) {
@@ -908,7 +928,6 @@
             }
         }
         
-        // Firebase設定
         const firebaseConfig = {
             apiKey: "AIzaSyBxtut_pGgtNSGmUZ6wXC4aqNufkGjbxQQ",
             authDomain: "myankiapp.firebaseapp.com",
@@ -918,7 +937,6 @@
             appId: "1:407986420613:web:02caaf05b825fb4a2ce2ec"
         };
 
-        // Firebase初期化
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         
@@ -926,13 +944,13 @@
         let currentIndex = 0;
         let showingQuestion = true;
         let editingCardId = null;
+        // v5.00: 逆転カード用変数
+        let currentCardIsReversed = false;
         
-        // Phase 4.1a v1.4: デッキ管理用変数
         let decks = [];
         let currentEditingDeckId = null;
         const MAX_DECK_DEPTH = 3;
         
-        // PDF関連変数
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -940,15 +958,13 @@
         let pdfHash = null;
         let currentPDFFile = null;
         
-        // マーカー関連変数
-        let markers = {}; // { pdfHash: { pageNum: [marker objects] } }
+        let markers = {};
         let currentMarkerColor = 'yellow';
-        let markerMode = false; // デフォルトOFF
+        let markerMode = false;
         let isDrawing = false;
         let startX, startY;
         let redSheetMode = false;
         
-        // Phase 3.5 v1.0: 新機能用変数
         let editMode = false;
         let deleteMode = false;
         let redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
@@ -956,19 +972,16 @@
         let selectedMarkerPage = null;
         let isDraggingMarker = false;
         let dragStartX, dragStartY;
-        let instantDeleteMode = false; // Phase 4.1a v1.4: 即削除モード
-        let resizingHandle = null; // Phase 4.1a v1.4: リサイズ中のハンドル
+        let instantDeleteMode = false;
+        let resizingHandle = null;
         
-        // Phase 4.1a v1.4: File System Access API用変数
-        let pdfDB = null; // IndexedDB（変数名変更：Firebaseのdbと競合回避）
-        let useFileSystemAPI = false; // File System Access API対応フラグ
+        let pdfDB = null;
+        let useFileSystemAPI = false;
         
-        // Phase 4.1a v1.4: PDFパン移動用変数
         let isPanning = false;
         let panStartX, panStartY;
         let offsetX = 0, offsetY = 0;
 
-        // Firestoreからカードをリアルタイムで取得
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
             cards = [];
             snapshot.forEach((doc) => {
@@ -985,19 +998,16 @@
             updateSyncStatus('error');
         });
         
-        // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', async () => {
-            // Phase 4.1a v1.4: IndexedDB初期化とFile System Access API判定
             if ('showOpenFilePicker' in window) {
                 await initIndexedDB();
             } else {
                 useFileSystemAPI = false;
             }
             
-            loadInstantDeleteSetting(); // Phase 4.1a v1.4
+            loadInstantDeleteSetting();
         });
 
-        // 同期ステータスを更新
         function updateSyncStatus(status) {
             const statusEl = document.getElementById('syncStatus');
             if (status === 'synced') {
@@ -1012,7 +1022,6 @@
             }
         }
 
-        // タブ切り替え
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -1030,11 +1039,12 @@
             }
         }
 
-        // カードを追加
+        // v5.00: カード追加（逆転カード対応）
         async function addCard() {
             const category = document.getElementById('category').value;
             const question = document.getElementById('question').value.trim();
             const answer = document.getElementById('answer').value.trim();
+            const enableReverse = document.getElementById('enableReverse').checked;
             
             if (!question || !answer) {
                 alert('問題と答えの両方を入力してください');
@@ -1044,15 +1054,19 @@
             updateSyncStatus('syncing');
             
             try {
+                // v5.00: type と enableReverse フィールドを追加
                 await db.collection('flashcards').add({
+                    type: enableReverse ? 'basic-reversed' : 'basic',
                     category: category,
                     question: question,
                     answer: answer,
+                    enableReverse: enableReverse,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 document.getElementById('question').value = '';
                 document.getElementById('answer').value = '';
+                document.getElementById('enableReverse').checked = false;
                 
                 alert('カードを追加しました！');
             } catch (error) {
@@ -1062,7 +1076,7 @@
             }
         }
 
-        // カードを表示（学習モード）
+        // v5.00: カード表示（逆転カード対応）
         function displayCard() {
             const display = document.getElementById('cardDisplay');
             
@@ -1077,11 +1091,36 @@
             }
             
             const card = cards[currentIndex];
-            const content = showingQuestion ? card.question : card.answer;
+            
+            // v5.00: 新しいカード表示時に逆転判定（ランダム）
+            if (showingQuestion && card.enableReverse) {
+                currentCardIsReversed = Math.random() < 0.5;
+            }
+            
+            // v5.00: 表示内容を決定
+            let content, directionLabel;
+            if (showingQuestion) {
+                if (currentCardIsReversed) {
+                    content = card.answer;
+                    directionLabel = '逆転';
+                } else {
+                    content = card.question;
+                    directionLabel = '通常';
+                }
+            } else {
+                if (currentCardIsReversed) {
+                    content = card.question;
+                    directionLabel = '逆転';
+                } else {
+                    content = card.answer;
+                    directionLabel = '通常';
+                }
+            }
             
             display.innerHTML = `
                 <div class="card" onclick="flipCard()" style="position: relative;">
                     <div class="card-category">${card.category}</div>
+                    ${card.enableReverse ? `<div class="card-direction">⇆ ${directionLabel}</div>` : ''}
                     <div class="card-content">
                         ${content}
                     </div>
@@ -1099,7 +1138,7 @@
             `;
         }
 
-        // カード一覧を表示
+        // v5.00: カード一覧表示（逆転カードバッジ追加）
         function displayCardList() {
             const listEl = document.getElementById('cardList');
             
@@ -1119,7 +1158,10 @@
                     <div class="card-item">
                         <div class="card-item-header">
                             <span class="card-item-title">問題: ${card.question}</span>
-                            <span class="card-item-category">${card.category}</span>
+                            <div>
+                                <span class="card-item-category">${card.category}</span>
+                                ${card.enableReverse ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
+                            </div>
                         </div>
                         <div class="card-item-content">答え: ${card.answer}</div>
                         <div class="card-item-actions">
@@ -1133,7 +1175,6 @@
             listEl.innerHTML = html;
         }
 
-        // カード検索とフィルター
         function filterCards() {
             const searchText = document.getElementById('searchInput').value.toLowerCase();
             const categoryFilter = document.getElementById('categoryFilter').value;
@@ -1153,31 +1194,29 @@
             });
         }
 
-        // カードをめくる
         function flipCard() {
             showingQuestion = !showingQuestion;
             displayCard();
         }
 
-        // 次のカード
         function nextCard() {
             if (currentIndex < cards.length - 1) {
                 currentIndex++;
                 showingQuestion = true;
+                currentCardIsReversed = false;
                 displayCard();
             }
         }
 
-        // 前のカード
         function previousCard() {
             if (currentIndex > 0) {
                 currentIndex--;
                 showingQuestion = true;
+                currentCardIsReversed = false;
                 displayCard();
             }
         }
 
-        // カードを削除
         async function deleteCard(cardId) {
             if (confirm('このカードを削除しますか？')) {
                 updateSyncStatus('syncing');
@@ -1188,6 +1227,7 @@
                         currentIndex--;
                     }
                     showingQuestion = true;
+                    currentCardIsReversed = false;
                 } catch (error) {
                     console.error('Error deleting card:', error);
                     alert('カードの削除に失敗しました');
@@ -1196,33 +1236,32 @@
             }
         }
 
-        // カードを編集
+        // v5.00: カード編集（逆転カード対応）
         function editCard(cardId) {
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
             
-            // モーダル内のフィールドに値を設定
             document.getElementById('editCategory').value = card.category;
             document.getElementById('editQuestion').value = card.question;
             document.getElementById('editAnswer').value = card.answer;
+            document.getElementById('editEnableReverse').checked = card.enableReverse || false;
             
             editingCardId = cardId;
             
-            // モーダルを表示
             document.getElementById('cardEditModal').style.display = 'block';
         }
         
-        // カード編集モーダルを閉じる
         function closeCardEditModal() {
             document.getElementById('cardEditModal').style.display = 'none';
             editingCardId = null;
         }
 
-        // 編集したカードを保存
+        // v5.00: 編集したカードを保存（逆転カード対応）
         async function saveEditedCard() {
             const category = document.getElementById('editCategory').value;
             const question = document.getElementById('editQuestion').value.trim();
             const answer = document.getElementById('editAnswer').value.trim();
+            const enableReverse = document.getElementById('editEnableReverse').checked;
             
             if (!question || !answer) {
                 alert('問題と答えの両方を入力してください');
@@ -1233,12 +1272,13 @@
             
             try {
                 await db.collection('flashcards').doc(editingCardId).update({
+                    type: enableReverse ? 'basic-reversed' : 'basic',
                     category: category,
                     question: question,
-                    answer: answer
+                    answer: answer,
+                    enableReverse: enableReverse
                 });
                 
-                // モーダルを閉じる
                 closeCardEditModal();
                 
                 alert('カードを更新しました！');
@@ -1249,7 +1289,7 @@
             }
         }
 
-        // Anki用CSVをエクスポート
+        // v5.00: CSV出力（逆転カード対応）
         function exportToAnki() {
             if (cards.length === 0) {
                 alert('エクスポートするカードがありません');
@@ -1261,7 +1301,14 @@
                 const question = card.question.replace(/"/g, '""');
                 const answer = card.answer.replace(/"/g, '""');
                 const category = card.category.replace(/"/g, '""');
+                
+                // 通常方向
                 csv += `"${question}","${answer}","${category}"\n`;
+                
+                // v5.00: 逆転カードの場合は逆方向も出力
+                if (card.enableReverse) {
+                    csv += `"${answer}","${question}","${category}"\n`;
+                }
             });
             
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1279,9 +1326,8 @@
             alert('CSVファイルをダウンロードしました！');
         }
 
-        // ============ PDF機能 ============
-
-        // ドラッグ&ドロップ設定
+        // ========== PDF機能（変更なし） ==========
+        
         const uploadArea = document.getElementById('pdfUploadArea');
         
         uploadArea.addEventListener('dragover', (e) => {
@@ -1305,22 +1351,16 @@
             }
         });
 
-        // PDFを読み込む（ファイル選択）
-        // Phase 4.1a v1.4: PDFアップロードエリアクリック処理
         function handlePDFUploadClick() {
             if (useFileSystemAPI && window.showOpenFilePicker) {
-                // File System Access API版
                 loadPDF(null);
             } else {
-                // 従来版（input file使用）
                 document.getElementById('pdfFileInput').click();
             }
         }
 
-        // Phase 4.1a v1.4: PDFファイルを選択（File System Access API対応）
         async function loadPDF(event) {
             if (useFileSystemAPI && window.showOpenFilePicker) {
-                // File System Access API版
                 try {
                     const [fileHandle] = await window.showOpenFilePicker({
                         types: [{
@@ -1338,7 +1378,6 @@
                     }
                 }
             } else if (event && event.target && event.target.files) {
-                // 従来版（input file使用）
                 const file = event.target.files[0];
                 if (file && file.type === 'application/pdf') {
                     await loadPDFFromFile(file, null);
@@ -1346,18 +1385,14 @@
             }
         }
 
-        // Phase 4.1a v1.4: PDFファイルから読み込み（fileHandle対応）
         async function loadPDFFromFile(file, fileHandle = null) {
             try {
                 currentPDFFile = file;
                 
-                // ファイルのハッシュ値を計算
                 pdfHash = await calculateFileHash(file);
                 console.log('PDF Hash:', pdfHash);
                 
-                // PDFを読み込み
                 const arrayBuffer = await file.arrayBuffer();
-                // Phase 4.1a v1.4: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1369,15 +1404,12 @@
                 totalPages = pdfDoc.numPages;
                 currentPage = 1;
                 
-                // UIを更新
                 document.getElementById('pdfUploadArea').style.display = 'none';
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = file.name;
                 
-                // マーカーを読み込み
                 await loadMarkersFromFirebase();
                 
-                // 最初のページを表示
                 await renderPage(currentPage);
                 
             } catch (error) {
@@ -1387,17 +1419,12 @@
             }
         }
 
-
-        // Phase 3.5 v1.0: ArrayBufferからPDFを読み込み（履歴から再読み込み用）
         async function loadPDFFromArrayBuffer(arrayBuffer, fileName) {
             try {
-                // ファイルハッシュを計算
                 const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
                 pdfHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                 
-                // PDFを読み込み
-                // Phase 4.1a v1.4: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1410,15 +1437,12 @@
                 currentPage = 1;
                 currentPDFFile = { name: fileName };
                 
-                // UIを更新
                 document.getElementById('pdfUploadArea').style.display = 'none';
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = fileName;
                 
-                // マーカーを読み込み
                 await loadMarkersFromFirebase();
                 
-                // 最初のページを表示
                 await renderPage(currentPage);
                 
             } catch (error) {
@@ -1427,7 +1451,7 @@
                 alert('PDFの読み込みに失敗しました: ' + error.message);
             }
         }
-        // ファイルのハッシュ値を計算（SHA-256）
+
         async function calculateFileHash(file) {
             const arrayBuffer = await file.arrayBuffer();
             const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
@@ -1436,19 +1460,16 @@
             return hashHex;
         }
 
-        // ページをレンダリング
         async function renderPage(pageNum) {
             try {
                 const page = await pdfDoc.getPage(pageNum);
                 
-                // PDF canvas
                 let pdfCanvas = document.getElementById('pdfCanvas');
                 const oldPdfCanvas = pdfCanvas;
                 pdfCanvas = document.createElement('canvas');
                 pdfCanvas.id = 'pdfCanvas';
                 oldPdfCanvas.parentNode.replaceChild(pdfCanvas, oldPdfCanvas);
                 
-                // Phase 4.1a v1.4: alpha: false を削除（テキストレンダリング改善）
                 const pdfCtx = pdfCanvas.getContext('2d');
                 
                 const viewport = page.getViewport({scale: scale});
@@ -1456,7 +1477,6 @@
                 pdfCanvas.width = viewport.width;
                 pdfCanvas.height = viewport.height;
                 
-                // Phase 4.1a v1.4: レンダリング設定（テキスト表示改善）
                 const renderContext = {
                     canvasContext: pdfCtx,
                     viewport: viewport,
@@ -1466,7 +1486,6 @@
                 const renderTask = page.render(renderContext);
                 await renderTask.promise;
                 
-                // マーカー canvas をセットアップ
                 let markerCanvas = document.getElementById('markerCanvas');
                 if (!markerCanvas) {
                     markerCanvas = document.createElement('canvas');
@@ -1482,21 +1501,16 @@
                 markerCanvas.width = viewport.width;
                 markerCanvas.height = viewport.height;
                 
-                // マーカーのイベントリスナーを設定
                 setupMarkerEvents(markerCanvas);
                 
-                // 保存されたマーカーを描画
                 drawMarkers();
                 
-                // Phase 4.1a v1.4: テキストレイヤーをレンダリング
                 await renderTextLayer(page, viewport);
                 
-                // Phase 4.1a v1.4: パン移動オフセットをリセット
                 offsetX = 0;
                 offsetY = 0;
                 updateCanvasPosition();
                 
-                // ページ情報を更新
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
                 
@@ -1506,24 +1520,19 @@
             }
         }
 
-        // Phase 4.1a v1.4: テキストレイヤーをレンダリング
         async function renderTextLayer(page, viewport) {
             try {
                 const textLayer = document.getElementById('textLayer');
                 if (!textLayer) return;
                 
-                // 既存のテキストレイヤーをクリア
                 textLayer.innerHTML = '';
                 textLayer.style.width = viewport.width + 'px';
                 textLayer.style.height = viewport.height + 'px';
                 
-                // Phase 4.1a v1.4: --scale-factor CSS変数を設定
                 textLayer.style.setProperty('--scale-factor', viewport.scale);
                 
-                // テキストコンテンツを取得
                 const textContent = await page.getTextContent();
                 
-                // テキストレイヤーをレンダリング
                 pdfjsLib.renderTextLayer({
                     textContentSource: textContent,
                     container: textLayer,
@@ -1536,7 +1545,6 @@
             }
         }
 
-        // 次のページ
         async function nextPage() {
             if (currentPage < totalPages) {
                 currentPage++;
@@ -1544,7 +1552,6 @@
             }
         }
 
-        // 前のページ
         async function previousPage() {
             if (currentPage > 1) {
                 currentPage--;
@@ -1552,7 +1559,6 @@
             }
         }
 
-        // 拡大
         async function zoomIn() {
             const oldScale = scale;
             scale += 0.25;
@@ -1563,7 +1569,6 @@
             }
         }
 
-        // 縮小
         async function zoomOut() {
             const oldScale = scale;
             scale -= 0.25;
@@ -1574,49 +1579,38 @@
             }
         }
         
-        // ============ マーカー機能 ============
-        
-        // マーカー色を選択
         function selectMarkerColor(color) {
             currentMarkerColor = color;
             
-            // アクティブな色を更新
             document.querySelectorAll('.color-btn').forEach(el => el.classList.remove('active'));
             event.target.classList.add('active');
         }
         
-        // マーカーモードの切り替え
-        // Phase 3.5 v1.0: マーカーモード切り替え（色分け・排他制御対応）
         function toggleMarkerMode() {
             markerMode = !markerMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('markerModeBtn');
             
             if (markerMode) {
-                // マーカーモードON
                 btn.textContent = 'マーカーON';
                 btn.className = 'btn btn-mode-on';
                 if (canvas) canvas.style.cursor = 'crosshair';
                 
-                // 他のモードをOFF
                 if (editMode) toggleEditMode();
                 if (deleteMode) toggleDeleteMode();
             } else {
-                // マーカーモードOFF
                 btn.textContent = 'マーカーOFF';
                 btn.className = 'btn btn-mode-off';
                 if (canvas) canvas.style.cursor = 'default';
             }
         }
         
-        // Phase 3.5 v1.0: 修正モード切り替え
         function toggleEditMode() {
             editMode = !editMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('editModeBtn');
             
             if (editMode) {
-                // 修正モードON
                 btn.textContent = '📝 修正ON';
                 btn.className = 'btn btn-mode-on';
                 if (canvas) {
@@ -1624,11 +1618,9 @@
                     canvas.style.cursor = 'move';
                 }
                 
-                // 他のモードをOFF
                 if (markerMode) toggleMarkerMode();
                 if (deleteMode) toggleDeleteMode();
             } else {
-                // 修正モードOFF
                 btn.textContent = '📝 修正OFF';
                 btn.className = 'btn btn-mode-off';
                 if (canvas) {
@@ -1636,21 +1628,18 @@
                     canvas.style.cursor = 'default';
                 }
                 
-                // 選択解除
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 drawMarkers();
             }
         }
         
-        // Phase 3.5 v1.0: 削除モード切り替え
         function toggleDeleteMode() {
             deleteMode = !deleteMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('deleteModeBtn');
             
             if (deleteMode) {
-                // 削除モードON
                 btn.textContent = '🗑️ 削除ON';
                 btn.className = 'btn btn-mode-on';
                 if (canvas) {
@@ -1658,11 +1647,9 @@
                     canvas.style.cursor = 'not-allowed';
                 }
                 
-                // 他のモードをOFF
                 if (markerMode) toggleMarkerMode();
                 if (editMode) toggleEditMode();
             } else {
-                // 削除モードOFF
                 btn.textContent = '🗑️ 削除OFF';
                 btn.className = 'btn btn-mode-off';
                 if (canvas) {
@@ -1672,7 +1659,6 @@
             }
         }
         
-        // Phase 3.5 v1.0: 赤シート色別制御
         function toggleRedSheetColor(color) {
             if (color === 'all') {
                 const newState = !redSheetColors.all;
@@ -1684,7 +1670,6 @@
                     all: newState
                 };
                 
-                // すべてのボタンを更新
                 ['yellow', 'red', 'green', 'blue', 'all'].forEach(c => {
                     const btn = document.getElementById('redsheet' + c.charAt(0).toUpperCase() + c.slice(1));
                     if (btn) {
@@ -1707,7 +1692,6 @@
                     }
                 }
                 
-                // 全てボタンの状態を更新
                 const allActive = redSheetColors.yellow && redSheetColors.red && 
                                  redSheetColors.green && redSheetColors.blue;
                 redSheetColors.all = allActive;
@@ -1724,13 +1708,6 @@
             drawMarkers();
         }
         
-        // 赤シートモードの切り替え（元の関数 - 互換性のため残す）
-        
-        // 赤シートモードの切り替え
-
-        // Phase 3.5 v1.0: PDF履歴管理関数
-        
-        // Phase 4.1a v1.4: 即削除モード設定管理
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -1746,7 +1723,6 @@
             localStorage.setItem('instantDeleteMode', instantDeleteMode);
         }
 
-        // Phase 4.1a v1.4: IndexedDBセットアップ（File System Access API用）
         function initIndexedDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('MyAnkiAppDB', 1);
@@ -1769,45 +1745,35 @@
             });
         }
 
-        // Phase 4.1a v1.4: PDF履歴をIndexedDBに保存（File System Access API版）
-
-        // マーカーイベントのセットアップ
         function setupMarkerEvents(canvas) {
-            // デフォルトのカーソルを設定
             canvas.style.cursor = markerMode ? 'crosshair' : 'default';
             
-            // マウスイベント
             canvas.addEventListener('mousedown', handleMarkerMouseDown);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
             canvas.addEventListener('mouseout', stopDrawing);
             
-            // タッチイベント（iPhone/iPad対応）
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 4.1a v1.4: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            // 削除モード
             if (deleteMode) {
                 deleteMarkerAt(x, y);
                 return;
             }
             
-            // 修正モード（ハンドル検出）
             if (editMode && selectedMarkerIndex !== null) {
                 const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
                 const scaleRatio = scale / marker.scale;
                 const handle = detectHandle(x, y, marker, scaleRatio);
                 
                 if (handle) {
-                    // ハンドルがクリックされた
                     resizingHandle = handle;
                     dragStartX = x;
                     dragStartY = y;
@@ -1815,13 +1781,11 @@
                 }
             }
             
-            // 修正モード（マーカー選択）
             if (editMode) {
                 selectMarkerAt(x, y);
                 return;
             }
             
-            // 赤シートモードでマーカーをクリックした場合、一時的に表示
             const anyRedSheetActive = redSheetColors.yellow || redSheetColors.red || 
                                      redSheetColors.green || redSheetColors.blue;
             if (anyRedSheetActive) {
@@ -1831,20 +1795,17 @@
                 }
             }
             
-            // 通常のマーカー描画
             startDrawing(e);
         }
         
-        // Phase 4.1a v1.4: ハンドル検出（修正モード用）
         function detectHandle(x, y, marker, scaleRatio) {
             const mx = marker.x * scaleRatio;
             const my = marker.y * scaleRatio;
             const mw = marker.width * scaleRatio;
             const mh = marker.height * scaleRatio;
             
-            const handleSize = 10; // ハンドルのクリック範囲
+            const handleSize = 10;
             
-            // 四隅のハンドル位置
             const handles = {
                 nw: { x: mx, y: my },
                 ne: { x: mx + mw, y: my },
@@ -1852,7 +1813,6 @@
                 se: { x: mx + mw, y: my + mh }
             };
             
-            // ハンドルのクリック判定
             for (const [name, pos] of Object.entries(handles)) {
                 if (Math.abs(x - pos.x) <= handleSize && Math.abs(y - pos.y) <= handleSize) {
                     return name;
@@ -1862,7 +1822,6 @@
             return null;
         }
 
-        // Phase 4.1a v1.4: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -1891,7 +1850,6 @@
             drawMarkers();
         }
         
-        // Phase 4.1a v1.4: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -1906,7 +1864,6 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // Phase 4.1a v1.4: 即削除モードまたは確認ダイアログでOKの場合のみ削除
                     if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
                         pageMarkers.splice(i, 1);
                         drawMarkers();
@@ -1947,7 +1904,6 @@
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
-                // クリックしたマーカーは通常の色で表示、それ以外は完全に真っ黒
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
                     ctx.fillStyle = getMarkerColor(marker.color);
                 } else {
@@ -1957,7 +1913,6 @@
                 ctx.fillRect(mx, my, mw, mh);
             });
             
-            // 3秒後に元に戻す
             setTimeout(() => {
                 drawMarkers();
             }, 3000);
@@ -1971,14 +1926,12 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 4.1a v1.4: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
             const currentX = e.clientX - rect.left;
             const currentY = e.clientY - rect.top;
             
-            // ハンドルドラッグによるサイズ変更（修正モード）
             if (resizingHandle && selectedMarkerIndex !== null) {
                 e.preventDefault();
                 const deltaX = currentX - dragStartX;
@@ -1986,190 +1939,6 @@
                 
                 const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
                 
-                // ハンドルの種類に応じてサイズ変更（対角の点が固定点）
-                switch (resizingHandle) {
-                    case 'nw': // 左上ハンドル → 右下が固定点
-                        marker.x += deltaX;
-                        marker.y += deltaY;
-                        marker.width -= deltaX;
-                        marker.height -= deltaY;
-                        break;
-                    case 'ne': // 右上ハンドル → 左下が固定点
-                        marker.y += deltaY;
-                        marker.width += deltaX;
-                        marker.height -= deltaY;
-                        break;
-                    case 'sw': // 左下ハンドル → 右上が固定点
-                        marker.x += deltaX;
-                        marker.width -= deltaX;
-                        marker.height += deltaY;
-                        break;
-                    case 'se': // 右下ハンドル → 左上が固定点
-                        marker.width += deltaX;
-                        marker.height += deltaY;
-                        break;
-                }
-                
-                // 最小サイズを確保
-                if (marker.width < 10) marker.width = 10;
-                if (marker.height < 10) marker.height = 10;
-                
-                dragStartX = currentX;
-                dragStartY = currentY;
-                
-                drawMarkers();
-                return;
-            }
-            
-            // マーカー描画
-            if (!isDrawing || !markerMode) return;
-            e.preventDefault();
-            
-            // 一時的な矩形を描画
-            drawMarkers();
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = getMarkerColor(currentMarkerColor);
-            ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
-                        Math.abs(currentX - startX), Math.abs(currentY - startY));
-        }
-        
-        // Phase 4.1a v1.4: マウスアップ処理（ハンドルドラッグ終了対応）
-        function stopDrawing(e) {
-            // ハンドルドラッグ終了
-            if (resizingHandle) {
-                resizingHandle = null;
-                saveMarkersToFirebase();
-                return;
-            }
-            
-            // マーカードラッグ終了（削除予定、互換性のため残す）
-            if (isDraggingMarker) {
-                isDraggingMarker = false;
-                saveMarkersToFirebase();
-                return;
-            }
-            
-            // マーカー描画終了
-            if (!isDrawing || !markerMode) return;
-            isDrawing = false;
-            
-            const canvas = document.getElementById('markerCanvas');
-            const rect = canvas.getBoundingClientRect();
-            const endX = e.clientX - rect.left;
-            const endY = e.clientY - rect.top;
-            
-            // マーカーを保存
-            const marker = {
-                x: Math.min(startX, endX),
-                y: Math.min(startY, endY),
-                width: Math.abs(endX - startX),
-                height: Math.abs(endY - startY),
-                color: currentMarkerColor,
-                scale: scale
-            };
-            
-            if (marker.width > 5 && marker.height > 5) { // 小さすぎるマーカーは無視
-                saveMarker(marker);
-                drawMarkers();
-            }
-        }
-        
-        // タッチイベントハンドラ
-        function handleTouchStart(e) {
-            const touch = e.touches[0];
-            const rect = e.target.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            
-            // Phase 4.1a v1.4: 2本指タッチ = パン移動開始
-            if (e.touches.length === 2) {
-                e.preventDefault();
-                isPanning = true;
-                panStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                panStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                return;
-            }
-            
-            e.preventDefault();
-            
-            // 削除モード
-            if (deleteMode) {
-                deleteMarkerAt(x, y);
-                return;
-            }
-            
-            // 修正モード（ハンドル検出）
-            if (editMode && selectedMarkerIndex !== null) {
-                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
-                const scaleRatio = scale / marker.scale;
-                const handle = detectHandle(x, y, marker, scaleRatio);
-                
-                if (handle) {
-                    // ハンドルがタッチされた
-                    resizingHandle = handle;
-                    dragStartX = x;
-                    dragStartY = y;
-                    return;
-                }
-            }
-            
-            // 修正モード（マーカー選択）
-            if (editMode) {
-                selectMarkerAt(x, y);
-                return;
-            }
-            
-            // 赤シートモードでマーカーをタップした場合
-            const anyRedSheetActive = redSheetColors.yellow || redSheetColors.red || 
-                                     redSheetColors.green || redSheetColors.blue;
-            if (anyRedSheetActive) {
-                if (isClickOnMarker(x, y)) {
-                    showMarkerTemporarily(x, y);
-                    return;
-                }
-            }
-            
-            // 通常のマーカー描画
-            if (!markerMode) return;
-            isDrawing = true;
-            startX = x;
-            startY = y;
-        }
-        
-        function handleTouchMove(e) {
-            // Phase 4.1a v1.4: 2本指パン移動
-            if (isPanning && e.touches.length === 2) {
-                e.preventDefault();
-                const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const deltaX = currentX - panStartX;
-                const deltaY = currentY - panStartY;
-                
-                offsetX += deltaX;
-                offsetY += deltaY;
-                
-                panStartX = currentX;
-                panStartY = currentY;
-                
-                updateCanvasPosition();
-                return;
-            }
-            
-            const touch = e.touches[0];
-            const canvas = document.getElementById('markerCanvas');
-            const rect = canvas.getBoundingClientRect();
-            const currentX = touch.clientX - rect.left;
-            const currentY = touch.clientY - rect.top;
-            
-            // ハンドルドラッグによるサイズ変更（修正モード）
-            if (resizingHandle && selectedMarkerIndex !== null) {
-                e.preventDefault();
-                const deltaX = currentX - dragStartX;
-                const deltaY = currentY - dragStartY;
-                
-                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
-                
-                // ハンドルの種類に応じてサイズ変更
                 switch (resizingHandle) {
                     case 'nw':
                         marker.x += deltaX;
@@ -2203,7 +1972,6 @@
                 return;
             }
             
-            // 通常のマーカー描画
             if (!isDrawing || !markerMode) return;
             e.preventDefault();
             
@@ -2214,7 +1982,170 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 4.1a v1.4: canvasの位置を更新（パン移動対応）
+        function stopDrawing(e) {
+            if (resizingHandle) {
+                resizingHandle = null;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            if (isDraggingMarker) {
+                isDraggingMarker = false;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            if (!isDrawing || !markerMode) return;
+            isDrawing = false;
+            
+            const canvas = document.getElementById('markerCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            const marker = {
+                x: Math.min(startX, endX),
+                y: Math.min(startY, endY),
+                width: Math.abs(endX - startX),
+                height: Math.abs(endY - startY),
+                color: currentMarkerColor,
+                scale: scale
+            };
+            
+            if (marker.width > 5 && marker.height > 5) {
+                saveMarker(marker);
+                drawMarkers();
+            }
+        }
+        
+        function handleTouchStart(e) {
+            const touch = e.touches[0];
+            const rect = e.target.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                isPanning = true;
+                panStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                panStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                return;
+            }
+            
+            e.preventDefault();
+            
+            if (deleteMode) {
+                deleteMarkerAt(x, y);
+                return;
+            }
+            
+            if (editMode && selectedMarkerIndex !== null) {
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                const scaleRatio = scale / marker.scale;
+                const handle = detectHandle(x, y, marker, scaleRatio);
+                
+                if (handle) {
+                    resizingHandle = handle;
+                    dragStartX = x;
+                    dragStartY = y;
+                    return;
+                }
+            }
+            
+            if (editMode) {
+                selectMarkerAt(x, y);
+                return;
+            }
+            
+            const anyRedSheetActive = redSheetColors.yellow || redSheetColors.red || 
+                                     redSheetColors.green || redSheetColors.blue;
+            if (anyRedSheetActive) {
+                if (isClickOnMarker(x, y)) {
+                    showMarkerTemporarily(x, y);
+                    return;
+                }
+            }
+            
+            if (!markerMode) return;
+            isDrawing = true;
+            startX = x;
+            startY = y;
+        }
+        
+        function handleTouchMove(e) {
+            if (isPanning && e.touches.length === 2) {
+                e.preventDefault();
+                const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const deltaX = currentX - panStartX;
+                const deltaY = currentY - panStartY;
+                
+                offsetX += deltaX;
+                offsetY += deltaY;
+                
+                panStartX = currentX;
+                panStartY = currentY;
+                
+                updateCanvasPosition();
+                return;
+            }
+            
+            const touch = e.touches[0];
+            const canvas = document.getElementById('markerCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const currentX = touch.clientX - rect.left;
+            const currentY = touch.clientY - rect.top;
+            
+            if (resizingHandle && selectedMarkerIndex !== null) {
+                e.preventDefault();
+                const deltaX = currentX - dragStartX;
+                const deltaY = currentY - dragStartY;
+                
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                
+                switch (resizingHandle) {
+                    case 'nw':
+                        marker.x += deltaX;
+                        marker.y += deltaY;
+                        marker.width -= deltaX;
+                        marker.height -= deltaY;
+                        break;
+                    case 'ne':
+                        marker.y += deltaY;
+                        marker.width += deltaX;
+                        marker.height -= deltaY;
+                        break;
+                    case 'sw':
+                        marker.x += deltaX;
+                        marker.width -= deltaX;
+                        marker.height += deltaY;
+                        break;
+                    case 'se':
+                        marker.width += deltaX;
+                        marker.height += deltaY;
+                        break;
+                }
+                
+                if (marker.width < 10) marker.width = 10;
+                if (marker.height < 10) marker.height = 10;
+                
+                dragStartX = currentX;
+                dragStartY = currentY;
+                
+                drawMarkers();
+                return;
+            }
+            
+            if (!isDrawing || !markerMode) return;
+            e.preventDefault();
+            
+            drawMarkers();
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = getMarkerColor(currentMarkerColor);
+            ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
+                        Math.abs(currentX - startX), Math.abs(currentY - startY));
+        }
+        
         function updateCanvasPosition() {
             const wrapper = document.getElementById('canvasWrapper');
             if (wrapper) {
@@ -2223,13 +2154,11 @@
         }
         
         function handleTouchEnd(e) {
-            // Phase 4.1a v1.4: パン移動終了
             if (isPanning) {
                 isPanning = false;
                 return;
             }
             
-            // ハンドルドラッグ終了
             if (resizingHandle) {
                 e.preventDefault();
                 resizingHandle = null;
@@ -2237,7 +2166,6 @@
                 return;
             }
             
-            // 通常のマーカー描画終了
             if (!isDrawing || !markerMode) return;
             e.preventDefault();
             isDrawing = false;
@@ -2263,7 +2191,6 @@
             }
         }
         
-        // マーカー色を取得
         function getMarkerColor(color) {
             const colors = {
                 'yellow': 'rgba(255, 255, 0, 0.4)',
@@ -2274,7 +2201,6 @@
             return colors[color] || colors['yellow'];
         }
         
-        // マーカーを保存
         function saveMarker(marker) {
             if (!pdfHash) return;
             
@@ -2287,12 +2213,9 @@
             
             markers[pdfHash][currentPage].push(marker);
             
-            // Firebaseに保存
             saveMarkersToFirebase();
         }
         
-        // マーカーを描画
-        // Phase 3.5 v1.0: マーカー描画（色別赤シート対応）
         function drawMarkers() {
             const canvas = document.getElementById('markerCanvas');
             if (!canvas) return;
@@ -2303,14 +2226,12 @@
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
             markers[pdfHash][currentPage].forEach((marker, index) => {
-                // スケール調整
                 const scaleRatio = scale / marker.scale;
                 const mx = marker.x * scaleRatio;
                 const my = marker.y * scaleRatio;
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
-                // 赤シートが有効な色の場合は黒で塗りつぶし、それ以外は通常の色
                 if (redSheetColors[marker.color]) {
                     ctx.fillStyle = '#000000';
                 } else {
@@ -2319,22 +2240,19 @@
                 
                 ctx.fillRect(mx, my, mw, mh);
                 
-                // 修正モードで選択されているマーカーに枠とハンドルを表示
                 if (editMode && selectedMarkerIndex === index) {
-                    // 枠を表示
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 3;
                     ctx.setLineDash([5, 5]);
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // Phase 4.1a v1.4: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
-                        { x: mx, y: my }, // 左上
-                        { x: mx + mw, y: my }, // 右上
-                        { x: mx, y: my + mh }, // 左下
-                        { x: mx + mw, y: my + mh } // 右下
+                        { x: mx, y: my },
+                        { x: mx + mw, y: my },
+                        { x: mx, y: my + mh },
+                        { x: mx + mw, y: my + mh }
                     ];
                     
                     handles.forEach(handle => {
@@ -2350,7 +2268,6 @@
             });
         }
         
-        // このページのマーカーを消去
         function clearPageMarkers() {
             if (!pdfHash) return;
             
@@ -2363,7 +2280,6 @@
             }
         }
         
-        // Firebaseにマーカーを保存
         async function saveMarkersToFirebase() {
             if (!pdfHash) return;
             
@@ -2377,7 +2293,6 @@
             }
         }
         
-        // Firebaseからマーカーを読み込み
         async function loadMarkersFromFirebase() {
             if (!pdfHash) return;
             
@@ -2393,7 +2308,6 @@
             }
         }
 
-        // PDFを閉じる
         function closePDF() {
             if (confirm('PDFを閉じますか？')) {
                 pdfDoc = null;
@@ -2405,19 +2319,17 @@
                 isDrawing = false;
                 redSheetMode = false;
                 
-                // Phase 3.5 v1.0: 新機能の変数をリセット
                 editMode = false;
                 deleteMode = false;
                 redSheetColors = { yellow: false, red: false, green: false, blue: false, all: false };
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null; // Phase 4.1a v1.4
-                isPanning = false; // Phase 4.1a v1.4
-                offsetX = 0; // Phase 4.1a v1.4
-                offsetY = 0; // Phase 4.1a v1.4
+                resizingHandle = null;
+                isPanning = false;
+                offsetX = 0;
+                offsetY = 0;
                 
-                // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
                 const editBtn = document.getElementById('editModeBtn');
                 const deleteBtn = document.getElementById('deleteModeBtn');
@@ -2434,7 +2346,6 @@
                     deleteBtn.className = 'btn btn-mode-off';
                 }
                 
-                // 赤シートボタンをリセット
                 ['yellow', 'red', 'green', 'blue', 'all'].forEach(color => {
                     const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
                     if (btn) btn.classList.remove('active');
@@ -2446,9 +2357,8 @@
             }
         }
         
-        // Phase 4.1a v1.4: デッキ管理機能
+        // ========== デッキ管理機能（変更なし） ==========
         
-        // デッキをFirestoreから読み込み
         async function loadDecks() {
             try {
                 const snapshot = await db.collection('decks').orderBy('order').get();
@@ -2462,7 +2372,6 @@
             }
         }
         
-        // デッキ一覧を表示
         function displayDecks() {
             const deckList = document.getElementById('deckList');
             if (!deckList) return;
@@ -2482,10 +2391,9 @@
             deckList.innerHTML = html;
         }
         
-        // デッキアイテムをレンダリング（再帰）
         function renderDeckItem(deck, level) {
             const childDecks = decks.filter(d => d.parentId === deck.id);
-            const cardCount = 0; // TODO: 後で実装
+            const cardCount = 0;
             const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
             
             let html = `
@@ -2511,7 +2419,6 @@
             return html;
         }
         
-        // 新規デッキ作成
         function createNewDeck() {
             currentEditingDeckId = null;
             document.getElementById('deckModalTitle').textContent = '新規デッキ作成';
@@ -2521,7 +2428,6 @@
             document.getElementById('deckModal').style.display = 'block';
         }
         
-        // サブデッキ追加
         function addSubDeck(parentId) {
             const depth = getDeckDepth(parentId);
             if (depth >= 2) {
@@ -2537,7 +2443,6 @@
             document.getElementById('deckModal').style.display = 'block';
         }
         
-        // デッキ編集
         function editDeck(deckId) {
             const deck = decks.find(d => d.id === deckId);
             if (!deck) return;
@@ -2550,7 +2455,6 @@
             document.getElementById('deckModal').style.display = 'block';
         }
         
-        // 親デッキ選択肢を更新
         function updateParentDeckOptions(currentDeckId) {
             const select = document.getElementById('parentDeckId');
             let html = '<option value="">なし（トップレベル）</option>';
@@ -2560,7 +2464,6 @@
                     return;
                 }
                 
-                // 孫デッキ（深さ2）は親として選択できない
                 if (getDeckDepth(deck.id) >= 2) {
                     return;
                 }
@@ -2577,7 +2480,6 @@
             select.innerHTML = html;
         }
         
-        // デッキの深さを取得
         function getDeckDepth(deckId) {
             let depth = 0;
             let currentDeck = decks.find(d => d.id === deckId);
@@ -2590,7 +2492,6 @@
             return depth;
         }
         
-        // 最大子孫深度を取得
         function getMaxDescendantDepth(deckId) {
             const children = decks.filter(d => d.parentId === deckId);
             if (children.length === 0) return 0;
@@ -2604,7 +2505,6 @@
             return maxDepth;
         }
         
-        // 子孫かどうかチェック
         function isDescendant(deckId, ancestorId) {
             let current = decks.find(d => d.id === deckId);
             
@@ -2616,7 +2516,6 @@
             return false;
         }
         
-        // デッキパスを取得
         function getDeckPath(deckId) {
             const path = [];
             let currentDeck = decks.find(d => d.id === deckId);
@@ -2630,7 +2529,6 @@
             return path.join(' > ');
         }
         
-        // デッキ保存
         async function saveDeck() {
             const name = document.getElementById('deckName').value.trim();
             if (!name) {
@@ -2666,7 +2564,6 @@
             }
         }
         
-        // デッキ削除
         async function deleteDeck(deckId) {
             const deck = decks.find(d => d.id === deckId);
             if (!deck) return;
@@ -2690,18 +2587,15 @@
             }
         }
         
-        // モーダルを閉じる
         function closeModal() {
             document.getElementById('deckModal').style.display = 'none';
         }
         
-        // ページ読み込み時にデッキを読み込み
         window.addEventListener('load', () => {
             loadDecks();
         });
     </script>
     
-    <!-- Phase 4.1a v1.4: デッキ編集モーダル -->
     <div id="deckModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -2723,7 +2617,7 @@
         </div>
     </div>
     
-    <!-- Phase 4.1a v1.4: カード編集モーダル -->
+    <!-- v5.00: カード編集モーダル（逆転チェックボックス追加） -->
     <div id="cardEditModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -2743,11 +2637,16 @@
             </div>
             <div class="input-group">
                 <label for="editQuestion">問題</label>
-                <textarea id="editQuestion" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
+                <textarea id="editQuestion" placeholder="例:徳川家康が江戸幕府を開いた年は？"></textarea>
             </div>
             <div class="input-group">
                 <label for="editAnswer">答え</label>
                 <textarea id="editAnswer" placeholder="例：1603年"></textarea>
+            </div>
+            <!-- v5.00: 編集モーダルにも逆転チェックボックス追加 -->
+            <div class="checkbox-group">
+                <input type="checkbox" id="editEnableReverse">
+                <label for="editEnableReverse">逆方向も学習（答え→問題）</label>
             </div>
             <button class="btn" onclick="saveEditedCard()">変更を保存</button>
             <button class="btn btn-secondary" onclick="closeCardEditModal()">キャンセル</button>
