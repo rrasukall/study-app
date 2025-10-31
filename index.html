@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.02</title>
+    <title>MyAnkiApp v5.02.1</title>
     <style>
         * {
             margin: 0;
@@ -431,6 +431,49 @@
         .typing-input.incorrect {
             border-color: #e74c3c;
             background: #fadbd8;
+        }
+        
+        /* v5.02.1: 文字数警告 */
+        .length-warning {
+            background: #fff3cd;
+            border-left: 4px solid #f39c12;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            color: #856404;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        /* v5.02.1: 文字ごとの判定結果 */
+        .typing-character-result {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .typing-character-result-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .typing-character-display {
+            font-size: 24px;
+            letter-spacing: 2px;
+            font-family: monospace;
+        }
+        
+        .char-correct {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .char-incorrect {
+            color: #e74c3c;
+            font-weight: bold;
         }
         
         .typing-result {
@@ -927,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1010,12 +1053,12 @@
                             <textarea id="typingQuestion" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
                         </div>
                         <div class="input-group">
-                            <label for="typingAnswers">正解（複数可・改行で区切る）</label>
-                            <textarea id="typingAnswers" placeholder="例：&#10;1603年&#10;1603&#10;慶長8年"></textarea>
+                            <label for="typingAnswer">正解</label>
+                            <input type="text" id="typingAnswer" placeholder="例：1603年">
                         </div>
                         <div class="checkbox-group">
                             <input type="checkbox" id="typingCaseSensitive">
-                            <label for="typingCaseSensitive">大文字小文字を区別する</label>
+                            <label for="typingCaseSensitive">大文字小文字・全角半角を区別する</label>
                         </div>
                     </div>
                     
@@ -1461,22 +1504,11 @@
                 } else if (currentCardType === 'typing') {
                     // v5.02: タイピング式カード
                     const question = document.getElementById('typingQuestion').value.trim();
-                    const answersText = document.getElementById('typingAnswers').value.trim();
+                    const answer = document.getElementById('typingAnswer').value.trim();
                     const caseSensitive = document.getElementById('typingCaseSensitive').checked;
                     
-                    if (!question || !answersText) {
+                    if (!question || !answer) {
                         alert('問題と正解の両方を入力してください');
-                        updateSyncStatus('synced');
-                        return;
-                    }
-                    
-                    // 改行で分割して正解リストを作成
-                    const answers = answersText.split('\n')
-                        .map(a => a.trim())
-                        .filter(a => a.length > 0);
-                    
-                    if (answers.length === 0) {
-                        alert('正解を少なくとも1つ入力してください');
                         updateSyncStatus('synced');
                         return;
                     }
@@ -1485,13 +1517,13 @@
                         type: 'typing',
                         category: category,
                         question: question,
-                        answers: answers,
+                        answer: answer,
                         caseSensitive: caseSensitive,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
                     document.getElementById('typingQuestion').value = '';
-                    document.getElementById('typingAnswers').value = '';
+                    document.getElementById('typingAnswer').value = '';
                     document.getElementById('typingCaseSensitive').checked = false;
                 }
                 
@@ -1538,9 +1570,9 @@
                         <div class="card-controls">
                             <div class="nav-buttons">
                                 <button class="btn" onclick="previousCard()">← 前へ</button>
-                                <button class="btn" onclick="checkTypingAnswer()">判定</button>
-                                <button class="btn" onclick="flipCard()">答えを表示</button>
                                 <button class="btn" onclick="nextCard()">次へ →</button>
+                                <button class="btn" onclick="checkTypingAnswer()">判定</button>
+                                <button class="btn" onclick="flipCard()">答え</button>
                             </div>
                             <div class="card-info">
                                 ${currentIndex + 1} / ${cards.length}
@@ -1554,7 +1586,8 @@
                         if (input) input.focus();
                     }, 100);
                 } else {
-                    // 答え表示：正解一覧を表示
+                    // 答え表示：正解を表示
+                    const answer = card.answer || (card.answers && card.answers[0]) || '';
                     display.innerHTML = `
                         <div class="card" onclick="flipCard()">
                             <div class="card-category">${card.category}</div>
@@ -1562,8 +1595,7 @@
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
                                 <div style="margin-bottom: 20px;">${card.question}</div>
                                 <div style="font-size: 18px; color: rgba(255,255,255,0.9);">
-                                    <strong>正解:</strong><br>
-                                    ${card.answers.map(a => `• ${a}`).join('<br>')}
+                                    <strong>正解:</strong> ${answer}
                                 </div>
                             </div>
                         </div>
@@ -1725,7 +1757,7 @@
             `;
         }
 
-        // v5.02: タイピング式カードの入力判定
+        // v5.02.1: タイピング式カードの入力判定（完全リニューアル）
         function checkTypingAnswer() {
             const card = cards[currentIndex];
             if (card.type !== 'typing') return;
@@ -1742,31 +1774,81 @@
                 return;
             }
             
-            // 判定処理
-            let isCorrect = false;
-            if (card.caseSensitive) {
-                // 大文字小文字を区別
-                isCorrect = card.answers.some(ans => ans === userAnswer);
-            } else {
-                // 大文字小文字を区別しない
-                const userLower = userAnswer.toLowerCase();
-                isCorrect = card.answers.some(ans => ans.toLowerCase() === userLower);
+            // 正解を取得（互換性対応）
+            const correctAnswer = card.answer || (card.answers && card.answers[0]) || '';
+            
+            // テキスト正規化関数
+            function normalizeText(text, caseSensitive) {
+                // スペースは常に削除
+                text = text.replace(/\s+/g, '');
+                
+                if (!caseSensitive) {
+                    // 全角→半角変換
+                    text = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => {
+                        return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+                    });
+                    // 小文字化
+                    text = text.toLowerCase();
+                }
+                
+                return text;
+            }
+            
+            // 正規化
+            const normalizedUser = normalizeText(userAnswer, card.caseSensitive);
+            const normalizedCorrect = normalizeText(correctAnswer, card.caseSensitive);
+            
+            // 完全一致判定
+            const isCorrect = normalizedUser === normalizedCorrect;
+            
+            // 文字数チェック
+            const lengthMatch = normalizedUser.length === normalizedCorrect.length;
+            
+            // 文字ごとの判定
+            let characterDisplay = '';
+            const maxLen = Math.max(normalizedUser.length, normalizedCorrect.length);
+            
+            for (let i = 0; i < maxLen; i++) {
+                const userChar = normalizedUser[i] || '';
+                const correctChar = normalizedCorrect[i] || '';
+                
+                if (userChar === correctChar && userChar !== '') {
+                    // 正しい文字：緑
+                    characterDisplay += `<span class="char-correct">${userChar}</span>`;
+                } else if (userChar !== '') {
+                    // 間違った文字：赤
+                    characterDisplay += `<span class="char-incorrect">${userChar}</span>`;
+                }
             }
             
             // 結果表示
-            input.className = 'typing-input ' + (isCorrect ? 'correct' : 'incorrect');
             input.disabled = true;
             
+            let resultHTML = '';
+            
             if (isCorrect) {
-                result.innerHTML = '<div class="typing-result correct">✅ 正解！</div>';
+                // 完全正解
+                input.className = 'typing-input correct';
+                resultHTML = '<div class="typing-result correct">✅ 正解！</div>';
             } else {
-                result.innerHTML = `
-                    <div class="typing-result incorrect">
-                        ❌ 不正解<br>
-                        <span style="font-size: 16px;">正解: ${card.answers.join(', ')}</span>
+                // 不正解
+                input.className = 'typing-input incorrect';
+                
+                // 文字数警告
+                if (!lengthMatch) {
+                    resultHTML += '<div class="length-warning">⚠️ 文字数が異なります</div>';
+                }
+                
+                // 文字ごとの判定結果
+                resultHTML += `
+                    <div class="typing-character-result">
+                        <div class="typing-character-result-label">あなたの入力：</div>
+                        <div class="typing-character-display">${characterDisplay}</div>
                     </div>
                 `;
             }
+            
+            result.innerHTML = resultHTML;
         }
 
         // v5.01: カード一覧表示（穴埋め対応）
@@ -1787,6 +1869,7 @@
             cards.forEach(card => {
                 if (card.type === 'typing') {
                     // v5.02: タイピング式カードの表示
+                    const answer = card.answer || (card.answers && card.answers.join(', ')) || '';
                     html += `
                         <div class="card-item">
                             <div class="card-item-header">
@@ -1797,8 +1880,8 @@
                                 </div>
                             </div>
                             <div class="card-item-content">
-                                正解: ${card.answers.join(', ')}
-                                ${card.caseSensitive ? ' <span style="color: #e67e22;">(大文字小文字区別)</span>' : ''}
+                                正解: ${answer}
+                                ${card.caseSensitive ? ' <span style="color: #e67e22;">(大文字小文字・全角半角区別)</span>' : ''}
                             </div>
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
@@ -1864,8 +1947,9 @@
                 
                 if (card.type === 'typing') {
                     // v5.02: タイピング式カードの検索
+                    const answer = card.answer || (card.answers && card.answers.join(' ')) || '';
                     matchesSearch = card.question.toLowerCase().includes(searchText) ||
-                                  card.answers.some(a => a.toLowerCase().includes(searchText));
+                                  answer.toLowerCase().includes(searchText);
                 } else if (card.type === 'cloze') {
                     matchesSearch = card.text.toLowerCase().includes(searchText);
                 } else {
@@ -1945,7 +2029,8 @@
                 document.getElementById('editCardType').value = 'typing';
                 document.getElementById('editTypingInputs').style.display = 'block';
                 document.getElementById('editTypingQuestion').value = card.question;
-                document.getElementById('editTypingAnswers').value = card.answers.join('\n');
+                const answer = card.answer || (card.answers && card.answers[0]) || '';
+                document.getElementById('editTypingAnswer').value = answer;
                 document.getElementById('editTypingCaseSensitive').checked = card.caseSensitive || false;
             } else if (card.type === 'cloze') {
                 // v5.01: 穴埋めカード編集
@@ -2020,11 +2105,11 @@
                 
                 if (basicQuestion && basicQuestion.trim()) {
                     document.getElementById('editTypingQuestion').value = basicQuestion;
-                    document.getElementById('editTypingAnswers').value = basicAnswer || '';
+                    document.getElementById('editTypingAnswer').value = basicAnswer || '';
                 } else if (clozeText && clozeText.trim()) {
                     const plainText = clozeText.replace(/\{\{c\d+::([^}]+)\}\}/g, '$1');
                     document.getElementById('editTypingQuestion').value = plainText;
-                    document.getElementById('editTypingAnswers').value = '';
+                    document.getElementById('editTypingAnswer').value = '';
                 }
                 
                 document.getElementById('editTypingInputs').style.display = 'block';
@@ -2181,21 +2266,11 @@
                 } else if (cardType === 'typing') {
                     // v5.02: タイピング式カード更新
                     const question = document.getElementById('editTypingQuestion').value.trim();
-                    const answersText = document.getElementById('editTypingAnswers').value.trim();
+                    const answer = document.getElementById('editTypingAnswer').value.trim();
                     const caseSensitive = document.getElementById('editTypingCaseSensitive').checked;
                     
-                    if (!question || !answersText) {
+                    if (!question || !answer) {
                         alert('問題と正解の両方を入力してください');
-                        updateSyncStatus('synced');
-                        return;
-                    }
-                    
-                    const answers = answersText.split('\n')
-                        .map(a => a.trim())
-                        .filter(a => a.length > 0);
-                    
-                    if (answers.length === 0) {
-                        alert('正解を少なくとも1つ入力してください');
                         updateSyncStatus('synced');
                         return;
                     }
@@ -2204,11 +2279,11 @@
                         type: 'typing',
                         category: category,
                         question: question,
-                        answers: answers,
+                        answer: answer,
                         caseSensitive: caseSensitive,
                         text: firebase.firestore.FieldValue.delete(),
                         clozes: firebase.firestore.FieldValue.delete(),
-                        answer: firebase.firestore.FieldValue.delete(),
+                        answers: firebase.firestore.FieldValue.delete(),
                         enableReverse: firebase.firestore.FieldValue.delete()
                     });
                 }
@@ -2235,10 +2310,10 @@
                 const category = card.category.replace(/"/g, '""');
                 
                 if (card.type === 'typing') {
-                    // v5.02: タイピング式カードは問題と正解（カンマ区切り）を出力
+                    // v5.02: タイピング式カードは問題と正解を出力
                     const question = card.question.replace(/"/g, '""');
-                    const answers = card.answers.join(', ').replace(/"/g, '""');
-                    csv += `"${question}","${answers}","${category}"\n`;
+                    const answer = (card.answer || (card.answers && card.answers.join(', ')) || '').replace(/"/g, '""');
+                    csv += `"${question}","${answer}","${category}"\n`;
                 } else if (card.type === 'cloze') {
                     // v5.01: 穴埋めカードはテキストをそのまま出力
                     const text = card.text.replace(/"/g, '""');
@@ -3626,12 +3701,12 @@
                     <textarea id="editTypingQuestion" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
                 </div>
                 <div class="input-group">
-                    <label for="editTypingAnswers">正解（複数可・改行で区切る）</label>
-                    <textarea id="editTypingAnswers" placeholder="例：&#10;1603年&#10;1603&#10;慶長8年"></textarea>
+                    <label for="editTypingAnswer">正解</label>
+                    <input type="text" id="editTypingAnswer" placeholder="例：1603年">
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="editTypingCaseSensitive">
-                    <label for="editTypingCaseSensitive">大文字小文字を区別する</label>
+                    <label for="editTypingCaseSensitive">大文字小文字・全角半角を区別する</label>
                 </div>
             </div>
             
