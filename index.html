@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp Phase 3.5 v2.1</title>
+    <title>MyAnkiApp Phase 4.1a v1.0</title>
     <style>
         * {
             margin: 0;
@@ -331,7 +331,7 @@
             position: relative;
             display: inline-block;
             margin: 0 auto;
-            transition: transform 0.05s ease-out; /* Phase 3.5 v2.1: パン移動スムーズ化 */
+            transition: transform 0.05s ease-out; /* Phase 4.1a v1.0: パン移動スムーズ化 */
         }
         
         #pdfCanvas {
@@ -421,7 +421,7 @@
         /* Phase 3.5 v1.0: 新機能用CSS */
         
         /* PDF履歴表示 */
-        /* Phase 3.5 v2.1: プルダウン形式の履歴 */
+        /* Phase 4.1a v1.0: プルダウン形式の履歴 */
         .pdf-history-dropdown {
             background: #f8f9fa;
             padding: 12px 15px;
@@ -471,7 +471,7 @@
             padding: 10px;
         }
         
-        /* Phase 3.5 v2.1: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
+        /* Phase 4.1a v1.0: 新UI配置用CSS（redsheet-controlsと同じサイズ感） */
         .pdf-controls-row {
             display: flex;
             gap: 5px;
@@ -629,7 +629,7 @@
             cursor: not-allowed !important;
         }
         
-        /* Phase 3.5 v2.1: テキストレイヤー用CSS */
+        /* Phase 4.1a v1.0: テキストレイヤー用CSS */
         .textLayer {
             position: absolute;
             left: 0;
@@ -652,72 +652,185 @@
         .textLayer ::selection {
             background: rgba(0, 0, 255, 0.3);
         }
+        
+        /* Phase 4.1a v1.0: デッキ管理用CSS */
+        .deck-manager, .card-manager {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .deck-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .deck-item.child-deck {
+            margin-left: 30px;
+            border-left-color: #95a5a6;
+        }
+        
+        .deck-item.grandchild-deck {
+            margin-left: 60px;
+            border-left-color: #bdc3c7;
+        }
+        
+        .deck-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .deck-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .deck-count {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .deck-actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .deck-actions .btn {
+            padding: 6px 12px;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        
+        .filter-group {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            width: auto;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .card-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: auto;
+        }
+        
+        /* モーダルダイアログ */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 3.5 v2.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">Phase 4.1a v1.0</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('create')">カード作成</button>
-            <button class="tab" onclick="switchTab('study')">学習</button>
-            <button class="tab" onclick="switchTab('list')">カード一覧</button>
-            <button class="tab" onclick="switchTab('pdf')">PDF学習</button>
+            <button class="tab active" onclick="switchTab('home')">🏠 ホーム</button>
+            <button class="tab" onclick="switchTab('pdf')">📚 PDF</button>
+            <button class="tab" onclick="switchTab('cards')">📝 カード管理</button>
         </div>
         
-        <!-- カード作成セクション -->
-        <div id="create-section" class="section active">
-            <div class="card-creator">
-                <h2 style="margin-bottom: 20px;">新しいカードを作成</h2>
-                <div class="input-group">
-                    <label for="category">カテゴリ（科目）</label>
-                    <select id="category">
-                        <option value="数学">数学</option>
-                        <option value="英語">英語</option>
-                        <option value="国語">国語</option>
-                        <option value="理科">理科</option>
-                        <option value="社会">社会</option>
-                        <option value="その他">その他</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="question">問題</label>
-                    <textarea id="question" placeholder="例：徳川家康が江戸幕府を開いた年は？"></textarea>
-                </div>
-                <div class="input-group">
-                    <label for="answer">答え</label>
-                    <textarea id="answer" placeholder="例：1603年"></textarea>
-                </div>
-                <button class="btn" onclick="addCard()">カードを追加</button>
-                <button class="btn btn-success" onclick="exportToAnki()">Anki用CSV出力</button>
+        <!-- Phase 4.1a v1.0: ホームセクション（デッキ一覧） -->
+        <div id="home-section" class="section active">
+            <div class="deck-manager">
+                <h2 style="margin-bottom: 20px;">📚 デッキ一覧</h2>
+                
+                <button class="btn" onclick="createNewDeck()" style="margin-bottom: 20px;">➕ 新規デッキ作成</button>
+                
+                <div id="deckList"></div>
             </div>
         </div>
         
-        <!-- 学習セクション -->
-        <div id="study-section" class="section">
-            <div class="card-viewer">
-                <div id="cardDisplay"></div>
-            </div>
-        </div>
-        
-        <!-- カード一覧セクション -->
-        <div id="list-section" class="section">
-            <div class="card-list">
-                <h2 style="margin-bottom: 20px;">カード一覧</h2>
+        <!-- Phase 4.1a v1.0: カード管理セクション -->
+        <div id="cards-section" class="section">
+            <div class="card-manager">
+                <h2 style="margin-bottom: 20px;">📝 カード管理</h2>
+                
                 <div class="filter-group">
-                    <input type="text" id="searchInput" placeholder="検索..." onkeyup="filterCards()">
-                    <select id="categoryFilter" onchange="filterCards()">
-                        <option value="">すべてのカテゴリ</option>
-                        <option value="数学">数学</option>
-                        <option value="英語">英語</option>
-                        <option value="国語">国語</option>
-                        <option value="理科">理科</option>
-                        <option value="社会">社会</option>
-                        <option value="その他">その他</option>
+                    <label for="deckFilter">デッキフィルター:</label>
+                    <select id="deckFilter" onchange="filterCardsByDeck()">
+                        <option value="">すべてのデッキ</option>
                     </select>
+                    
+                    <input type="text" id="searchInput" placeholder="検索..." onkeyup="filterCards()" style="margin-left: 10px;">
                 </div>
+                
+                <div style="margin: 15px 0;">
+                    <button class="btn" onclick="selectAllCards()">すべて選択</button>
+                    <button class="btn" onclick="deselectAllCards()">選択解除</button>
+                    <button class="btn btn-success" onclick="exportSelectedCardsToAnki()">選択したカードをエクスポート (CSV)</button>
+                </div>
+                
                 <div id="cardList"></div>
             </div>
         </div>
@@ -735,7 +848,7 @@
                     <input type="file" id="pdfFileInput" accept="application/pdf" onchange="loadPDF(event)" style="display: none;">
                 </div>
                 
-                <!-- Phase 3.5 v2.1: 初期画面にも履歴を表示 -->
+                <!-- Phase 4.1a v1.0: 初期画面にも履歴を表示 -->
                 <div class="pdf-history-dropdown" id="pdfHistoryUpload" style="margin-top: 20px;">
                     <label for="pdfHistorySelectUpload">📚 最近開いたPDF：</label>
                     <select id="pdfHistorySelectUpload" onchange="loadPDFFromHistoryDropdown(this.value)">
@@ -746,7 +859,7 @@
                 <div id="pdfViewerContainer" style="display: none;">
                     <div class="pdf-filename" id="pdfFilename"></div>
                     
-                    <!-- Phase 3.5 v2.1: 新UI配置（3行構成） -->
+                    <!-- Phase 4.1a v1.0: 新UI配置（3行構成） -->
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
                         <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
@@ -780,7 +893,7 @@
                     <div class="pdf-canvas-container">
                         <div class="canvas-wrapper" id="canvasWrapper">
                             <canvas id="pdfCanvas"></canvas>
-                            <!-- Phase 3.5 v2.1: テキストレイヤー -->
+                            <!-- Phase 4.1a v1.0: テキストレイヤー -->
                             <div id="textLayer" class="textLayer"></div>
                             <canvas id="markerCanvas"></canvas>
                         </div>
@@ -800,7 +913,7 @@
                         <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
                     </div>
                     
-                    <!-- Phase 3.5 v2.1: プルダウン形式の履歴（ボタンの下に配置） -->
+                    <!-- Phase 4.1a v1.0: プルダウン形式の履歴（ボタンの下に配置） -->
                     <div class="pdf-history-dropdown" id="pdfHistory">
                         <label for="pdfHistorySelect">📚 最近開いたPDF：</label>
                         <select id="pdfHistorySelect" onchange="loadPDFFromHistoryDropdown(this.value)">
@@ -866,6 +979,10 @@
         let showingQuestion = true;
         let editingCardId = null;
         
+        // Phase 4.1a v1.0: デッキ管理用変数
+        let decks = [];
+        const MAX_DECK_DEPTH = 3; // 最大階層深度
+        
         // PDF関連変数
         let pdfDoc = null;
         let currentPage = 1;
@@ -892,14 +1009,14 @@
         let dragStartX, dragStartY;
         let pdfHistory = [];
         const MAX_HISTORY = 10;
-        let instantDeleteMode = false; // Phase 3.5 v2.1: 即削除モード
-        let resizingHandle = null; // Phase 3.5 v2.1: リサイズ中のハンドル
+        let instantDeleteMode = false; // Phase 4.1a v1.0: 即削除モード
+        let resizingHandle = null; // Phase 4.1a v1.0: リサイズ中のハンドル
         
-        // Phase 3.5 v2.1: File System Access API用変数
+        // Phase 4.1a v1.0: File System Access API用変数
         let pdfDB = null; // IndexedDB（変数名変更：Firebaseのdbと競合回避）
         let useFileSystemAPI = false; // File System Access API対応フラグ
         
-        // Phase 3.5 v2.1: PDFパン移動用変数
+        // Phase 4.1a v1.0: PDFパン移動用変数
         let isPanning = false;
         let panStartX, panStartY;
         let offsetX = 0, offsetY = 0;
@@ -923,7 +1040,7 @@
         
         // Phase 3.5 v1.0: ページ読み込み時にPDF履歴をロード
         window.addEventListener('load', async () => {
-            // Phase 3.5 v2.1: IndexedDB初期化とFile System Access API判定
+            // Phase 4.1a v1.0: IndexedDB初期化とFile System Access API判定
             if ('showOpenFilePicker' in window) {
                 await initIndexedDB();
             } else {
@@ -940,7 +1057,7 @@
             }
             
             await loadPDFHistory();
-            loadInstantDeleteSetting(); // Phase 3.5 v2.1
+            loadInstantDeleteSetting(); // Phase 4.1a v1.0
         });
 
         // 同期ステータスを更新
@@ -959,21 +1076,7 @@
         }
 
         // タブ切り替え
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tab + '-section').classList.add('active');
-            
-            if (tab === 'study') {
-                currentIndex = 0;
-                showingQuestion = true;
-                displayCard();
-            } else if (tab === 'list') {
-                displayCardList();
-            }
-        }
+        // Phase 4.1a v1.0: タブ切り替え（新構造対応）
 
         // カードを追加
         async function addCard() {
@@ -1255,7 +1358,7 @@
         });
 
         // PDFを読み込む（ファイル選択）
-        // Phase 3.5 v2.1: PDFアップロードエリアクリック処理
+        // Phase 4.1a v1.0: PDFアップロードエリアクリック処理
         function handlePDFUploadClick() {
             if (useFileSystemAPI && window.showOpenFilePicker) {
                 // File System Access API版
@@ -1266,7 +1369,7 @@
             }
         }
 
-        // Phase 3.5 v2.1: PDFファイルを選択（File System Access API対応）
+        // Phase 4.1a v1.0: PDFファイルを選択（File System Access API対応）
         async function loadPDF(event) {
             if (useFileSystemAPI && window.showOpenFilePicker) {
                 // File System Access API版
@@ -1295,7 +1398,7 @@
             }
         }
 
-        // Phase 3.5 v2.1: PDFファイルから読み込み（fileHandle対応）
+        // Phase 4.1a v1.0: PDFファイルから読み込み（fileHandle対応）
         async function loadPDFFromFile(file, fileHandle = null) {
             try {
                 currentPDFFile = file;
@@ -1306,7 +1409,7 @@
                 
                 // PDFを読み込み
                 const arrayBuffer = await file.arrayBuffer();
-                // Phase 3.5 v2.1: フォント設定とCMap設定を追加（日本語対応）
+                // Phase 4.1a v1.0: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1329,7 +1432,7 @@
                 // 最初のページを表示
                 await renderPage(currentPage);
                 
-                // Phase 3.5 v2.1: PDF履歴に追加（File System Access API対応）
+                // Phase 4.1a v1.0: PDF履歴に追加（File System Access API対応）
                 if (useFileSystemAPI && fileHandle) {
                     // File System Access API版：ファイルハンドルをIndexedDBに保存
                     await savePDFHistoryToDB(file.name, fileHandle);
@@ -1360,7 +1463,7 @@
                 pdfHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                 
                 // PDFを読み込み
-                // Phase 3.5 v2.1: フォント設定とCMap設定を追加（日本語対応）
+                // Phase 4.1a v1.0: フォント設定とCMap設定を追加（日本語対応）
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
                     disableFontFace: false,
@@ -1411,7 +1514,7 @@
                 pdfCanvas.id = 'pdfCanvas';
                 oldPdfCanvas.parentNode.replaceChild(pdfCanvas, oldPdfCanvas);
                 
-                // Phase 3.5 v2.1: alpha: false を削除（テキストレンダリング改善）
+                // Phase 4.1a v1.0: alpha: false を削除（テキストレンダリング改善）
                 const pdfCtx = pdfCanvas.getContext('2d');
                 
                 const viewport = page.getViewport({scale: scale});
@@ -1419,7 +1522,7 @@
                 pdfCanvas.width = viewport.width;
                 pdfCanvas.height = viewport.height;
                 
-                // Phase 3.5 v2.1: レンダリング設定（テキスト表示改善）
+                // Phase 4.1a v1.0: レンダリング設定（テキスト表示改善）
                 const renderContext = {
                     canvasContext: pdfCtx,
                     viewport: viewport,
@@ -1451,10 +1554,10 @@
                 // 保存されたマーカーを描画
                 drawMarkers();
                 
-                // Phase 3.5 v2.1: テキストレイヤーをレンダリング
+                // Phase 4.1a v1.0: テキストレイヤーをレンダリング
                 await renderTextLayer(page, viewport);
                 
-                // Phase 3.5 v2.1: パン移動オフセットをリセット
+                // Phase 4.1a v1.0: パン移動オフセットをリセット
                 offsetX = 0;
                 offsetY = 0;
                 updateCanvasPosition();
@@ -1469,7 +1572,7 @@
             }
         }
 
-        // Phase 3.5 v2.1: テキストレイヤーをレンダリング
+        // Phase 4.1a v1.0: テキストレイヤーをレンダリング
         async function renderTextLayer(page, viewport) {
             try {
                 const textLayer = document.getElementById('textLayer');
@@ -1480,7 +1583,7 @@
                 textLayer.style.width = viewport.width + 'px';
                 textLayer.style.height = viewport.height + 'px';
                 
-                // Phase 3.5 v2.1: --scale-factor CSS変数を設定
+                // Phase 4.1a v1.0: --scale-factor CSS変数を設定
                 textLayer.style.setProperty('--scale-factor', viewport.scale);
                 
                 // テキストコンテンツを取得
@@ -1693,7 +1796,7 @@
 
         // Phase 3.5 v1.0: PDF履歴管理関数
         
-        // Phase 3.5 v2.1: 即削除モード設定管理
+        // Phase 4.1a v1.0: 即削除モード設定管理
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -1709,7 +1812,7 @@
             localStorage.setItem('instantDeleteMode', instantDeleteMode);
         }
 
-        // Phase 3.5 v2.1: IndexedDBセットアップ（File System Access API用）
+        // Phase 4.1a v1.0: IndexedDBセットアップ（File System Access API用）
         function initIndexedDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('MyAnkiAppDB', 1);
@@ -1735,7 +1838,7 @@
             });
         }
 
-        // Phase 3.5 v2.1: PDF履歴をIndexedDBに保存（File System Access API版）
+        // Phase 4.1a v1.0: PDF履歴をIndexedDBに保存（File System Access API版）
         async function savePDFHistoryToDB(fileName, fileHandle) {
             if (!pdfDB || !useFileSystemAPI) return;
             
@@ -1777,7 +1880,7 @@
             };
         }
 
-        // Phase 3.5 v2.1: PDF履歴をIndexedDBから読み込み
+        // Phase 4.1a v1.0: PDF履歴をIndexedDBから読み込み
         async function loadPDFHistoryFromDB() {
             if (!pdfDB || !useFileSystemAPI) return [];
             
@@ -1799,7 +1902,7 @@
             });
         }
 
-        // Phase 3.5 v2.1: PDF履歴をロード（File System Access API対応）
+        // Phase 4.1a v1.0: PDF履歴をロード（File System Access API対応）
         async function loadPDFHistory() {
             if (useFileSystemAPI) {
                 // File System Access API版：IndexedDBから読み込み
@@ -1846,7 +1949,7 @@
         }
         
         // PDF履歴を表示
-        // Phase 3.5 v2.1: PDF履歴をプルダウンに表示（両画面対応）
+        // Phase 4.1a v1.0: PDF履歴をプルダウンに表示（両画面対応）
         function displayPDFHistory() {
             const historySelect = document.getElementById('pdfHistorySelect');
             const historySelectUpload = document.getElementById('pdfHistorySelectUpload');
@@ -1871,7 +1974,7 @@
             }
         }
         
-        // Phase 3.5 v2.1: プルダウンから履歴を読み込み（両画面対応）
+        // Phase 4.1a v1.0: プルダウンから履歴を読み込み（両画面対応）
         function loadPDFFromHistoryDropdown(value) {
             if (value === '') return;
             const index = parseInt(value);
@@ -1883,7 +1986,7 @@
             if (historySelectUpload) historySelectUpload.value = '';
         }
         
-        // Phase 3.5 v2.1: 履歴からPDFを読み込み（File System Access API対応）
+        // Phase 4.1a v1.0: 履歴からPDFを読み込み（File System Access API対応）
         async function loadPDFFromHistory(index) {
             const item = pdfHistory[index];
             
@@ -1931,7 +2034,7 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
         }
         
-        // Phase 3.5 v2.1: マウスダウン処理（ハンドル検出対応）
+        // Phase 4.1a v1.0: マウスダウン処理（ハンドル検出対応）
         function handleMarkerMouseDown(e) {
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -1978,7 +2081,7 @@
             startDrawing(e);
         }
         
-        // Phase 3.5 v2.1: ハンドル検出（修正モード用）
+        // Phase 4.1a v1.0: ハンドル検出（修正モード用）
         function detectHandle(x, y, marker, scaleRatio) {
             const mx = marker.x * scaleRatio;
             const my = marker.y * scaleRatio;
@@ -2005,7 +2108,7 @@
             return null;
         }
 
-        // Phase 3.5 v2.1: 座標にあるマーカーを選択（修正モード用）
+        // Phase 4.1a v1.0: 座標にあるマーカーを選択（修正モード用）
         function selectMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) {
                 selectedMarkerIndex = null;
@@ -2034,7 +2137,7 @@
             drawMarkers();
         }
         
-        // Phase 3.5 v2.1: 座標にあるマーカーを削除（確認ダイアログ対応）
+        // Phase 4.1a v1.0: 座標にあるマーカーを削除（確認ダイアログ対応）
         function deleteMarkerAt(x, y) {
             if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
             
@@ -2049,7 +2152,7 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // Phase 3.5 v2.1: 即削除モードまたは確認ダイアログでOKの場合のみ削除
+                    // Phase 4.1a v1.0: 即削除モードまたは確認ダイアログでOKの場合のみ削除
                     if (instantDeleteMode || confirm('このマーカーを削除しますか？')) {
                         pageMarkers.splice(i, 1);
                         drawMarkers();
@@ -2114,7 +2217,7 @@
             startY = e.clientY - rect.top;
         }
         
-        // Phase 3.5 v2.1: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
+        // Phase 4.1a v1.0: マウス移動処理（ハンドルドラッグによるサイズ変更対応）
         function draw(e) {
             const canvas = document.getElementById('markerCanvas');
             const rect = canvas.getBoundingClientRect();
@@ -2176,7 +2279,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v2.1: マウスアップ処理（ハンドルドラッグ終了対応）
+        // Phase 4.1a v1.0: マウスアップ処理（ハンドルドラッグ終了対応）
         function stopDrawing(e) {
             // ハンドルドラッグ終了
             if (resizingHandle) {
@@ -2224,7 +2327,7 @@
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
             
-            // Phase 3.5 v2.1: 2本指タッチ = パン移動開始
+            // Phase 4.1a v1.0: 2本指タッチ = パン移動開始
             if (e.touches.length === 2) {
                 e.preventDefault();
                 isPanning = true;
@@ -2280,7 +2383,7 @@
         }
         
         function handleTouchMove(e) {
-            // Phase 3.5 v2.1: 2本指パン移動
+            // Phase 4.1a v1.0: 2本指パン移動
             if (isPanning && e.touches.length === 2) {
                 e.preventDefault();
                 const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -2357,7 +2460,7 @@
                         Math.abs(currentX - startX), Math.abs(currentY - startY));
         }
         
-        // Phase 3.5 v2.1: canvasの位置を更新（パン移動対応）
+        // Phase 4.1a v1.0: canvasの位置を更新（パン移動対応）
         function updateCanvasPosition() {
             const wrapper = document.getElementById('canvasWrapper');
             if (wrapper) {
@@ -2366,7 +2469,7 @@
         }
         
         function handleTouchEnd(e) {
-            // Phase 3.5 v2.1: パン移動終了
+            // Phase 4.1a v1.0: パン移動終了
             if (isPanning) {
                 isPanning = false;
                 return;
@@ -2471,7 +2574,7 @@
                     ctx.strokeRect(mx, my, mw, mh);
                     ctx.setLineDash([]);
                     
-                    // Phase 3.5 v2.1: 四隅にハンドルを描画
+                    // Phase 4.1a v1.0: 四隅にハンドルを描画
                     const handleSize = 10;
                     const handles = [
                         { x: mx, y: my }, // 左上
@@ -2555,10 +2658,10 @@
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
                 isDraggingMarker = false;
-                resizingHandle = null; // Phase 3.5 v2.1
-                isPanning = false; // Phase 3.5 v2.1
-                offsetX = 0; // Phase 3.5 v2.1
-                offsetY = 0; // Phase 3.5 v2.1
+                resizingHandle = null; // Phase 4.1a v1.0
+                isPanning = false; // Phase 4.1a v1.0
+                offsetX = 0; // Phase 4.1a v1.0
+                offsetY = 0; // Phase 4.1a v1.0
                 
                 // ボタンの状態をリセット
                 const markerBtn = document.getElementById('markerModeBtn');
@@ -2588,6 +2691,387 @@
                 document.getElementById('pdfFileInput').value = '';
             }
         }
+        
+        // Phase 4.1a v1.0: デッキ管理機能
+        let decks = [];
+        let currentEditingDeckId = null;
+        
+        // デッキデータをFirestoreから読み込み
+        async function loadDecks() {
+            if (!currentUser) return;
+            
+            try {
+                const snapshot = await db.collection('users').doc(currentUser.uid).collection('decks').orderBy('order').get();
+                decks = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                displayDecks();
+                updateDeckFilter();
+            } catch (error) {
+                console.error('デッキ読み込みエラー:', error);
+            }
+        }
+        
+        // デッキ一覧を表示
+        function displayDecks() {
+            const deckList = document.getElementById('deckList');
+            if (!deckList) return;
+            
+            if (decks.length === 0) {
+                deckList.innerHTML = '<div class="empty-state"><h2>デッキがありません</h2><p>「新規デッキ作成」ボタンからデッキを作成してください</p></div>';
+                return;
+            }
+            
+            // 階層構造で表示
+            const topLevelDecks = decks.filter(d => !d.parentId);
+            let html = '';
+            
+            topLevelDecks.forEach(deck => {
+                html += renderDeckItem(deck, 0);
+            });
+            
+            deckList.innerHTML = html;
+        }
+        
+        // デッキアイテムをレンダリング（再帰的）
+        function renderDeckItem(deck, level) {
+            const childDecks = decks.filter(d => d.parentId === deck.id);
+            const cardCount = getCardCountForDeck(deck.id);
+            const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
+            
+            let html = `
+                <div class="deck-item ${depthClass}">
+                    <div class="deck-header">
+                        <div>
+                            <div class="deck-name">${deck.name}</div>
+                            <div class="deck-count">${cardCount}枚</div>
+                        </div>
+                        <div class="deck-actions">
+                            ${level > 0 ? `<button class="btn btn-small btn-secondary" onclick="moveDeckUp('${deck.id}')">▲</button>` : ''}
+                            ${level > 0 ? `<button class="btn btn-small btn-secondary" onclick="moveDeckDown('${deck.id}')">▼</button>` : ''}
+                            <button class="btn btn-small" onclick="startLearning('${deck.id}')">学習開始</button>
+                            <button class="btn btn-small btn-secondary" onclick="editDeck('${deck.id}')">編集</button>
+                            ${level < 2 ? `<button class="btn btn-small" onclick="addSubDeck('${deck.id}')">サブデッキ追加</button>` : ''}
+                            <button class="btn btn-small btn-danger" onclick="deleteDeck('${deck.id}')">削除</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 子デッキを再帰的にレンダリング
+            childDecks.forEach(child => {
+                html += renderDeckItem(child, level + 1);
+            });
+            
+            return html;
+        }
+        
+        // デッキのカード数を取得
+        function getCardCountForDeck(deckId) {
+            // TODO: 実装（現在は0を返す）
+            return 0;
+        }
+        
+        // 新規デッキ作成
+        function createNewDeck() {
+            currentEditingDeckId = null;
+            document.getElementById('deckModalTitle').textContent = '新規デッキ作成';
+            document.getElementById('deckName').value = '';
+            document.getElementById('parentDeckId').value = '';
+            updateParentDeckOptions(null);
+            document.getElementById('deckModal').style.display = 'block';
+        }
+        
+        // サブデッキ追加
+        function addSubDeck(parentId) {
+            const parentDeck = decks.find(d => d.id === parentId);
+            if (!parentDeck) return;
+            
+            const depth = getDeckDepth(parentId);
+            if (depth >= 2) {
+                alert('サブデッキは最大3階層までです。');
+                return;
+            }
+            
+            currentEditingDeckId = null;
+            document.getElementById('deckModalTitle').textContent = 'サブデッキ作成';
+            document.getElementById('deckName').value = '';
+            document.getElementById('parentDeckId').value = parentId;
+            updateParentDeckOptions(null);
+            document.getElementById('deckModal').style.display = 'block';
+        }
+        
+        // デッキ編集
+        function editDeck(deckId) {
+            const deck = decks.find(d => d.id === deckId);
+            if (!deck) return;
+            
+            currentEditingDeckId = deckId;
+            document.getElementById('deckModalTitle').textContent = 'デッキ編集';
+            document.getElementById('deckName').value = deck.name;
+            document.getElementById('parentDeckId').value = deck.parentId || '';
+            updateParentDeckOptions(deckId);
+            document.getElementById('deckModal').style.display = 'block';
+        }
+        
+        // 親デッキ選択肢を更新
+        function updateParentDeckOptions(currentDeckId) {
+            const select = document.getElementById('parentDeckId');
+            let html = '<option value="">なし（トップレベル）</option>';
+            
+            decks.forEach(deck => {
+                // 自分自身と自分の子孫は選択できない
+                if (currentDeckId && (deck.id === currentDeckId || isDescendant(deck.id, currentDeckId))) {
+                    return;
+                }
+                
+                // 階層深度チェック
+                if (currentDeckId) {
+                    const newDepth = getDeckDepth(deck.id) + 1 + getMaxDescendantDepth(currentDeckId);
+                    if (newDepth > 2) return;
+                }
+                
+                const path = getDeckPath(deck.id);
+                html += `<option value="${deck.id}">${path}</option>`;
+            });
+            
+            select.innerHTML = html;
+        }
+        
+        // デッキの深さを取得
+        function getDeckDepth(deckId) {
+            let depth = 0;
+            let currentDeck = decks.find(d => d.id === deckId);
+            
+            while (currentDeck && currentDeck.parentId) {
+                depth++;
+                currentDeck = decks.find(d => d.id === currentDeck.parentId);
+            }
+            
+            return depth;
+        }
+        
+        // 最大子孫深度を取得
+        function getMaxDescendantDepth(deckId) {
+            const children = decks.filter(d => d.parentId === deckId);
+            if (children.length === 0) return 0;
+            
+            let maxDepth = 0;
+            children.forEach(child => {
+                const childDepth = 1 + getMaxDescendantDepth(child.id);
+                maxDepth = Math.max(maxDepth, childDepth);
+            });
+            
+            return maxDepth;
+        }
+        
+        // 子孫かどうかチェック
+        function isDescendant(deckId, ancestorId) {
+            let current = decks.find(d => d.id === deckId);
+            
+            while (current && current.parentId) {
+                if (current.parentId === ancestorId) return true;
+                current = decks.find(d => d.id === current.parentId);
+            }
+            
+            return false;
+        }
+        
+        // デッキパスを取得
+        function getDeckPath(deckId) {
+            const path = [];
+            let currentDeck = decks.find(d => d.id === deckId);
+            
+            while (currentDeck) {
+                path.unshift(currentDeck.name);
+                if (!currentDeck.parentId) break;
+                currentDeck = decks.find(d => d.id === currentDeck.parentId);
+            }
+            
+            return path.join(' > ');
+        }
+        
+        // デッキ保存
+        async function saveDeck() {
+            const name = document.getElementById('deckName').value.trim();
+            if (!name) {
+                alert('デッキ名を入力してください');
+                return;
+            }
+            
+            const parentId = document.getElementById('parentDeckId').value || null;
+            
+            try {
+                if (currentEditingDeckId) {
+                    // 更新
+                    await db.collection('users').doc(currentUser.uid).collection('decks').doc(currentEditingDeckId).update({
+                        name: name,
+                        parentId: parentId,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    // 新規作成
+                    const order = decks.filter(d => d.parentId === parentId).length;
+                    await db.collection('users').doc(currentUser.uid).collection('decks').add({
+                        name: name,
+                        parentId: parentId,
+                        order: order,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                closeModal();
+                await loadDecks();
+            } catch (error) {
+                console.error('デッキ保存エラー:', error);
+                alert('デッキの保存に失敗しました');
+            }
+        }
+        
+        // デッキ削除
+        async function deleteDeck(deckId) {
+            const deck = decks.find(d => d.id === deckId);
+            if (!deck) return;
+            
+            // 子デッキがある場合は警告
+            const children = decks.filter(d => d.parentId === deckId);
+            if (children.length > 0) {
+                alert('サブデッキがあるため削除できません。先にサブデッキを削除してください。');
+                return;
+            }
+            
+            if (!confirm(`デッキ「${deck.name}」を削除しますか？`)) {
+                return;
+            }
+            
+            try {
+                await db.collection('users').doc(currentUser.uid).collection('decks').doc(deckId).delete();
+                await loadDecks();
+            } catch (error) {
+                console.error('デッキ削除エラー:', error);
+                alert('デッキの削除に失敗しました');
+            }
+        }
+        
+        // デッキを上に移動
+        async function moveDeckUp(deckId) {
+            const deck = decks.find(d => d.id === deckId);
+            if (!deck) return;
+            
+            const siblings = decks.filter(d => d.parentId === deck.parentId).sort((a, b) => a.order - b.order);
+            const index = siblings.findIndex(d => d.id === deckId);
+            
+            if (index > 0) {
+                // 順序を入れ替え
+                const temp = deck.order;
+                deck.order = siblings[index - 1].order;
+                siblings[index - 1].order = temp;
+                
+                try {
+                    await Promise.all([
+                        db.collection('users').doc(currentUser.uid).collection('decks').doc(deck.id).update({ order: deck.order }),
+                        db.collection('users').doc(currentUser.uid).collection('decks').doc(siblings[index - 1].id).update({ order: siblings[index - 1].order })
+                    ]);
+                    await loadDecks();
+                } catch (error) {
+                    console.error('デッキ移動エラー:', error);
+                }
+            }
+        }
+        
+        // デッキを下に移動
+        async function moveDeckDown(deckId) {
+            const deck = decks.find(d => d.id === deckId);
+            if (!deck) return;
+            
+            const siblings = decks.filter(d => d.parentId === deck.parentId).sort((a, b) => a.order - b.order);
+            const index = siblings.findIndex(d => d.id === deckId);
+            
+            if (index < siblings.length - 1) {
+                // 順序を入れ替え
+                const temp = deck.order;
+                deck.order = siblings[index + 1].order;
+                siblings[index + 1].order = temp;
+                
+                try {
+                    await Promise.all([
+                        db.collection('users').doc(currentUser.uid).collection('decks').doc(deck.id).update({ order: deck.order }),
+                        db.collection('users').doc(currentUser.uid).collection('decks').doc(siblings[index + 1].id).update({ order: siblings[index + 1].order })
+                    ]);
+                    await loadDecks();
+                } catch (error) {
+                    console.error('デッキ移動エラー:', error);
+                }
+            }
+        }
+        
+        // 学習開始（仮実装）
+        function startLearning(deckId) {
+            alert('学習機能は後のフェーズで実装されます');
+        }
+        
+        // モーダルを閉じる
+        function closeModal() {
+            document.getElementById('deckModal').style.display = 'none';
+        }
+        
+        // デッキフィルターを更新
+        function updateDeckFilter() {
+            const select = document.getElementById('deckFilter');
+            if (!select) return;
+            
+            let html = '<option value="">すべてのデッキ</option>';
+            decks.forEach(deck => {
+                const path = getDeckPath(deck.id);
+                html += `<option value="${deck.id}">${path}</option>`;
+            });
+            select.innerHTML = html;
+        }
+        
+        // タブ切り替え（修正版）
+        function switchTab(tab) {
+            // すべてのタブとセクションを非アクティブに
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            // 選択されたタブとセクションをアクティブに
+            if (tab === 'home') {
+                document.querySelector('[onclick="switchTab(\'home\')"]').classList.add('active');
+                document.getElementById('home-section').classList.add('active');
+                loadDecks();
+            } else if (tab === 'pdf') {
+                document.querySelector('[onclick="switchTab(\'pdf\')"]').classList.add('active');
+                document.getElementById('pdf-section').classList.add('active');
+            } else if (tab === 'cards') {
+                document.querySelector('[onclick="switchTab(\'cards\')"]').classList.add('active');
+                document.getElementById('cards-section').classList.add('active');
+                displayCardList();
+            }
+        }
     </script>
+    
+    <!-- Phase 4.1a v1.0: デッキ編集モーダル -->
+    <div id="deckModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2 id="deckModalTitle">デッキ編集</h2>
+            </div>
+            <div class="input-group">
+                <label for="deckName">デッキ名</label>
+                <input type="text" id="deckName" placeholder="例：英語">
+            </div>
+            <div class="input-group">
+                <label for="parentDeckId">親デッキ</label>
+                <select id="parentDeckId">
+                    <option value="">なし（トップレベル）</option>
+                </select>
+            </div>
+            <button class="btn" onclick="saveDeck()">保存</button>
+            <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+        </div>
+    </div>
 </body>
 </html>
