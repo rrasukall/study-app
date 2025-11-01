@@ -1004,7 +1004,6 @@
             <div class="deck-manager">
                 <h2 style="margin-bottom: 20px;">デッキ一覧</h2>
                 <button class="btn" onclick="createNewDeck()" style="margin-bottom: 20px;">新規デッキ作成</button>
-                <button class="btn btn-warning" onclick="migrateCategoryToDeck()" style="margin-bottom: 20px;">カテゴリからデッキへ移行</button>
                 <div id="deckList"></div>
             </div>
         </div>
@@ -3546,69 +3545,6 @@
             }
         }
         
-        // v6.02: カテゴリからデッキへのマイグレーション
-        async function migrateCategoryToDeck() {
-            if (!confirm('古いカテゴリフィールドを持つカードをデッキに移行します。\nこの操作は元に戻せません。続けますか？')) {
-                return;
-            }
-            
-            updateSyncStatus('syncing');
-            
-            try {
-                // categoryフィールドを持つカードを取得
-                const cardsWithCategory = cards.filter(c => c.category && !c.deckId);
-                
-                if (cardsWithCategory.length === 0) {
-                    alert('移行が必要なカードはありません。');
-                    updateSyncStatus('synced');
-                    return;
-                }
-                
-                // カテゴリ名からデッキを探す/作成するマップ
-                const categoryToDeckMap = {};
-                const uniqueCategories = [...new Set(cardsWithCategory.map(c => c.category))];
-                
-                // 各カテゴリに対応するデッキを探す、なければ作成
-                for (const categoryName of uniqueCategories) {
-                    let deck = decks.find(d => d.name === categoryName && !d.parentId);
-                    
-                    if (!deck) {
-                        // デッキが存在しない場合は作成
-                        const order = decks.filter(d => !d.parentId).length;
-                        const docRef = await db.collection('decks').add({
-                            name: categoryName,
-                            parentId: null,
-                            order: order,
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        categoryToDeckMap[categoryName] = docRef.id;
-                    } else {
-                        categoryToDeckMap[categoryName] = deck.id;
-                    }
-                }
-                
-                // カードを更新
-                let migratedCount = 0;
-                for (const card of cardsWithCategory) {
-                    const deckId = categoryToDeckMap[card.category];
-                    await db.collection('flashcards').doc(card.id).update({
-                        deckId: deckId,
-                        category: firebase.firestore.FieldValue.delete()
-                    });
-                    migratedCount++;
-                }
-                
-                await loadDecks();
-                updateSyncStatus('synced');
-                alert(`移行完了！\n${migratedCount}枚のカードを${uniqueCategories.length}個のデッキに移行しました。`);
-                
-            } catch (error) {
-                console.error('移行エラー:', error);
-                alert('移行に失敗しました: ' + error.message);
-                updateSyncStatus('error');
-            }
-        }
         
         function displayDecks() {
             const deckList = document.getElementById('deckList');
