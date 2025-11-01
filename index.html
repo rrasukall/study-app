@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v6.01.1</title>
+    <title>MyAnkiApp v6.01.2</title>
     <style>
         * {
             margin: 0;
@@ -982,7 +982,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.01.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.01.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1294,6 +1294,12 @@
             updateSyncStatus('synced');
             displayCard();
             displayCardList();
+            
+            // v6.01.2: フィルター状態を維持
+            if (currentDeckFilter) {
+                filterCards();
+            }
+            
             // v6.01.1: 両方のデータが揃ったら表示
             if (decksLoaded) {
                 displayDecks();
@@ -3553,12 +3559,9 @@
         function renderDeckItem(deck, level) {
             const childDecks = decks.filter(d => d.parentId === deck.id);
             
-            // v6.00: デッキ内のカード数を計算
+            // v6.01.2: デッキ自体のカード数のみを計算（サブデッキを含めない）
             const deckCards = cards.filter(c => c.deckId === deck.id);
-            const childDeckCards = childDecks.reduce((sum, child) => {
-                return sum + countDeckCards(child.id);
-            }, 0);
-            const cardCount = deckCards.length + childDeckCards;
+            const cardCount = deckCards.length;
             
             const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
             
