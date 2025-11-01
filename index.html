@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v6.00.1</title>
+    <title>MyAnkiApp v6.00.2</title>
     <style>
         * {
             margin: 0;
@@ -970,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.00.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.00.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1306,7 +1306,14 @@
             
             buildDeckOptions();
             
-            if (deckSelector) deckSelector.innerHTML = deckOptions;
+            if (deckSelector) {
+                deckSelector.innerHTML = deckOptions;
+                // v6.00.2: 前回選択したデッキを復元
+                const lastDeckId = localStorage.getItem('lastSelectedDeckId');
+                if (lastDeckId && decks.find(d => d.id === lastDeckId)) {
+                    deckSelector.value = lastDeckId;
+                }
+            }
             if (deckFilter) deckFilter.innerHTML = filterOptions;
             if (editDeckSelector) editDeckSelector.innerHTML = deckOptions;
         }
@@ -1592,6 +1599,9 @@
                     document.getElementById('typingAnswer').value = '';
                     document.getElementById('typingCaseSensitive').checked = false;
                 }
+                
+                // v6.00.2: 選択したデッキを記憶
+                localStorage.setItem('lastSelectedDeckId', deckId);
                 
                 alert('カードを追加しました！');
             } catch (error) {
