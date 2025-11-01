@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.02.4</title>
+    <title>MyAnkiApp v5.02.5</title>
     <style>
         * {
             margin: 0;
@@ -970,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.5</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1801,10 +1801,16 @@
             // 正解を取得（互換性対応）
             const correctAnswer = card.answer || (card.answers && card.answers[0]) || '';
             
-            // テキスト正規化関数
+            // テキスト正規化関数（v5.02.5: スペース正規化方式）
             function normalizeText(text, caseSensitive) {
-                // スペースは常に削除
-                text = text.replace(/\s+/g, '');
+                // 前後のスペースを削除
+                text = text.trim();
+                
+                // 全角スペースを半角に統一
+                text = text.replace(/　/g, ' ');
+                
+                // 連続するスペースを1つに
+                text = text.replace(/\s+/g, ' ');
                 
                 if (!caseSensitive) {
                     // 全角→半角変換
@@ -1828,7 +1834,7 @@
             // 文字数チェック
             const lengthMatch = normalizedUser.length === normalizedCorrect.length;
             
-            // 文字ごとの判定
+            // 文字ごとの判定（v5.02.5: スペースを視覚化）
             let characterDisplay = '';
             const maxLen = Math.max(normalizedUser.length, normalizedCorrect.length);
             
@@ -1836,12 +1842,15 @@
                 const userChar = normalizedUser[i] || '';
                 const correctChar = normalizedCorrect[i] || '';
                 
+                // 表示用の文字（スペースは「␣」記号で視覚化）
+                const displayChar = userChar === ' ' ? '␣' : userChar;
+                
                 if (userChar === correctChar && userChar !== '') {
                     // 正しい文字：緑
-                    characterDisplay += `<span class="char-correct">${userChar}</span>`;
+                    characterDisplay += `<span class="char-correct">${displayChar}</span>`;
                 } else if (userChar !== '') {
                     // 間違った文字：赤
-                    characterDisplay += `<span class="char-incorrect">${userChar}</span>`;
+                    characterDisplay += `<span class="char-incorrect">${displayChar}</span>`;
                 }
             }
             
@@ -3741,4 +3750,3 @@
     </div>
 </body>
 </html>
-
