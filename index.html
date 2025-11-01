@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v6.01</title>
+    <title>MyAnkiApp v6.01.1</title>
     <style>
         * {
             margin: 0;
@@ -982,7 +982,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.01</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.01.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1228,6 +1228,10 @@
         let currentEditingDeckId = null;
         const MAX_DECK_DEPTH = 3;
         
+        // v6.01.1: データ読み込み完了状態を管理
+        let decksLoaded = false;
+        let cardsLoaded = false;
+        
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -1268,8 +1272,12 @@
                     ...doc.data()
                 });
             });
+            decksLoaded = true;
             updateDeckSelectors();
-            displayDecks();
+            // v6.01.1: 両方のデータが揃ったら表示
+            if (cardsLoaded) {
+                displayDecks();
+            }
         }, (error) => {
             console.error('Error fetching decks:', error);
         });
@@ -1282,9 +1290,14 @@
                     ...doc.data()
                 });
             });
+            cardsLoaded = true;
             updateSyncStatus('synced');
             displayCard();
             displayCardList();
+            // v6.01.1: 両方のデータが揃ったら表示
+            if (decksLoaded) {
+                displayDecks();
+            }
         }, (error) => {
             console.error('Error fetching cards:', error);
             updateSyncStatus('error');
@@ -1614,8 +1627,6 @@
                 
                 // v6.00.2: 選択したデッキを記憶
                 localStorage.setItem('lastSelectedDeckId', deckId);
-                
-                alert('カードを追加しました！');
             } catch (error) {
                 console.error('Error adding card:', error);
                 alert('カードの追加に失敗しました');
@@ -2424,8 +2435,6 @@
                 }
                 
                 closeCardEditModal();
-                
-                alert('カードを更新しました！');
             } catch (error) {
                 console.error('Error updating card:', error);
                 alert('カードの更新に失敗しました');
@@ -3592,6 +3601,13 @@
                 deckFilter.value = deckId;
                 currentDeckFilter = deckId;
                 filterCards();
+            }
+            
+            // v6.01.1: 新規カード作成のデッキも更新
+            const deckSelector = document.getElementById('deckId');
+            if (deckSelector) {
+                deckSelector.value = deckId;
+                localStorage.setItem('lastSelectedDeckId', deckId);
             }
         }
         
