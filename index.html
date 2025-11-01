@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.00.1</title>
+    <title>MyAnkiApp v7.00.2</title>
     <style>
         * {
             margin: 0;
@@ -1011,11 +1011,11 @@
             color: #000;
         }
         
-        /* v7.00: PDF学習ヘッダー */
+        /* v7.00.2: PDF学習ヘッダー（学習ボタンを「PDF学習」の右横に配置） */
         .pdf-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 20px;  /* h2とボタンの間隔 */
             margin-bottom: 20px;
         }
         
@@ -1026,7 +1026,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.00</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.00.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1306,6 +1306,9 @@
         
         // v7.00: 学習モード管理
         let studyMode = false;
+        
+        // v7.00.2: 学習OFF時のシート機能でのクリック明転管理（ページ・シートボタン変更でリセット）
+        let sheetClickToggles = {}; // { 'pageNum-markerIndex': true/false }
         
         let pdfDB = null;
         let useFileSystemAPI = false;
@@ -2725,6 +2728,9 @@
                 
                 setupMarkerEvents(markerCanvas);
                 
+                // v7.00.2: ページ遷移時にクリック明転状態をリセット
+                sheetClickToggles = {};
+                
                 drawMarkers();
                 
                 await renderTextLayer(page, viewport);
@@ -2939,10 +2945,13 @@
                 }
             }
             
+            // v7.00.2: シートボタン変更時にクリック明転状態をリセット
+            sheetClickToggles = {};
+            
             drawMarkers();
         }
         
-        // v7.00: 学習モードトグル
+        // v7.00.2: 学習モードトグル
         function toggleStudyMode() {
             studyMode = !studyMode;
             const btn = document.getElementById('studyModeBtn');
@@ -2952,6 +2961,13 @@
                 // 学習モードON
                 btn.textContent = '学習ON';
                 btn.className = 'btn btn-mode-on';
+                
+                // v7.00.2: 現在のページのすべてのマーカーをリセット（暗転からスタート）
+                if (pdfHash && markers[pdfHash] && markers[pdfHash][currentPage]) {
+                    markers[pdfHash][currentPage].forEach(marker => {
+                        delete marker.studyState;  // undefined = 暗転状態
+                    });
+                }
                 
                 // 既存のモードをすべてOFF
                 if (markerMode) toggleMarkerMode();
@@ -2985,7 +3001,7 @@
             drawMarkers();
         }
         
-        // v7.00: ボタンをグレーアウト
+        // v7.00.2: ボタンをグレーアウト（シートボタンも追加）
         function disableButtons() {
             // マーカー色選択ボタン
             ['markerYellow', 'markerRed', 'markerGreen', 'markerBlue'].forEach(id => {
@@ -3023,9 +3039,18 @@
                 clearMarkersBtn.classList.add('btn-disabled');
                 clearMarkersBtn.style.pointerEvents = 'none';
             }
+            
+            // v7.00.2: シートボタンもグレーアウト
+            ['redsheetYellow', 'redsheetRed', 'redsheetGreen', 'redsheetBlue', 'redsheetAll'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.add('disabled');
+                    btn.style.pointerEvents = 'none';
+                }
+            });
         }
         
-        // v7.00: ボタンを有効化
+        // v7.00.2: ボタンを有効化（シートボタンも追加）
         function enableButtons() {
             // マーカー色選択ボタン
             ['markerYellow', 'markerRed', 'markerGreen', 'markerBlue'].forEach(id => {
@@ -3063,6 +3088,15 @@
                 clearMarkersBtn.classList.remove('btn-disabled');
                 clearMarkersBtn.style.pointerEvents = '';
             }
+            
+            // v7.00.2: シートボタンも有効化
+            ['redsheetYellow', 'redsheetRed', 'redsheetGreen', 'redsheetBlue', 'redsheetAll'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.remove('disabled');
+                    btn.style.pointerEvents = '';
+                }
+            });
         }
         
         function loadInstantDeleteSetting() {
@@ -3157,8 +3191,13 @@
             const anyRedSheetActive = redSheetColors.yellow || redSheetColors.red || 
                                      redSheetColors.green || redSheetColors.blue;
             if (anyRedSheetActive) {
-                if (isClickOnMarker(x, y)) {
-                    // v7.00: 3秒ルール廃止 - 一時表示機能を削除
+                // v7.00.2: クリックしたマーカーを検索してトグル
+                const clickedMarkerIndex = getClickedMarkerIndex(x, y);
+                if (clickedMarkerIndex !== -1) {
+                    const toggleKey = `${currentPage}-${clickedMarkerIndex}`;
+                    // 状態をトグル（未定義ならfalse、存在するなら反転）
+                    sheetClickToggles[toggleKey] = !sheetClickToggles[toggleKey];
+                    drawMarkers();
                     return;
                 }
             }
@@ -3289,6 +3328,26 @@
             });
         }
         
+        // v7.00.2: クリックされたマーカーのインデックスを取得
+        function getClickedMarkerIndex(x, y) {
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return -1;
+            
+            const pageMarkers = markers[pdfHash][currentPage];
+            for (let i = pageMarkers.length - 1; i >= 0; i--) {
+                const marker = pageMarkers[i];
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
         function startDrawing(e) {
             if (!markerMode) return;
             isDrawing = true;
@@ -3380,8 +3439,8 @@
                 width: Math.abs(endX - startX),
                 height: Math.abs(endY - startY),
                 color: currentMarkerColor,
-                scale: scale,
-                studyState: 'visible' // v7.00: 初期状態は明転
+                scale: scale
+                // v7.00.2: studyStateは設定しない（undefined = 学習ON時は暗転からスタート）
             };
             
             if (marker.width > 5 && marker.height > 5) {
@@ -3560,8 +3619,8 @@
                 width: Math.abs(endX - startX),
                 height: Math.abs(endY - startY),
                 color: currentMarkerColor,
-                scale: scale,
-                studyState: 'visible' // v7.00: 初期状態は明転
+                scale: scale
+                // v7.00.2: studyStateは設定しない（undefined = 学習ON時は暗転からスタート）
             };
             
             if (marker.width > 5 && marker.height > 5) {
@@ -3640,10 +3699,21 @@
                         ctx.strokeRect(mx, my, mw, mh);
                     }
                 } else {
-                    // v7.00.1: 学習モードOFF時：通常表示（v6系と同じ、シート機能有効）
+                    // v7.00.2: 学習モードOFF時：通常表示（v6系と同じ、シート機能有効）
+                    const toggleKey = `${currentPage}-${index}`;
+                    const isToggled = sheetClickToggles[toggleKey];
+                    
                     if (redSheetColors[marker.color]) {
-                        ctx.fillStyle = '#000000';
+                        // シートが有効な色の場合
+                        if (isToggled) {
+                            // クリックで明転された状態
+                            ctx.fillStyle = getMarkerColor(marker.color);
+                        } else {
+                            // デフォルトは暗転
+                            ctx.fillStyle = '#000000';
+                        }
                     } else {
+                        // シート無効な色は通常表示
                         ctx.fillStyle = getMarkerColor(marker.color);
                     }
                     ctx.fillRect(mx, my, mw, mh);
