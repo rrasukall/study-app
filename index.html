@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.00</title>
+    <title>MyAnkiApp v7.00.1</title>
     <style>
         * {
             margin: 0;
@@ -3181,15 +3181,15 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // 状態を循環: hidden → visible → correct → incorrect → hidden
+                    // v7.00.1: トグルサイクル: 暗転(初期) → 明転(枠なし) → 正答(緑枠) → 誤答(赤枠) → 暗転
                     if (!marker.studyState || marker.studyState === 'hidden') {
-                        marker.studyState = 'visible';
+                        marker.studyState = 'visible';  // 暗転 → 明転（枠なし、解答確認用）
                     } else if (marker.studyState === 'visible') {
-                        marker.studyState = 'correct';
+                        marker.studyState = 'correct';  // 明転 → 正答（明転+緑枠）
                     } else if (marker.studyState === 'correct') {
-                        marker.studyState = 'incorrect';
+                        marker.studyState = 'incorrect';  // 正答 → 誤答（明転+赤枠）
                     } else if (marker.studyState === 'incorrect') {
-                        marker.studyState = 'hidden';
+                        marker.studyState = 'hidden';  // 誤答 → 暗転
                     }
                     
                     drawMarkers();
@@ -3611,45 +3611,42 @@
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
-                // v7.00: 学習状態に応じた表示
-                const studyState = marker.studyState || 'visible';
-                
-                if (studyState === 'hidden') {
-                    // 暗転：黒色の塗りつぶし
-                    ctx.fillStyle = '#000000';
-                    ctx.fillRect(mx, my, mw, mh);
-                } else if (studyState === 'visible') {
-                    // 明転：元のマーカー色
-                    if (redSheetColors[marker.color]) {
-                        ctx.fillStyle = '#000000';
-                    } else {
-                        ctx.fillStyle = getMarkerColor(marker.color);
-                    }
-                    ctx.fillRect(mx, my, mw, mh);
-                } else if (studyState === 'correct') {
-                    // 正答：元の色 + 緑色の太枠線
-                    if (redSheetColors[marker.color]) {
-                        ctx.fillStyle = '#000000';
-                    } else {
-                        ctx.fillStyle = getMarkerColor(marker.color);
-                    }
-                    ctx.fillRect(mx, my, mw, mh);
+                // v7.00.1: 学習モードOFF時は通常表示、ON時のみstudyStateに応じた表示
+                if (studyMode) {
+                    // 学習モードON時：studyStateに応じて表示
+                    const studyState = marker.studyState;
                     
-                    ctx.strokeStyle = '#27ae60';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(mx, my, mw, mh);
-                } else if (studyState === 'incorrect') {
-                    // 誤答：元の色 + 赤色の太枠線
+                    if (!studyState || studyState === 'hidden') {
+                        // 暗転（初期状態）：黒色の塗りつぶし
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(mx, my, mw, mh);
+                    } else if (studyState === 'visible') {
+                        // 明転（枠なし）：解答確認用
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                        ctx.fillRect(mx, my, mw, mh);
+                    } else if (studyState === 'correct') {
+                        // 正答：明転 + 緑枠
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                        ctx.fillRect(mx, my, mw, mh);
+                        ctx.strokeStyle = '#27ae60';
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(mx, my, mw, mh);
+                    } else if (studyState === 'incorrect') {
+                        // 誤答：明転 + 赤枠
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                        ctx.fillRect(mx, my, mw, mh);
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(mx, my, mw, mh);
+                    }
+                } else {
+                    // v7.00.1: 学習モードOFF時：通常表示（v6系と同じ、シート機能有効）
                     if (redSheetColors[marker.color]) {
                         ctx.fillStyle = '#000000';
                     } else {
                         ctx.fillStyle = getMarkerColor(marker.color);
                     }
                     ctx.fillRect(mx, my, mw, mh);
-                    
-                    ctx.strokeStyle = '#e74c3c';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(mx, my, mw, mh);
                 }
                 
                 if (editMode && selectedMarkerIndex === index) {
