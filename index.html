@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v6.00.2</title>
+    <title>MyAnkiApp v6.01</title>
     <style>
         * {
             margin: 0;
@@ -901,6 +901,18 @@
             color: #333;
         }
         
+        /* v6.01: デッキ名クリック可能スタイル */
+        .deck-header > div[onclick] {
+            transition: background 0.2s;
+            padding: 5px;
+            border-radius: 5px;
+            margin: -5px;
+        }
+        
+        .deck-header > div[onclick]:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
         .deck-count {
             color: #666;
             font-size: 14px;
@@ -970,7 +982,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.00.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.01</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3544,7 +3556,7 @@
             let html = `
                 <div class="deck-item ${depthClass}">
                     <div class="deck-header">
-                        <div>
+                        <div style="cursor: pointer;" onclick="viewDeckCards('${deck.id}')">
                             <div class="deck-name">${deck.name}</div>
                             <div class="deck-count">${cardCount}枚</div>
                         </div>
@@ -3562,6 +3574,25 @@
             });
             
             return html;
+        }
+        
+        // v6.01: デッキのカードを表示
+        function viewDeckCards(deckId) {
+            // カード管理タブに切り替え
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            const cardTab = document.querySelectorAll('.tab')[2]; // カード管理タブ
+            cardTab.classList.add('active');
+            document.getElementById('cards-section').classList.add('active');
+            
+            // デッキフィルターを設定
+            const deckFilter = document.getElementById('deckFilter');
+            if (deckFilter) {
+                deckFilter.value = deckId;
+                currentDeckFilter = deckId;
+                filterCards();
+            }
         }
         
         // v6.00: デッキとサブデッキのカード数を再帰的に計算
