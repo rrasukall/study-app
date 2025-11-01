@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v6.02</title>
+    <title>MyAnkiApp v7.00</title>
     <style>
         * {
             margin: 0;
@@ -786,6 +786,25 @@
             background: #7f8c8d !important;
         }
         
+        /* v7.00: グレーアウトスタイル */
+        .btn-disabled {
+            background: #bdc3c7 !important;
+            color: #7f8c8d !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+        }
+        
+        .btn-disabled:hover {
+            background: #bdc3c7 !important;
+            transform: none !important;
+        }
+        
+        .color-btn.disabled, .sheet-btn.disabled {
+            opacity: 0.4;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+        
         .redsheet-controls {
             display: flex;
             gap: 5px;
@@ -843,6 +862,11 @@
         
         #markerCanvas.delete-mode {
             cursor: not-allowed !important;
+        }
+        
+        /* v7.00: 学習モード時のカーソル */
+        #markerCanvas.study-mode {
+            cursor: pointer !important;
         }
         
         .textLayer {
@@ -986,11 +1010,23 @@
         .close:focus {
             color: #000;
         }
+        
+        /* v7.00: PDF学習ヘッダー */
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .pdf-header h2 {
+            margin: 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.02</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.00</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1109,7 +1145,11 @@
         
         <div id="pdf-section" class="section">
             <div class="pdf-viewer">
-                <h2 style="margin-bottom: 20px;">📖 PDF学習</h2>
+                <!-- v7.00: PDF学習ヘッダー -->
+                <div class="pdf-header">
+                    <h2>📖 PDF学習</h2>
+                    <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
+                </div>
                 
                 <div id="pdfUploadArea" class="pdf-upload-area" onclick="handlePDFUploadClick()">
                     <div class="pdf-upload-icon">📄</div>
@@ -1123,13 +1163,13 @@
                     
                     <div class="pdf-controls-row">
                         <span class="row-label">マーカー：</span>
-                        <button class="color-btn yellow active" onclick="selectMarkerColor('yellow')">黄</button>
-                        <button class="color-btn red" onclick="selectMarkerColor('red')">赤</button>
-                        <button class="color-btn green" onclick="selectMarkerColor('green')">緑</button>
-                        <button class="color-btn blue" onclick="selectMarkerColor('blue')">青</button>
+                        <button class="color-btn yellow active" id="markerYellow" onclick="selectMarkerColor('yellow')">黄</button>
+                        <button class="color-btn red" id="markerRed" onclick="selectMarkerColor('red')">赤</button>
+                        <button class="color-btn green" id="markerGreen" onclick="selectMarkerColor('green')">緑</button>
+                        <button class="color-btn blue" id="markerBlue" onclick="selectMarkerColor('blue')">青</button>
                         <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
                         <span class="separator">//</span>
-                        <button class="btn btn-danger" onclick="clearPageMarkers()">ページ内マーカー全削除</button>
+                        <button class="btn btn-danger" id="clearMarkersBtn" onclick="clearPageMarkers()">ページ内マーカー全削除</button>
                     </div>
 
                     <div class="pdf-controls-row">
@@ -1263,6 +1303,9 @@
         let dragStartX, dragStartY;
         let instantDeleteMode = false;
         let resizingHandle = null;
+        
+        // v7.00: 学習モード管理
+        let studyMode = false;
         
         let pdfDB = null;
         let useFileSystemAPI = false;
@@ -2583,6 +2626,9 @@
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = file.name;
                 
+                // v7.00: 学習モードボタンを表示
+                document.getElementById('studyModeBtn').style.display = 'block';
+                
                 await loadMarkersFromFirebase();
                 
                 await renderPage(currentPage);
@@ -2614,6 +2660,9 @@
                 document.getElementById('pdfUploadArea').style.display = 'none';
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = fileName;
+                
+                // v7.00: 学習モードボタンを表示
+                document.getElementById('studyModeBtn').style.display = 'block';
                 
                 await loadMarkersFromFirebase();
                 
@@ -2753,6 +2802,9 @@
         }
         
         function selectMarkerColor(color) {
+            // v7.00: 学習モード時は操作不可
+            if (studyMode) return;
+            
             currentMarkerColor = color;
             
             document.querySelectorAll('.color-btn').forEach(el => el.classList.remove('active'));
@@ -2760,6 +2812,9 @@
         }
         
         function toggleMarkerMode() {
+            // v7.00: 学習モード時は操作不可
+            if (studyMode) return;
+            
             markerMode = !markerMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('markerModeBtn');
@@ -2779,6 +2834,9 @@
         }
         
         function toggleEditMode() {
+            // v7.00: 学習モード時は操作不可
+            if (studyMode) return;
+            
             editMode = !editMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('editModeBtn');
@@ -2808,6 +2866,9 @@
         }
         
         function toggleDeleteMode() {
+            // v7.00: 学習モード時は操作不可
+            if (studyMode) return;
+            
             deleteMode = !deleteMode;
             const canvas = document.getElementById('markerCanvas');
             const btn = document.getElementById('deleteModeBtn');
@@ -2881,6 +2942,129 @@
             drawMarkers();
         }
         
+        // v7.00: 学習モードトグル
+        function toggleStudyMode() {
+            studyMode = !studyMode;
+            const btn = document.getElementById('studyModeBtn');
+            const canvas = document.getElementById('markerCanvas');
+            
+            if (studyMode) {
+                // 学習モードON
+                btn.textContent = '学習ON';
+                btn.className = 'btn btn-mode-on';
+                
+                // 既存のモードをすべてOFF
+                if (markerMode) toggleMarkerMode();
+                if (editMode) toggleEditMode();
+                if (deleteMode) toggleDeleteMode();
+                
+                // キャンバスのカーソルを変更
+                if (canvas) {
+                    canvas.classList.add('study-mode');
+                    canvas.style.cursor = 'pointer';
+                }
+                
+                // ボタンをグレーアウト
+                disableButtons();
+                
+            } else {
+                // 学習モードOFF
+                btn.textContent = '学習OFF';
+                btn.className = 'btn btn-mode-off';
+                
+                // キャンバスのカーソルを元に戻す
+                if (canvas) {
+                    canvas.classList.remove('study-mode');
+                    canvas.style.cursor = 'default';
+                }
+                
+                // ボタンを有効化
+                enableButtons();
+            }
+            
+            drawMarkers();
+        }
+        
+        // v7.00: ボタンをグレーアウト
+        function disableButtons() {
+            // マーカー色選択ボタン
+            ['markerYellow', 'markerRed', 'markerGreen', 'markerBlue'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.add('disabled');
+                    btn.style.pointerEvents = 'none';
+                }
+            });
+            
+            // マーカーON/OFFボタン
+            const markerModeBtn = document.getElementById('markerModeBtn');
+            if (markerModeBtn) {
+                markerModeBtn.classList.add('btn-disabled');
+                markerModeBtn.style.pointerEvents = 'none';
+            }
+            
+            // 修正ボタン
+            const editModeBtn = document.getElementById('editModeBtn');
+            if (editModeBtn) {
+                editModeBtn.classList.add('btn-disabled');
+                editModeBtn.style.pointerEvents = 'none';
+            }
+            
+            // 削除ボタン
+            const deleteModeBtn = document.getElementById('deleteModeBtn');
+            if (deleteModeBtn) {
+                deleteModeBtn.classList.add('btn-disabled');
+                deleteModeBtn.style.pointerEvents = 'none';
+            }
+            
+            // ページ内マーカー全削除ボタン
+            const clearMarkersBtn = document.getElementById('clearMarkersBtn');
+            if (clearMarkersBtn) {
+                clearMarkersBtn.classList.add('btn-disabled');
+                clearMarkersBtn.style.pointerEvents = 'none';
+            }
+        }
+        
+        // v7.00: ボタンを有効化
+        function enableButtons() {
+            // マーカー色選択ボタン
+            ['markerYellow', 'markerRed', 'markerGreen', 'markerBlue'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.remove('disabled');
+                    btn.style.pointerEvents = '';
+                }
+            });
+            
+            // マーカーON/OFFボタン
+            const markerModeBtn = document.getElementById('markerModeBtn');
+            if (markerModeBtn) {
+                markerModeBtn.classList.remove('btn-disabled');
+                markerModeBtn.style.pointerEvents = '';
+            }
+            
+            // 修正ボタン
+            const editModeBtn = document.getElementById('editModeBtn');
+            if (editModeBtn) {
+                editModeBtn.classList.remove('btn-disabled');
+                editModeBtn.style.pointerEvents = '';
+            }
+            
+            // 削除ボタン
+            const deleteModeBtn = document.getElementById('deleteModeBtn');
+            if (deleteModeBtn) {
+                deleteModeBtn.classList.remove('btn-disabled');
+                deleteModeBtn.style.pointerEvents = '';
+            }
+            
+            // ページ内マーカー全削除ボタン
+            const clearMarkersBtn = document.getElementById('clearMarkersBtn');
+            if (clearMarkersBtn) {
+                clearMarkersBtn.classList.remove('btn-disabled');
+                clearMarkersBtn.style.pointerEvents = '';
+            }
+        }
+        
         function loadInstantDeleteSetting() {
             const saved = localStorage.getItem('instantDeleteMode');
             instantDeleteMode = saved === 'true';
@@ -2919,7 +3103,12 @@
         }
 
         function setupMarkerEvents(canvas) {
-            canvas.style.cursor = markerMode ? 'crosshair' : 'default';
+            // v7.00: 学習モード時はカーソルを変更
+            if (studyMode) {
+                canvas.style.cursor = 'pointer';
+            } else {
+                canvas.style.cursor = markerMode ? 'crosshair' : 'default';
+            }
             
             canvas.addEventListener('mousedown', handleMarkerMouseDown);
             canvas.addEventListener('mousemove', draw);
@@ -2935,6 +3124,12 @@
             const rect = e.target.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
+            
+            // v7.00: 学習モード時のマーカートグル
+            if (studyMode) {
+                toggleMarkerState(x, y);
+                return;
+            }
             
             if (deleteMode) {
                 deleteMarkerAt(x, y);
@@ -2963,12 +3158,45 @@
                                      redSheetColors.green || redSheetColors.blue;
             if (anyRedSheetActive) {
                 if (isClickOnMarker(x, y)) {
-                    showMarkerTemporarily(x, y);
+                    // v7.00: 3秒ルール廃止 - 一時表示機能を削除
                     return;
                 }
             }
             
             startDrawing(e);
+        }
+        
+        // v7.00: マーカー状態トグル（暗転→明転→正答→誤答→暗転）
+        function toggleMarkerState(x, y) {
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
+            
+            const pageMarkers = markers[pdfHash][currentPage];
+            
+            for (let i = pageMarkers.length - 1; i >= 0; i--) {
+                const marker = pageMarkers[i];
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    // 状態を循環: hidden → visible → correct → incorrect → hidden
+                    if (!marker.studyState || marker.studyState === 'hidden') {
+                        marker.studyState = 'visible';
+                    } else if (marker.studyState === 'visible') {
+                        marker.studyState = 'correct';
+                    } else if (marker.studyState === 'correct') {
+                        marker.studyState = 'incorrect';
+                    } else if (marker.studyState === 'incorrect') {
+                        marker.studyState = 'hidden';
+                    }
+                    
+                    drawMarkers();
+                    saveMarkersToFirebase();
+                    return;
+                }
+            }
         }
         
         function detectHandle(x, y, marker, scaleRatio) {
@@ -3059,36 +3287,6 @@
                 
                 return x >= mx && x <= mx + mw && y >= my && y <= my + mh;
             });
-        }
-        
-        function showMarkerTemporarily(x, y) {
-            const canvas = document.getElementById('markerCanvas');
-            if (!canvas) return;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
-            
-            markers[pdfHash][currentPage].forEach(marker => {
-                const scaleRatio = scale / marker.scale;
-                const mx = marker.x * scaleRatio;
-                const my = marker.y * scaleRatio;
-                const mw = marker.width * scaleRatio;
-                const mh = marker.height * scaleRatio;
-                
-                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    ctx.fillStyle = getMarkerColor(marker.color);
-                } else {
-                    ctx.fillStyle = '#000000';
-                }
-                
-                ctx.fillRect(mx, my, mw, mh);
-            });
-            
-            setTimeout(() => {
-                drawMarkers();
-            }, 3000);
         }
         
         function startDrawing(e) {
@@ -3182,7 +3380,8 @@
                 width: Math.abs(endX - startX),
                 height: Math.abs(endY - startY),
                 color: currentMarkerColor,
-                scale: scale
+                scale: scale,
+                studyState: 'visible' // v7.00: 初期状態は明転
             };
             
             if (marker.width > 5 && marker.height > 5) {
@@ -3206,6 +3405,12 @@
             }
             
             e.preventDefault();
+            
+            // v7.00: 学習モード時のマーカートグル
+            if (studyMode) {
+                toggleMarkerState(x, y);
+                return;
+            }
             
             if (deleteMode) {
                 deleteMarkerAt(x, y);
@@ -3234,7 +3439,7 @@
                                      redSheetColors.green || redSheetColors.blue;
             if (anyRedSheetActive) {
                 if (isClickOnMarker(x, y)) {
-                    showMarkerTemporarily(x, y);
+                    // v7.00: 3秒ルール廃止
                     return;
                 }
             }
@@ -3355,7 +3560,8 @@
                 width: Math.abs(endX - startX),
                 height: Math.abs(endY - startY),
                 color: currentMarkerColor,
-                scale: scale
+                scale: scale,
+                studyState: 'visible' // v7.00: 初期状態は明転
             };
             
             if (marker.width > 5 && marker.height > 5) {
@@ -3405,13 +3611,46 @@
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
-                if (redSheetColors[marker.color]) {
-                    ctx.fillStyle = '#000000';
-                } else {
-                    ctx.fillStyle = getMarkerColor(marker.color);
-                }
+                // v7.00: 学習状態に応じた表示
+                const studyState = marker.studyState || 'visible';
                 
-                ctx.fillRect(mx, my, mw, mh);
+                if (studyState === 'hidden') {
+                    // 暗転：黒色の塗りつぶし
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(mx, my, mw, mh);
+                } else if (studyState === 'visible') {
+                    // 明転：元のマーカー色
+                    if (redSheetColors[marker.color]) {
+                        ctx.fillStyle = '#000000';
+                    } else {
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                    }
+                    ctx.fillRect(mx, my, mw, mh);
+                } else if (studyState === 'correct') {
+                    // 正答：元の色 + 緑色の太枠線
+                    if (redSheetColors[marker.color]) {
+                        ctx.fillStyle = '#000000';
+                    } else {
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                    }
+                    ctx.fillRect(mx, my, mw, mh);
+                    
+                    ctx.strokeStyle = '#27ae60';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(mx, my, mw, mh);
+                } else if (studyState === 'incorrect') {
+                    // 誤答：元の色 + 赤色の太枠線
+                    if (redSheetColors[marker.color]) {
+                        ctx.fillStyle = '#000000';
+                    } else {
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                    }
+                    ctx.fillRect(mx, my, mw, mh);
+                    
+                    ctx.strokeStyle = '#e74c3c';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(mx, my, mw, mh);
+                }
                 
                 if (editMode && selectedMarkerIndex === index) {
                     ctx.strokeStyle = '#333';
@@ -3503,9 +3742,13 @@
                 offsetX = 0;
                 offsetY = 0;
                 
+                // v7.00: 学習モードもリセット
+                studyMode = false;
+                
                 const markerBtn = document.getElementById('markerModeBtn');
                 const editBtn = document.getElementById('editModeBtn');
                 const deleteBtn = document.getElementById('deleteModeBtn');
+                const studyBtn = document.getElementById('studyModeBtn');
                 if (markerBtn) {
                     markerBtn.textContent = 'マーカーOFF';
                     markerBtn.className = 'btn btn-mode-off';
@@ -3518,11 +3761,19 @@
                     deleteBtn.textContent = '🗑️ 削除OFF';
                     deleteBtn.className = 'btn btn-mode-off';
                 }
+                if (studyBtn) {
+                    studyBtn.textContent = '学習OFF';
+                    studyBtn.className = 'btn btn-mode-off';
+                    studyBtn.style.display = 'none';
+                }
                 
                 ['yellow', 'red', 'green', 'blue', 'all'].forEach(color => {
                     const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
                     if (btn) btn.classList.remove('active');
                 });
+                
+                // ボタンを有効化
+                enableButtons();
                 
                 document.getElementById('pdfUploadArea').style.display = 'block';
                 document.getElementById('pdfViewerContainer').style.display = 'none';
