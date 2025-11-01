@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.02.5</title>
+    <title>MyAnkiApp v5.02.6</title>
     <style>
         * {
             margin: 0;
@@ -970,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.5</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.6</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1557,13 +1557,16 @@
             // v5.02: タイピング式カードの処理
             if (card.type === 'typing') {
                 if (showingQuestion) {
+                    // v5.02.6: 改行を<br>に変換
+                    const questionWithBreaks = card.question.replace(/\n/g, '<br>');
+                    
                     // 問題表示：入力フィールドを表示
                     display.innerHTML = `
                         <div class="card" style="cursor: default;">
                             <div class="card-category">${card.category}</div>
                             <div class="card-type-badge">⌨️ タイピング</div>
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
-                                ${card.question}
+                                ${questionWithBreaks}
                             </div>
                         </div>
                         <div class="typing-input-container">
@@ -1593,6 +1596,9 @@
                         if (input) input.focus();
                     }, 100);
                 } else {
+                    // v5.02.6: 改行を<br>に変換
+                    const questionWithBreaks = card.question.replace(/\n/g, '<br>');
+                    
                     // 答え表示：正解を表示
                     const answer = card.answer || (card.answers && card.answers[0]) || '';
                     display.innerHTML = `
@@ -1600,7 +1606,7 @@
                             <div class="card-category">${card.category}</div>
                             <div class="card-type-badge">⌨️ タイピング</div>
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
-                                <div style="margin-bottom: 20px;">${card.question}</div>
+                                <div style="margin-bottom: 20px;">${questionWithBreaks}</div>
                                 <div style="font-size: 18px; color: rgba(255,255,255,0.9);">
                                     <strong>正解:</strong> ${answer}
                                 </div>
@@ -1858,9 +1864,22 @@
             let resultHTML = '';
             
             if (isCorrect) {
-                // 完全正解
+                // 完全正解：すべて緑で表示
                 input.className = 'typing-input correct';
-                resultHTML = '<div class="typing-result correct">✅ 正解！</div>';
+                
+                // 正解時も文字ごとに表示（すべて緑）
+                let correctDisplay = '';
+                for (let i = 0; i < normalizedUser.length; i++) {
+                    const displayChar = normalizedUser[i] === ' ' ? '␣' : normalizedUser[i];
+                    correctDisplay += `<span class="char-correct">${displayChar}</span>`;
+                }
+                
+                resultHTML = `
+                    <div class="typing-character-result">
+                        <div class="typing-character-result-label">あなたの入力：</div>
+                        <div class="typing-character-display">${correctDisplay}</div>
+                    </div>
+                `;
             } else {
                 // 不正解
                 input.className = 'typing-input incorrect';
