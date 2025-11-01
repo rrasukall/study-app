@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v5.02.6</title>
+    <title>MyAnkiApp v6.00</title>
     <style>
         * {
             margin: 0;
@@ -970,7 +970,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v5.02.6</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v6.00</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1002,15 +1002,11 @@
                         <button class="card-type-tab" onclick="switchCardType('typing')">タイピング式カード</button>
                     </div>
                     
+                    <!-- v6.00: カテゴリ→デッキに変更 -->
                     <div class="input-group">
-                        <label for="category">カテゴリ（科目）</label>
-                        <select id="category">
-                            <option value="数学">数学</option>
-                            <option value="英語">英語</option>
-                            <option value="国語">国語</option>
-                            <option value="理科">理科</option>
-                            <option value="社会">社会</option>
-                            <option value="その他">その他</option>
+                        <label for="deckId">デッキ</label>
+                        <select id="deckId">
+                            <option value="">デッキを選択してください</option>
                         </select>
                     </div>
                     
@@ -1082,14 +1078,8 @@
                     </div>
                     <div class="filter-group">
                         <input type="text" id="searchInput" placeholder="検索..." onkeyup="filterCards()">
-                        <select id="categoryFilter" onchange="filterCards()">
-                            <option value="">すべてのカテゴリ</option>
-                            <option value="数学">数学</option>
-                            <option value="英語">英語</option>
-                            <option value="国語">国語</option>
-                            <option value="理科">理科</option>
-                            <option value="社会">社会</option>
-                            <option value="その他">その他</option>
+                        <select id="deckFilter" onchange="filterCards()">
+                            <option value="">すべてのデッキ</option>
                         </select>
                     </div>
                     <div id="cardList"></div>
@@ -1226,7 +1216,7 @@
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
-        let scale = 1.0; // v5.01: 初期倍率を100%に変更
+        let scale = 1.0;
         let pdfHash = null;
         let currentPDFFile = null;
         
@@ -1254,6 +1244,21 @@
         let panStartX, panStartY;
         let offsetX = 0, offsetY = 0;
 
+        // v6.00: デッキ読み込みとカード読み込み
+        db.collection('decks').orderBy('order').onSnapshot((snapshot) => {
+            decks = [];
+            snapshot.forEach((doc) => {
+                decks.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            updateDeckSelectors();
+            displayDecks();
+        }, (error) => {
+            console.error('Error fetching decks:', error);
+        });
+
         db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
             cards = [];
             snapshot.forEach((doc) => {
@@ -1269,6 +1274,57 @@
             console.error('Error fetching cards:', error);
             updateSyncStatus('error');
         });
+        
+        // v6.00: デッキセレクターを更新
+        function updateDeckSelectors() {
+            const deckSelector = document.getElementById('deckId');
+            const deckFilter = document.getElementById('deckFilter');
+            const editDeckSelector = document.getElementById('editDeckId');
+            
+            let deckOptions = '<option value="">デッキを選択してください</option>';
+            let filterOptions = '<option value="">すべてのデッキ</option>';
+            
+            // トップレベルデッキから階層的に構築
+            function buildDeckOptions(parentId = null, prefix = '') {
+                const children = decks.filter(d => {
+                    if (parentId === null) return !d.parentId;
+                    return d.parentId === parentId;
+                });
+                
+                children.forEach(deck => {
+                    const displayName = prefix + deck.name;
+                    deckOptions += `<option value="${deck.id}">${displayName}</option>`;
+                    filterOptions += `<option value="${deck.id}">${displayName}</option>`;
+                    
+                    // 再帰的にサブデッキを追加
+                    buildDeckOptions(deck.id, displayName + ' > ');
+                });
+            }
+            
+            buildDeckOptions();
+            
+            if (deckSelector) deckSelector.innerHTML = deckOptions;
+            if (deckFilter) deckFilter.innerHTML = filterOptions;
+            if (editDeckSelector) editDeckSelector.innerHTML = deckOptions;
+        }
+        
+        // v6.00: デッキ名を取得
+        function getDeckNameById(deckId) {
+            if (!deckId) return '';
+            const deck = decks.find(d => d.id === deckId);
+            if (!deck) return '';
+            
+            const path = [];
+            let currentDeck = deck;
+            
+            while (currentDeck) {
+                path.unshift(currentDeck.name);
+                if (!currentDeck.parentId) break;
+                currentDeck = decks.find(d => d.id === currentDeck.parentId);
+            }
+            
+            return path.join(' > ');
+        }
         
         window.addEventListener('load', async () => {
             if ('showOpenFilePicker' in window) {
@@ -1429,9 +1485,15 @@
             updateClozePreview();
         }
 
-        // v5.01: カード追加（穴埋め対応）
+        // v6.00: カード追加（デッキ対応）
         async function addCard() {
-            const category = document.getElementById('category').value;
+            const deckId = document.getElementById('deckId').value;
+            
+            // v6.00: デッキが選択されているか確認
+            if (!deckId) {
+                alert('デッキを選択してください');
+                return;
+            }
             
             updateSyncStatus('syncing');
             
@@ -1450,7 +1512,7 @@
                     
                     await db.collection('flashcards').add({
                         type: enableReverse ? 'basic-reversed' : 'basic',
-                        category: category,
+                        deckId: deckId,
                         question: question,
                         answer: answer,
                         enableReverse: enableReverse,
@@ -1492,7 +1554,7 @@
                     
                     await db.collection('flashcards').add({
                         type: 'cloze',
-                        category: category,
+                        deckId: deckId,
                         text: text,
                         clozes: clozes,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1516,7 +1578,7 @@
                     
                     await db.collection('flashcards').add({
                         type: 'typing',
-                        category: category,
+                        deckId: deckId,
                         question: question,
                         answer: answer,
                         caseSensitive: caseSensitive,
@@ -1536,7 +1598,7 @@
             }
         }
 
-        // v5.01: カード表示（穴埋め対応）
+        // v6.00: カード表示（デッキ名表示）
         function displayCard() {
             const display = document.getElementById('cardDisplay');
             const controls = document.getElementById('cardControls');
@@ -1554,16 +1616,17 @@
             
             const card = cards[currentIndex];
             
+            // v6.00: デッキ名を取得（互換性のためcategoryもサポート）
+            const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
+            
             // v5.02: タイピング式カードの処理
             if (card.type === 'typing') {
                 if (showingQuestion) {
-                    // v5.02.6: 改行を<br>に変換
                     const questionWithBreaks = card.question.replace(/\n/g, '<br>');
                     
-                    // 問題表示：入力フィールドを表示
                     display.innerHTML = `
                         <div class="card" style="cursor: default;">
-                            <div class="card-category">${card.category}</div>
+                            <div class="card-category">${deckName}</div>
                             <div class="card-type-badge">⌨️ タイピング</div>
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
                                 ${questionWithBreaks}
@@ -1590,20 +1653,16 @@
                         </div>
                     `;
                     
-                    // 入力フィールドにフォーカス
                     setTimeout(() => {
                         const input = document.getElementById('typingInput');
                         if (input) input.focus();
                     }, 100);
                 } else {
-                    // v5.02.6: 改行を<br>に変換
                     const questionWithBreaks = card.question.replace(/\n/g, '<br>');
-                    
-                    // 答え表示：正解を表示
                     const answer = card.answer || (card.answers && card.answers[0]) || '';
                     display.innerHTML = `
                         <div class="card" onclick="flipCard()">
-                            <div class="card-category">${card.category}</div>
+                            <div class="card-category">${deckName}</div>
                             <div class="card-type-badge">⌨️ タイピング</div>
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
                                 <div style="margin-bottom: 20px;">${questionWithBreaks}</div>
@@ -1633,8 +1692,7 @@
             // v5.01: 穴埋めカードの処理
             if (card.type === 'cloze') {
                 if (showingQuestion) {
-                    // 問題表示：穴埋め部分を[___]で表示
-                    currentClozeAnswers = {}; // 答え表示状態をリセット
+                    currentClozeAnswers = {};
                     const clozeRegex = /\{\{c(\d+)::([^}]+)\}\}/g;
                     const displayText = card.text.replace(clozeRegex, (match, num, answer) => {
                         return `<span class="cloze-answer-hidden" onclick="showClozeAnswer('c${num}', '${answer.replace(/'/g, "\\'")}')"> ??? </span>`;
@@ -1642,7 +1700,7 @@
                     
                     display.innerHTML = `
                         <div class="card" style="cursor: default;">
-                            <div class="card-category">${card.category}</div>
+                            <div class="card-category">${deckName}</div>
                             <div class="card-type-badge">📝 穴埋め</div>
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
                                 ${displayText}
@@ -1664,7 +1722,6 @@
                         </div>
                     `;
                 } else {
-                    // 答え表示：すべての穴埋めを表示
                     const clozeRegex = /\{\{c(\d+)::([^}]+)\}\}/g;
                     const displayText = card.text.replace(clozeRegex, (match, num, answer) => {
                         return `<span class="cloze-answer-shown">${answer}</span>`;
@@ -1672,7 +1729,7 @@
                     
                     display.innerHTML = `
                         <div class="card" onclick="flipCard()">
-                            <div class="card-category">${card.category}</div>
+                            <div class="card-category">${deckName}</div>
                             <div class="card-type-badge">📝 穴埋め</div>
                             <div class="card-content" style="font-size: 20px; line-height: 1.8;">
                                 ${displayText}
@@ -1722,7 +1779,7 @@
             
             display.innerHTML = `
                 <div class="card" onclick="flipCard()" style="position: relative;">
-                    <div class="card-category">${card.category}</div>
+                    <div class="card-category">${deckName}</div>
                     ${card.enableReverse ? `<div class="card-direction">⇆ ${directionLabel}</div>` : ''}
                     <div class="card-content">
                         ${content}
@@ -1762,9 +1819,11 @@
             const display = document.getElementById('cardDisplay');
             const controls = document.getElementById('cardControls');
             
+            const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
+            
             display.innerHTML = `
                 <div class="card" style="cursor: default;">
-                    <div class="card-category">${card.category}</div>
+                    <div class="card-category">${deckName}</div>
                     <div class="card-type-badge">📝 穴埋め</div>
                     <div class="card-content" style="font-size: 20px; line-height: 1.8;">
                         ${displayText}
@@ -1787,7 +1846,7 @@
             `;
         }
 
-        // v5.02.1: タイピング式カードの入力判定（完全リニューアル）
+        // v5.02.1: タイピング式カードの入力判定
         function checkTypingAnswer() {
             const card = cards[currentIndex];
             if (card.type !== 'typing') return;
@@ -1804,43 +1863,29 @@
                 return;
             }
             
-            // 正解を取得（互換性対応）
             const correctAnswer = card.answer || (card.answers && card.answers[0]) || '';
             
-            // テキスト正規化関数（v5.02.5: スペース正規化方式）
             function normalizeText(text, caseSensitive) {
-                // 前後のスペースを削除
                 text = text.trim();
-                
-                // 全角スペースを半角に統一
                 text = text.replace(/　/g, ' ');
-                
-                // 連続するスペースを1つに
                 text = text.replace(/\s+/g, ' ');
                 
                 if (!caseSensitive) {
-                    // 全角→半角変換
                     text = text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => {
                         return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
                     });
-                    // 小文字化
                     text = text.toLowerCase();
                 }
                 
                 return text;
             }
             
-            // 正規化
             const normalizedUser = normalizeText(userAnswer, card.caseSensitive);
             const normalizedCorrect = normalizeText(correctAnswer, card.caseSensitive);
             
-            // 完全一致判定
             const isCorrect = normalizedUser === normalizedCorrect;
-            
-            // 文字数チェック
             const lengthMatch = normalizedUser.length === normalizedCorrect.length;
             
-            // 文字ごとの判定（v5.02.5: スペースを視覚化）
             let characterDisplay = '';
             const maxLen = Math.max(normalizedUser.length, normalizedCorrect.length);
             
@@ -1848,26 +1893,20 @@
                 const userChar = normalizedUser[i] || '';
                 const correctChar = normalizedCorrect[i] || '';
                 
-                // 表示用の文字（スペースは「␣」記号で視覚化）
                 const displayChar = userChar === ' ' ? '␣' : userChar;
                 
                 if (userChar === correctChar && userChar !== '') {
-                    // 正しい文字：緑
                     characterDisplay += `<span class="char-correct">${displayChar}</span>`;
                 } else if (userChar !== '') {
-                    // 間違った文字：赤
                     characterDisplay += `<span class="char-incorrect">${displayChar}</span>`;
                 }
             }
             
-            // 結果表示（入力フィールドは無効化しない）
             let resultHTML = '';
             
             if (isCorrect) {
-                // 完全正解：すべて緑で表示
                 input.className = 'typing-input correct';
                 
-                // 正解時も文字ごとに表示（すべて緑）
                 let correctDisplay = '';
                 for (let i = 0; i < normalizedUser.length; i++) {
                     const displayChar = normalizedUser[i] === ' ' ? '␣' : normalizedUser[i];
@@ -1881,15 +1920,12 @@
                     </div>
                 `;
             } else {
-                // 不正解
                 input.className = 'typing-input incorrect';
                 
-                // 文字数警告
                 if (!lengthMatch) {
                     resultHTML += '<div class="length-warning">⚠️ 文字数が異なります</div>';
                 }
                 
-                // 文字ごとの判定結果
                 resultHTML += `
                     <div class="typing-character-result">
                         <div class="typing-character-result-label">あなたの入力：</div>
@@ -1900,11 +1936,10 @@
             
             result.innerHTML = resultHTML;
             
-            // 再入力のためフォーカスを維持
             input.focus();
         }
 
-        // v5.01: カード一覧表示（穴埋め対応）
+        // v6.00: カード一覧表示（デッキ名表示）
         function displayCardList() {
             const listEl = document.getElementById('cardList');
             
@@ -1920,15 +1955,16 @@
             
             let html = '';
             cards.forEach(card => {
+                const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
+                
                 if (card.type === 'typing') {
-                    // v5.02: タイピング式カードの表示
                     const answer = card.answer || (card.answers && card.answers.join(', ')) || '';
                     html += `
                         <div class="card-item">
                             <div class="card-item-header">
                                 <span class="card-item-title">タイピング: ${card.question}</span>
                                 <div>
-                                    <span class="card-item-category">${card.category}</span>
+                                    <span class="card-item-category">${deckName}</span>
                                     <span class="card-item-typing-badge">⌨️ タイピング</span>
                                 </div>
                             </div>
@@ -1943,7 +1979,6 @@
                         </div>
                     `;
                 } else if (card.type === 'cloze') {
-                    // v5.01: 穴埋めカードの表示
                     const clozeRegex = /\{\{c\d+::([^}]+)\}\}/g;
                     const displayText = card.text.replace(clozeRegex, (match, answer) => {
                         return `<span class="cloze-blank">[${answer}]</span>`;
@@ -1954,7 +1989,7 @@
                             <div class="card-item-header">
                                 <span class="card-item-title">穴埋め: ${card.text.substring(0, 50)}${card.text.length > 50 ? '...' : ''}</span>
                                 <div>
-                                    <span class="card-item-category">${card.category}</span>
+                                    <span class="card-item-category">${deckName}</span>
                                     <span class="card-item-cloze-badge">📝 穴埋め</span>
                                 </div>
                             </div>
@@ -1966,13 +2001,12 @@
                         </div>
                     `;
                 } else {
-                    // 基本カード・逆転カード
                     html += `
                         <div class="card-item">
                             <div class="card-item-header">
                                 <span class="card-item-title">問題: ${card.question}</span>
                                 <div>
-                                    <span class="card-item-category">${card.category}</span>
+                                    <span class="card-item-category">${deckName}</span>
                                     ${card.enableReverse ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
                                 </div>
                             </div>
@@ -1989,9 +2023,10 @@
             listEl.innerHTML = html;
         }
 
+        // v6.00: カードフィルター（デッキフィルター）
         function filterCards() {
             const searchText = document.getElementById('searchInput').value.toLowerCase();
-            const categoryFilter = document.getElementById('categoryFilter').value;
+            const deckFilter = document.getElementById('deckFilter').value;
             
             const items = document.querySelectorAll('.card-item');
             items.forEach((item, index) => {
@@ -1999,7 +2034,6 @@
                 let matchesSearch = false;
                 
                 if (card.type === 'typing') {
-                    // v5.02: タイピング式カードの検索
                     const answer = card.answer || (card.answers && card.answers.join(' ')) || '';
                     matchesSearch = card.question.toLowerCase().includes(searchText) ||
                                   answer.toLowerCase().includes(searchText);
@@ -2010,9 +2044,9 @@
                                   card.answer.toLowerCase().includes(searchText);
                 }
                 
-                const matchesCategory = !categoryFilter || card.category === categoryFilter;
+                const matchesDeck = !deckFilter || card.deckId === deckFilter;
                 
-                if (matchesSearch && matchesCategory) {
+                if (matchesSearch && matchesDeck) {
                     item.style.display = 'block';
                 } else {
                     item.style.display = 'none';
@@ -2065,20 +2099,18 @@
             }
         }
 
-        // v5.01: カード編集（穴埋め対応）
+        // v6.00: カード編集（デッキ対応）
         function editCard(cardId) {
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
             
-            document.getElementById('editCategory').value = card.category;
+            document.getElementById('editDeckId').value = card.deckId || '';
             
-            // 全ての入力エリアを非表示に
             document.getElementById('editBasicInputs').style.display = 'none';
             document.getElementById('editClozeInputs').style.display = 'none';
             document.getElementById('editTypingInputs').style.display = 'none';
             
             if (card.type === 'typing') {
-                // v5.02: タイピング式カード編集
                 document.getElementById('editCardType').value = 'typing';
                 document.getElementById('editTypingInputs').style.display = 'block';
                 document.getElementById('editTypingQuestion').value = card.question;
@@ -2086,13 +2118,11 @@
                 document.getElementById('editTypingAnswer').value = answer;
                 document.getElementById('editTypingCaseSensitive').checked = card.caseSensitive || false;
             } else if (card.type === 'cloze') {
-                // v5.01: 穴埋めカード編集
                 document.getElementById('editCardType').value = 'cloze';
                 document.getElementById('editClozeInputs').style.display = 'block';
                 document.getElementById('editClozeText').value = card.text;
                 updateEditClozePreview();
             } else {
-                // 基本カード編集
                 document.getElementById('editCardType').value = 'basic';
                 document.getElementById('editBasicInputs').style.display = 'block';
                 document.getElementById('editQuestion').value = card.question;
@@ -2110,17 +2140,14 @@
             editingCardId = null;
         }
 
-        // v5.01: 編集カードタイプ切り替え（テキスト保持機能付き）
         function switchEditCardType() {
             const type = document.getElementById('editCardType').value;
             
-            // 全ての入力エリアを非表示に
             document.getElementById('editBasicInputs').style.display = 'none';
             document.getElementById('editClozeInputs').style.display = 'none';
             document.getElementById('editTypingInputs').style.display = 'none';
             
             if (type === 'basic') {
-                // 他のタイプ→基本カードに切り替え
                 const clozeText = document.getElementById('editClozeText').value;
                 const typingQuestion = document.getElementById('editTypingQuestion').value;
                 
@@ -2130,14 +2157,13 @@
                     document.getElementById('editAnswer').value = '';
                 } else if (typingQuestion && typingQuestion.trim()) {
                     document.getElementById('editQuestion').value = typingQuestion;
-                    const answers = document.getElementById('editTypingAnswers').value;
-                    document.getElementById('editAnswer').value = answers.split('\n')[0] || '';
+                    const answers = document.getElementById('editTypingAnswer').value;
+                    document.getElementById('editAnswer').value = answers || '';
                 }
                 
                 document.getElementById('editBasicInputs').style.display = 'block';
                 
             } else if (type === 'cloze') {
-                // 他のタイプ→穴埋めカードに切り替え
                 const basicQuestion = document.getElementById('editQuestion').value;
                 const typingQuestion = document.getElementById('editTypingQuestion').value;
                 
@@ -2151,7 +2177,6 @@
                 updateEditClozePreview();
                 
             } else if (type === 'typing') {
-                // 他のタイプ→タイピング式カードに切り替え
                 const basicQuestion = document.getElementById('editQuestion').value;
                 const basicAnswer = document.getElementById('editAnswer').value;
                 const clozeText = document.getElementById('editClozeText').value;
@@ -2169,7 +2194,6 @@
             }
         }
 
-        // v5.01: 編集モーダルの穴埋めプレビュー更新
         function updateEditClozePreview() {
             const text = document.getElementById('editClozeText').value;
             const preview = document.getElementById('editClozePreview');
@@ -2193,7 +2217,6 @@
             }
         }
 
-        // v5.01: 編集モーダルで穴埋め挿入
         function insertEditCloze() {
             const textarea = document.getElementById('editClozeText');
             const start = textarea.selectionStart;
@@ -2225,7 +2248,6 @@
             updateEditClozePreview();
         }
 
-        // v5.01: 編集モーダルで穴埋め削除
         function removeEditCloze() {
             const textarea = document.getElementById('editClozeText');
             let text = textarea.value;
@@ -2247,10 +2269,15 @@
             updateEditClozePreview();
         }
 
-        // v5.01: 編集したカードを保存（穴埋め対応）
+        // v6.00: 編集したカードを保存（デッキ対応）
         async function saveEditedCard() {
-            const category = document.getElementById('editCategory').value;
+            const deckId = document.getElementById('editDeckId').value;
             const cardType = document.getElementById('editCardType').value;
+            
+            if (!deckId) {
+                alert('デッキを選択してください');
+                return;
+            }
             
             updateSyncStatus('syncing');
             
@@ -2268,7 +2295,7 @@
                     
                     await db.collection('flashcards').doc(editingCardId).update({
                         type: enableReverse ? 'basic-reversed' : 'basic',
-                        category: category,
+                        deckId: deckId,
                         question: question,
                         answer: answer,
                         enableReverse: enableReverse,
@@ -2277,7 +2304,6 @@
                     });
                     
                 } else if (cardType === 'cloze') {
-                    // v5.01: 穴埋めカード更新
                     const text = document.getElementById('editClozeText').value.trim();
                     
                     if (!text) {
@@ -2306,7 +2332,7 @@
                     
                     await db.collection('flashcards').doc(editingCardId).update({
                         type: 'cloze',
-                        category: category,
+                        deckId: deckId,
                         text: text,
                         clozes: clozes,
                         question: firebase.firestore.FieldValue.delete(),
@@ -2317,7 +2343,6 @@
                     });
                     
                 } else if (cardType === 'typing') {
-                    // v5.02: タイピング式カード更新
                     const question = document.getElementById('editTypingQuestion').value.trim();
                     const answer = document.getElementById('editTypingAnswer').value.trim();
                     const caseSensitive = document.getElementById('editTypingCaseSensitive').checked;
@@ -2330,7 +2355,7 @@
                     
                     await db.collection('flashcards').doc(editingCardId).update({
                         type: 'typing',
-                        category: category,
+                        deckId: deckId,
                         question: question,
                         answer: answer,
                         caseSensitive: caseSensitive,
@@ -2351,7 +2376,7 @@
             }
         }
 
-        // v5.01: CSV出力（穴埋め対応）
+        // CSV出力（デッキ名対応）
         function exportToAnki() {
             if (cards.length === 0) {
                 alert('エクスポートするカードがありません');
@@ -2360,26 +2385,23 @@
             
             let csv = '\ufeff';
             cards.forEach(card => {
-                const category = card.category.replace(/"/g, '""');
+                const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
                 
                 if (card.type === 'typing') {
-                    // v5.02: タイピング式カードは問題と正解を出力
                     const question = card.question.replace(/"/g, '""');
                     const answer = (card.answer || (card.answers && card.answers.join(', ')) || '').replace(/"/g, '""');
-                    csv += `"${question}","${answer}","${category}"\n`;
+                    csv += `"${question}","${answer}","${deckName}"\n`;
                 } else if (card.type === 'cloze') {
-                    // v5.01: 穴埋めカードはテキストをそのまま出力
                     const text = card.text.replace(/"/g, '""');
-                    csv += `"${text}","${category}"\n`;
+                    csv += `"${text}","${deckName}"\n`;
                 } else {
-                    // 基本カード・逆転カード
                     const question = card.question.replace(/"/g, '""');
                     const answer = card.answer.replace(/"/g, '""');
                     
-                    csv += `"${question}","${answer}","${category}"\n`;
+                    csv += `"${question}","${answer}","${deckName}"\n`;
                     
                     if (card.enableReverse) {
-                        csv += `"${answer}","${question}","${category}"\n`;
+                        csv += `"${answer}","${question}","${deckName}"\n`;
                     }
                 }
             });
@@ -2399,7 +2421,7 @@
             alert('CSVファイルをダウンロードしました！');
         }
 
-        // ========== PDF機能（変更なし、初期倍率のみ変更済み） ==========
+        // ========== PDF機能（変更なし） ==========
         
         const uploadArea = document.getElementById('pdfUploadArea');
         
@@ -3428,7 +3450,7 @@
             }
         }
         
-        // ========== デッキ管理機能（変更なし） ==========
+        // ========== デッキ管理機能 ==========
         
         async function loadDecks() {
             try {
@@ -3464,7 +3486,14 @@
         
         function renderDeckItem(deck, level) {
             const childDecks = decks.filter(d => d.parentId === deck.id);
-            const cardCount = 0;
+            
+            // v6.00: デッキ内のカード数を計算
+            const deckCards = cards.filter(c => c.deckId === deck.id);
+            const childDeckCards = childDecks.reduce((sum, child) => {
+                return sum + countDeckCards(child.id);
+            }, 0);
+            const cardCount = deckCards.length + childDeckCards;
+            
             const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
             
             let html = `
@@ -3488,6 +3517,16 @@
             });
             
             return html;
+        }
+        
+        // v6.00: デッキとサブデッキのカード数を再帰的に計算
+        function countDeckCards(deckId) {
+            const deckCards = cards.filter(c => c.deckId === deckId);
+            const childDecks = decks.filter(d => d.parentId === deckId);
+            const childCards = childDecks.reduce((sum, child) => {
+                return sum + countDeckCards(child.id);
+            }, 0);
+            return deckCards.length + childCards;
         }
         
         function createNewDeck() {
@@ -3688,22 +3727,18 @@
         </div>
     </div>
     
-    <!-- v5.01: カード編集モーダル（穴埋め対応） -->
+    <!-- カード編集モーダル -->
     <div id="cardEditModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <span class="close" onclick="closeCardEditModal()">&times;</span>
                 <h2>カードを編集</h2>
             </div>
+            <!-- v6.00: デッキ選択 -->
             <div class="input-group">
-                <label for="editCategory">カテゴリ（科目）</label>
-                <select id="editCategory">
-                    <option value="数学">数学</option>
-                    <option value="英語">英語</option>
-                    <option value="国語">国語</option>
-                    <option value="理科">理科</option>
-                    <option value="社会">社会</option>
-                    <option value="その他">その他</option>
+                <label for="editDeckId">デッキ</label>
+                <select id="editDeckId">
+                    <option value="">デッキを選択してください</option>
                 </select>
             </div>
             <div class="input-group">
@@ -3731,7 +3766,7 @@
                 </div>
             </div>
             
-            <!-- v5.01: 穴埋めカード編集 -->
+            <!-- 穴埋めカード編集 -->
             <div id="editClozeInputs" style="display: none;">
                 <div class="input-group">
                     <label for="editClozeText">テキスト</label>
@@ -3747,7 +3782,7 @@
                 </div>
             </div>
             
-            <!-- v5.02: タイピング式カード編集 -->
+            <!-- タイピング式カード編集 -->
             <div id="editTypingInputs" style="display: none;">
                 <div class="input-group">
                     <label for="editTypingQuestion">問題</label>
