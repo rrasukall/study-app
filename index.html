@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.00.2</title>
+    <title>MyAnkiApp v7.00.3</title>
     <style>
         * {
             margin: 0;
@@ -1026,7 +1026,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.00.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.00.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2951,7 +2951,7 @@
             drawMarkers();
         }
         
-        // v7.00.2: 学習モードトグル
+        // v7.00.3: 学習モードトグル
         function toggleStudyMode() {
             studyMode = !studyMode;
             const btn = document.getElementById('studyModeBtn');
@@ -2961,13 +2961,6 @@
                 // 学習モードON
                 btn.textContent = '学習ON';
                 btn.className = 'btn btn-mode-on';
-                
-                // v7.00.2: 現在のページのすべてのマーカーをリセット（暗転からスタート）
-                if (pdfHash && markers[pdfHash] && markers[pdfHash][currentPage]) {
-                    markers[pdfHash][currentPage].forEach(marker => {
-                        delete marker.studyState;  // undefined = 暗転状態
-                    });
-                }
                 
                 // 既存のモードをすべてOFF
                 if (markerMode) toggleMarkerMode();
