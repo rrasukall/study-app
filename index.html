@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.02.2</title>
+    <title>MyAnkiApp v7.03</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.02.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.03</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3035,9 +3035,14 @@
             sheetClickToggles = {};
             
             drawMarkers();
+            
+            // v7.03: 学習モードON時はシート変更で統計を再計算
+            if (studyMode) {
+                updateStudyStats();
+            }
         }
         
-        // v7.01: 学習統計を更新
+        // v7.03: 学習統計を更新（学習モードON時はシートONの色のみ集計）
         function updateStudyStats() {
             if (!pdfHash || !markers[pdfHash]) return;
             
@@ -3045,9 +3050,14 @@
             let incorrectCount = 0;
             let unstudiedCount = 0;
             
-            // PDF全体のマーカーを集計
+            // v7.03: 学習モードON時はシートONの色のみ集計、OFF時は全マーカー集計
             Object.keys(markers[pdfHash]).forEach(pageNum => {
                 markers[pdfHash][pageNum].forEach(marker => {
+                    // v7.03: 学習モードON時はシートONの色のみ集計
+                    if (studyMode && !redSheetColors[marker.color]) {
+                        return;  // シートOFFの色はスキップ
+                    }
+                    
                     if (marker.studyState === 'correct') {
                         correctCount++;
                     } else if (marker.studyState === 'incorrect') {
@@ -3317,6 +3327,20 @@
                 // ボタンをグレーアウト
                 disableButtons();
                 
+                // v7.03: 学習モードON時は全色シートをONにする
+                redSheetColors.yellow = true;
+                redSheetColors.red = true;
+                redSheetColors.green = true;
+                redSheetColors.blue = true;
+                
+                // シートボタンの表示を更新
+                ['yellow', 'red', 'green', 'blue'].forEach(color => {
+                    const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                    if (btn) {
+                        btn.classList.add('active');
+                    }
+                });
+                
                 // v7.01: タイマー開始と統計パネルをアクティブ化
                 startStudyTimer();
                 if (statsPanel) {
@@ -3396,14 +3420,7 @@
                 clearAllMarkersBtn.style.pointerEvents = 'none';
             }
             
-            // v7.00.2: シートボタンもグレーアウト
-            ['redsheetYellow', 'redsheetRed', 'redsheetGreen', 'redsheetBlue', 'redsheetAll'].forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) {
-                    btn.classList.add('disabled');
-                    btn.style.pointerEvents = 'none';
-                }
-            });
+            // v7.03: シートボタンは学習モードON時も有効（グレーアウトしない）
         }
         
         // v7.00.2: ボタンを有効化（シートボタンも追加）
@@ -3451,14 +3468,7 @@
                 clearAllMarkersBtn.style.pointerEvents = '';
             }
             
-            // v7.00.2: シートボタンも有効化
-            ['redsheetYellow', 'redsheetRed', 'redsheetGreen', 'redsheetBlue', 'redsheetAll'].forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) {
-                    btn.classList.remove('disabled');
-                    btn.style.pointerEvents = '';
-                }
-            });
+            // v7.03: シートボタンは常に有効（学習モード関係なし）
         }
         
         function loadInstantDeleteSetting() {
@@ -3588,7 +3598,12 @@
                 const mh = marker.height * scaleRatio;
                 
                 if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
-                    // v7.00.1: トグルサイクル: 暗転(初期) → 明転(枠なし) → 正答(緑枠) → 誤答(赤枠) → 暗転
+                    // v7.03: シートOFFの色はクリックしても反応しない（学習対象外）
+                    if (!redSheetColors[marker.color]) {
+                        return;  // シートOFFの色は何もしない
+                    }
+                    
+                    // v7.03: トグルサイクル: 暗転(初期) → 明転(枠なし) → 正答(緑枠) → 誤答(赤枠) → 暗転
                     if (!marker.studyState || marker.studyState === 'hidden') {
                         marker.studyState = 'visible';  // 暗転 → 明転（枠なし、解答確認用）
                     } else if (marker.studyState === 'visible') {
@@ -4069,33 +4084,40 @@
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
-                // v7.00.1: 学習モードOFF時は通常表示、ON時のみstudyStateに応じた表示
+                // v7.03: 学習モードOFF時は通常表示、ON時はシート設定とstudyStateに応じた表示
                 if (studyMode) {
-                    // 学習モードON時：studyStateに応じて表示
-                    const studyState = marker.studyState;
-                    
-                    if (!studyState || studyState === 'hidden') {
-                        // 暗転（初期状態）：黒色の塗りつぶし
-                        ctx.fillStyle = '#000000';
-                        ctx.fillRect(mx, my, mw, mh);
-                    } else if (studyState === 'visible') {
-                        // 明転（枠なし）：解答確認用
+                    // v7.03: 学習モードON時：シートOFFの色は明転（学習対象外）、シートONの色はstudyStateに応じて表示
+                    if (!redSheetColors[marker.color]) {
+                        // シートOFFの色 = 明転（学習対象外として読める状態）
                         ctx.fillStyle = getMarkerColor(marker.color);
                         ctx.fillRect(mx, my, mw, mh);
-                    } else if (studyState === 'correct') {
-                        // 正答：明転 + 緑枠
-                        ctx.fillStyle = getMarkerColor(marker.color);
-                        ctx.fillRect(mx, my, mw, mh);
-                        ctx.strokeStyle = '#27ae60';
-                        ctx.lineWidth = 4;
-                        ctx.strokeRect(mx, my, mw, mh);
-                    } else if (studyState === 'incorrect') {
-                        // 誤答：明転 + 赤枠
-                        ctx.fillStyle = getMarkerColor(marker.color);
-                        ctx.fillRect(mx, my, mw, mh);
-                        ctx.strokeStyle = '#e74c3c';
-                        ctx.lineWidth = 4;
-                        ctx.strokeRect(mx, my, mw, mh);
+                    } else {
+                        // シートONの色 = studyStateに応じた表示
+                        const studyState = marker.studyState;
+                        
+                        if (!studyState || studyState === 'hidden') {
+                            // 暗転（初期状態）：黒色の塗りつぶし
+                            ctx.fillStyle = '#000000';
+                            ctx.fillRect(mx, my, mw, mh);
+                        } else if (studyState === 'visible') {
+                            // 明転（枠なし）：解答確認用
+                            ctx.fillStyle = getMarkerColor(marker.color);
+                            ctx.fillRect(mx, my, mw, mh);
+                        } else if (studyState === 'correct') {
+                            // 正答：明転 + 緑枠
+                            ctx.fillStyle = getMarkerColor(marker.color);
+                            ctx.fillRect(mx, my, mw, mh);
+                            ctx.strokeStyle = '#27ae60';
+                            ctx.lineWidth = 4;
+                            ctx.strokeRect(mx, my, mw, mh);
+                        } else if (studyState === 'incorrect') {
+                            // 誤答：明転 + 赤枠
+                            ctx.fillStyle = getMarkerColor(marker.color);
+                            ctx.fillRect(mx, my, mw, mh);
+                            ctx.strokeStyle = '#e74c3c';
+                            ctx.lineWidth = 4;
+                            ctx.strokeRect(mx, my, mw, mh);
+                        }
                     }
                 } else {
                     // v7.00.2: 学習モードOFF時：通常表示（v6系と同じ、シート機能有効）
