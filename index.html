@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.01</title>
+    <title>MyAnkiApp v7.02</title>
     <style>
         * {
             margin: 0;
@@ -1023,12 +1023,11 @@
             margin: 0;
         }
         
-        /* v7.01: 学習統計パネル */
+        /* v7.02: 学習統計パネル（2行構成） */
         .study-stats {
             display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 8px 16px;
+            flex-direction: column;
+            padding: 10px 16px;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 8px;
             font-size: 14px;
@@ -1055,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.01</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.02</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1174,18 +1173,26 @@
         
         <div id="pdf-section" class="section">
             <div class="pdf-viewer">
-                <!-- v7.01: PDF学習ヘッダーと統計パネル -->
+                <!-- v7.02: PDF学習ヘッダーと統計パネル -->
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
-                    <!-- v7.01: 学習統計パネル -->
+                    <!-- v7.02: 学習統計パネル（2行構成） -->
                     <div class="study-stats inactive" id="studyStats" style="display: none;">
-                        <span class="stat-item">⏱️ <span id="studyTime">00:00:00</span></span>
-                        <span class="stat-separator">|</span>
-                        <span class="stat-item">✅ <span id="correctCount">0</span></span>
-                        <span class="stat-item">❌ <span id="incorrectCount">0</span></span>
-                        <span class="stat-item">🔲 <span id="unstudiedCount">0</span></span>
-                        <span class="stat-item">📊 <span id="accuracyRate">N/A</span></span>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
+                            <span class="stat-item">⏱️ 今回: <span id="studyTime">00:00:00</span></span>
+                            <span class="stat-separator">|</span>
+                            <span class="stat-item">総: <span id="totalStudyTime">00:00:00</span></span>
+                            <span class="stat-separator">|</span>
+                            <span class="stat-item">周回: <span id="lapCount">1</span>回目</span>
+                            <button class="btn btn-secondary" onclick="resetLap()" id="resetLapBtn" style="padding: 4px 12px; font-size: 13px;">リセット</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="stat-item">✅ <span id="correctCount">0</span></span>
+                            <span class="stat-item">❌ <span id="incorrectCount">0</span></span>
+                            <span class="stat-item">🔲 <span id="unstudiedCount">0</span></span>
+                            <span class="stat-item">📊 <span id="accuracyRate">N/A</span></span>
+                        </div>
                     </div>
                 </div>
                 
@@ -1352,6 +1359,10 @@
         let studyStartTime = null; // 学習開始時刻
         let studyElapsedTime = 0; // 累積学習時間（ミリ秒）
         let studyTimerInterval = null; // タイマーのインターバルID
+        
+        // v7.02: PDF単位の学習記録
+        let totalStudyTime = 0; // 総学習時間（ミリ秒）
+        let lapCount = 1; // 周回数
         
         let pdfDB = null;
         let useFileSystemAPI = false;
@@ -2685,6 +2696,9 @@
                 
                 await loadMarkersFromFirebase();
                 
+                // v7.02: 学習記録を読み込み
+                await loadStudySessionFromFirebase();
+                
                 await renderPage(currentPage);
                 
                 // v7.01: 初期統計を更新
@@ -2730,6 +2744,9 @@
                 resetStudyTimer();
                 
                 await loadMarkersFromFirebase();
+                
+                // v7.02: 学習記録を読み込み
+                await loadStudySessionFromFirebase();
                 
                 await renderPage(currentPage);
                 
@@ -3080,8 +3097,9 @@
             updateTimerDisplay();
         }
         
-        // v7.01: タイマー表示更新
+        // v7.02: タイマー表示更新（今回周と総学習時間）
         function updateTimerDisplay() {
+            // 今回周の学習時間
             const totalSeconds = Math.floor(studyElapsedTime / 1000);
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -3093,10 +3111,106 @@
                 String(seconds).padStart(2, '0');
             
             document.getElementById('studyTime').textContent = timeString;
+            
+            // 総学習時間
+            const totalStudySeconds = Math.floor((totalStudyTime + studyElapsedTime) / 1000);
+            const totalHours = Math.floor(totalStudySeconds / 3600);
+            const totalMinutes = Math.floor((totalStudySeconds % 3600) / 60);
+            const totalSecs = totalStudySeconds % 60;
+            
+            const totalTimeString = 
+                String(totalHours).padStart(2, '0') + ':' +
+                String(totalMinutes).padStart(2, '0') + ':' +
+                String(totalSecs).padStart(2, '0');
+            
+            document.getElementById('totalStudyTime').textContent = totalTimeString;
         }
         
-        // v7.01: 学習モードトグル
-        function toggleStudyMode() {
+        // v7.02: 周回数表示を更新
+        function updateLapDisplay() {
+            document.getElementById('lapCount').textContent = lapCount;
+        }
+        
+        // v7.02: 周をリセット（リセットボタン）
+        async function resetLap() {
+            if (!pdfHash) return;
+            
+            if (!confirm('この周を終了して次の周を開始しますか？\n\n・マーカー状態が初期化されます（暗転に戻る）\n・今回周の統計がリセットされます\n・総学習時間に加算されます')) {
+                return;
+            }
+            
+            // 今回周の時間を総学習時間に加算
+            totalStudyTime += studyElapsedTime;
+            
+            // 周回数を+1
+            lapCount++;
+            
+            // マーカー状態を初期化（全ページ）
+            if (markers[pdfHash]) {
+                Object.keys(markers[pdfHash]).forEach(pageNum => {
+                    markers[pdfHash][pageNum].forEach(marker => {
+                        delete marker.studyState;  // undefined = 暗転状態
+                    });
+                });
+            }
+            
+            // 今回周の統計をリセット
+            studyElapsedTime = 0;
+            studyStartTime = Date.now();  // タイマーは継続
+            
+            // 表示を更新
+            updateTimerDisplay();
+            updateLapDisplay();
+            updateStudyStats();
+            drawMarkers();
+            
+            // Firebaseに保存
+            await saveMarkersToFirebase();  // マーカー状態
+            await saveStudySessionToFirebase();  // 学習記録
+        }
+        
+        // v7.02: 学習記録をFirebaseに保存
+        async function saveStudySessionToFirebase() {
+            if (!pdfHash) return;
+            
+            try {
+                await db.collection('studySessions').doc(pdfHash).set({
+                    totalStudyTime: totalStudyTime,
+                    lapCount: lapCount,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error('学習記録の保存エラー:', error);
+            }
+        }
+        
+        // v7.02: 学習記録をFirebaseから読み込み
+        async function loadStudySessionFromFirebase() {
+            if (!pdfHash) return;
+            
+            try {
+                const doc = await db.collection('studySessions').doc(pdfHash).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    totalStudyTime = data.totalStudyTime || 0;
+                    lapCount = data.lapCount || 1;
+                } else {
+                    // 初回は初期値
+                    totalStudyTime = 0;
+                    lapCount = 1;
+                }
+                
+                updateTimerDisplay();
+                updateLapDisplay();
+            } catch (error) {
+                console.error('学習記録の読み込みエラー:', error);
+                totalStudyTime = 0;
+                lapCount = 1;
+            }
+        }
+        
+        // v7.02: 学習モードトグル
+        async function toggleStudyMode() {
             studyMode = !studyMode;
             const btn = document.getElementById('studyModeBtn');
             const canvas = document.getElementById('markerCanvas');
@@ -3147,6 +3261,9 @@
                 if (statsPanel) {
                     statsPanel.classList.add('inactive');
                 }
+                
+                // v7.02: 学習記録を保存
+                await saveStudySessionToFirebase();
             }
             
             drawMarkers();
