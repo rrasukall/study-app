@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.00.3</title>
+    <title>MyAnkiApp v8.00.4</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1853,16 +1853,28 @@
         // v8.00: 学習統計を更新
         function updateStudyStats() {
             console.log('=== 統計更新 ===');
+            console.log('studySession:', studySession);
             console.log('studySession.cards:', studySession.cards);
-            console.log('カード数:', studySession.cards.length);
+            console.log('cards配列の型:', Array.isArray(studySession.cards));
+            console.log('カード数:', studySession.cards ? studySession.cards.length : 0);
+            
+            if (!studySession.cards || !Array.isArray(studySession.cards)) {
+                console.error('studySession.cardsが配列ではありません');
+                return;
+            }
             
             // 各カードの状態をログ出力
             studySession.cards.forEach((c, i) => {
-                console.log(`カード${i}: state=${c.state}, id=${c.id}`);
+                console.log(`カード${i}: state="${c.state}", type="${c.type}", id=${c.id}`);
             });
             
+            const newCount = studySession.cards.filter(c => {
+                console.log(`フィルタ: ${c.id} state="${c.state}" === "new"? ${c.state === 'new'}`);
+                return c.state === 'new';
+            }).length;
+            
             studySession.stats = {
-                new: studySession.cards.filter(c => c.state === 'new').length,
+                new: newCount,
                 learning: studySession.cards.filter(c => c.state === 'learning').length,
                 review: studySession.cards.filter(c => c.state === 'review').length,
                 relearning: studySession.cards.filter(c => c.state === 'relearning').length
@@ -1874,6 +1886,8 @@
             document.getElementById('learningCardsCount').textContent = studySession.stats.learning;
             document.getElementById('reviewCardsCount').textContent = studySession.stats.review;
             document.getElementById('relearnCardsCount').textContent = studySession.stats.relearning;
+            
+            console.log('=== 統計更新完了 ===');
         }
         
         // v8.00: 学習カードを表示
