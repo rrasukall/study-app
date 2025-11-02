@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.00</title>
+    <title>MyAnkiApp v8.00.1</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1777,7 +1777,7 @@
         }
         
         // v8.00: 学習セッション開始
-        function startStudySession() {
+        async function startStudySession() {
             const deckId = document.getElementById('studyDeckId').value;
             if (!deckId) {
                 alert('デッキを選択してください');
@@ -1787,7 +1787,42 @@
             studySession.deckId = deckId;
             
             // デッキのカードを取得
-            const deckCards = cards.filter(c => c.deckId === deckId).map(c => initializeCard(c));
+            let deckCards = cards.filter(c => c.deckId === deckId);
+            
+            // v8.00.1: 既存カードを初期化してFirestoreに保存
+            const updatePromises = [];
+            deckCards = deckCards.map(card => {
+                const needsInitialization = !card.state;
+                const initializedCard = initializeCard(card);
+                
+                // 初期化が必要だったカードはFirestoreに保存
+                if (needsInitialization) {
+                    updatePromises.push(
+                        db.collection('flashcards').doc(card.id).update({
+                            state: initializedCard.state,
+                            easeFactor: initializedCard.easeFactor,
+                            interval: initializedCard.interval,
+                            learningStep: initializedCard.learningStep,
+                            repetitions: initializedCard.repetitions,
+                            nextReview: initializedCard.nextReview,
+                            lastReviewed: initializedCard.lastReviewed,
+                            lapses: initializedCard.lapses
+                        })
+                    );
+                }
+                
+                return initializedCard;
+            });
+            
+            // すべての初期化を待つ
+            if (updatePromises.length > 0) {
+                try {
+                    await Promise.all(updatePromises);
+                    console.log(`${updatePromises.length}枚のカードを初期化しました`);
+                } catch (error) {
+                    console.error('カード初期化エラー:', error);
+                }
+            }
             
             // 今日学習すべきカードをフィルタリング
             const now = Date.now();
@@ -2164,6 +2199,14 @@
                         question: question,
                         answer: answer,
                         enableReverse: enableReverse,
+                        state: 'new',
+                        easeFactor: defaultStudySettings.startingEase,
+                        interval: 0,
+                        learningStep: 0,
+                        repetitions: 0,
+                        nextReview: Date.now(),
+                        lastReviewed: null,
+                        lapses: 0,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
@@ -2205,6 +2248,14 @@
                         deckId: deckId,
                         text: text,
                         clozes: clozes,
+                        state: 'new',
+                        easeFactor: defaultStudySettings.startingEase,
+                        interval: 0,
+                        learningStep: 0,
+                        repetitions: 0,
+                        nextReview: Date.now(),
+                        lastReviewed: null,
+                        lapses: 0,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
@@ -2230,6 +2281,14 @@
                         question: question,
                         answer: answer,
                         caseSensitive: caseSensitive,
+                        state: 'new',
+                        easeFactor: defaultStudySettings.startingEase,
+                        interval: 0,
+                        learningStep: 0,
+                        repetitions: 0,
+                        nextReview: Date.now(),
+                        lastReviewed: null,
+                        lapses: 0,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     
