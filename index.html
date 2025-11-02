@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.02</title>
+    <title>MyAnkiApp v7.02.1</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.02</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.02.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1185,7 +1185,8 @@
                             <span class="stat-item">総: <span id="totalStudyTime">00:00:00</span></span>
                             <span class="stat-separator">|</span>
                             <span class="stat-item">周回: <span id="lapCount">1</span>回目</span>
-                            <button class="btn btn-secondary" onclick="resetLap()" id="resetLapBtn" style="padding: 4px 12px; font-size: 13px;">リセット</button>
+                            <button class="btn btn-secondary" onclick="resetLapFull()" id="resetLapFullBtn" style="padding: 4px 12px; font-size: 13px;">全リセット</button>
+                            <button class="btn btn-secondary" onclick="resetLapReview()" id="resetLapReviewBtn" style="padding: 4px 12px; font-size: 13px;">復習リセット</button>
                         </div>
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <span class="stat-item">✅ <span id="correctCount">0</span></span>
@@ -1363,6 +1364,9 @@
         // v7.02: PDF単位の学習記録
         let totalStudyTime = 0; // 総学習時間（ミリ秒）
         let lapCount = 1; // 周回数
+        
+        // v7.02.1: 定期保存管理
+        let autoSaveInterval = null; // 定期保存のインターバルID
         
         let pdfDB = null;
         let useFileSystemAPI = false;
@@ -3069,7 +3073,7 @@
             document.getElementById('accuracyRate').textContent = accuracyRate;
         }
         
-        // v7.01: タイマー開始
+        // v7.02.1: タイマー開始（定期保存も開始）
         function startStudyTimer() {
             if (studyTimerInterval) return; // 既に動作中
             
@@ -3079,13 +3083,26 @@
                 studyElapsedTime = Date.now() - studyStartTime;
                 updateTimerDisplay();
             }, 1000);
+            
+            // v7.02.1: 30秒ごとに自動保存
+            if (!autoSaveInterval) {
+                autoSaveInterval = setInterval(() => {
+                    saveStudySessionToFirebase();
+                }, 30000); // 30秒
+            }
         }
         
-        // v7.01: タイマー停止（一時停止）
+        // v7.02.1: タイマー停止（定期保存も停止）
         function pauseStudyTimer() {
             if (studyTimerInterval) {
                 clearInterval(studyTimerInterval);
                 studyTimerInterval = null;
+            }
+            
+            // v7.02.1: 定期保存を停止
+            if (autoSaveInterval) {
+                clearInterval(autoSaveInterval);
+                autoSaveInterval = null;
             }
         }
         
@@ -3131,11 +3148,11 @@
             document.getElementById('lapCount').textContent = lapCount;
         }
         
-        // v7.02: 周をリセット（リセットボタン）
-        async function resetLap() {
+        // v7.02.1: 全リセット（すべてのマーカーを初期化）
+        async function resetLapFull() {
             if (!pdfHash) return;
             
-            if (!confirm('この周を終了して次の周を開始しますか？\n\n・マーカー状態が初期化されます（暗転に戻る）\n・今回周の統計がリセットされます\n・総学習時間に加算されます')) {
+            if (!confirm('この周を終了して次の周を開始しますか？\n\n・すべてのマーカー状態が初期化されます（暗転に戻る）\n・今回周の統計がリセットされます\n・総学習時間に加算されます')) {
                 return;
             }
             
@@ -3145,7 +3162,7 @@
             // 周回数を+1
             lapCount++;
             
-            // マーカー状態を初期化（全ページ）
+            // マーカー状態を初期化（全ページ・すべてのマーカー）
             if (markers[pdfHash]) {
                 Object.keys(markers[pdfHash]).forEach(pageNum => {
                     markers[pdfHash][pageNum].forEach(marker => {
@@ -3169,7 +3186,48 @@
             await saveStudySessionToFirebase();  // 学習記録
         }
         
-        // v7.02: 学習記録をFirebaseに保存
+        // v7.02.1: 復習リセット（正答以外のマーカーのみ初期化）
+        async function resetLapReview() {
+            if (!pdfHash) return;
+            
+            if (!confirm('復習リセットを実行しますか？\n\n・正答したマーカーは維持されます\n・誤答・未学習のマーカーが初期化されます（暗転に戻る）\n・今回周の統計がリセットされます\n・総学習時間に加算されます')) {
+                return;
+            }
+            
+            // 今回周の時間を総学習時間に加算
+            totalStudyTime += studyElapsedTime;
+            
+            // 周回数を+1
+            lapCount++;
+            
+            // マーカー状態を初期化（正答以外のみ）
+            if (markers[pdfHash]) {
+                Object.keys(markers[pdfHash]).forEach(pageNum => {
+                    markers[pdfHash][pageNum].forEach(marker => {
+                        // 正答（correct）以外を初期化
+                        if (marker.studyState !== 'correct') {
+                            delete marker.studyState;  // undefined = 暗転状態
+                        }
+                    });
+                });
+            }
+            
+            // 今回周の統計をリセット
+            studyElapsedTime = 0;
+            studyStartTime = Date.now();  // タイマーは継続
+            
+            // 表示を更新
+            updateTimerDisplay();
+            updateLapDisplay();
+            updateStudyStats();
+            drawMarkers();
+            
+            // Firebaseに保存
+            await saveMarkersToFirebase();  // マーカー状態
+            await saveStudySessionToFirebase();  // 学習記録
+        }
+        
+        // v7.02.1: 学習記録をFirebaseに保存（今回周の時間も保存）
         async function saveStudySessionToFirebase() {
             if (!pdfHash) return;
             
@@ -3177,6 +3235,7 @@
                 await db.collection('studySessions').doc(pdfHash).set({
                     totalStudyTime: totalStudyTime,
                     lapCount: lapCount,
+                    currentLapElapsedTime: studyElapsedTime,  // 今回周の累積時間
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             } catch (error) {
@@ -3184,7 +3243,7 @@
             }
         }
         
-        // v7.02: 学習記録をFirebaseから読み込み
+        // v7.02.1: 学習記録をFirebaseから読み込み（今回周の時間も復元）
         async function loadStudySessionFromFirebase() {
             if (!pdfHash) return;
             
@@ -3194,10 +3253,12 @@
                     const data = doc.data();
                     totalStudyTime = data.totalStudyTime || 0;
                     lapCount = data.lapCount || 1;
+                    studyElapsedTime = data.currentLapElapsedTime || 0;  // 今回周の時間を復元
                 } else {
                     // 初回は初期値
                     totalStudyTime = 0;
                     lapCount = 1;
+                    studyElapsedTime = 0;
                 }
                 
                 updateTimerDisplay();
@@ -3206,8 +3267,52 @@
                 console.error('学習記録の読み込みエラー:', error);
                 totalStudyTime = 0;
                 lapCount = 1;
+                studyElapsedTime = 0;
             }
         }
+        
+        // v7.02.1: 非アクティブ検知の初期化
+        function initVisibilityChange() {
+            document.addEventListener('visibilitychange', async () => {
+                if (document.hidden && studyMode) {
+                    // タブが非アクティブになった → 自動で学習OFF
+                    await toggleStudyMode();
+                    
+                    // 通知表示（3秒後に消える）
+                    const notification = document.createElement('div');
+                    notification.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: rgba(0, 0, 0, 0.8);
+                        color: white;
+                        padding: 15px 20px;
+                        border-radius: 8px;
+                        z-index: 10000;
+                        font-size: 14px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    `;
+                    notification.textContent = '⏸️ タブが非アクティブになったため、学習タイマーを一時停止しました';
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 3000);
+                }
+            });
+        }
+        
+        // v7.02.1: ページを離れる前に保存
+        window.addEventListener('beforeunload', () => {
+            if (studyMode && pdfHash) {
+                saveStudySessionToFirebase();
+            }
+        });
+        
+        // v7.02.1: 初期化を実行
+        initVisibilityChange();
         
         // v7.02: 学習モードトグル
         async function toggleStudyMode() {
@@ -3463,6 +3568,12 @@
                 }
             }
             
+            // v7.02.1: 修正モード時にShift+クリックで色変更
+            if (editMode && e.shiftKey) {
+                changeMarkerColorAt(x, y);
+                return;
+            }
+            
             if (editMode) {
                 selectMarkerAt(x, y);
                 return;
@@ -3515,6 +3626,35 @@
                     saveMarkersToFirebase();
                     // v7.01: 統計を更新
                     updateStudyStats();
+                    return;
+                }
+            }
+        }
+        
+        // v7.02.1: マーカーの色を変更（黄→赤→緑→青→黄）
+        function changeMarkerColorAt(x, y) {
+            if (!pdfHash || !markers[pdfHash] || !markers[pdfHash][currentPage]) return;
+            
+            const pageMarkers = markers[pdfHash][currentPage];
+            const colorCycle = ['yellow', 'red', 'green', 'blue'];
+            
+            for (let i = pageMarkers.length - 1; i >= 0; i--) {
+                const marker = pageMarkers[i];
+                const scaleRatio = scale / marker.scale;
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    // 現在の色のインデックスを取得
+                    const currentIndex = colorCycle.indexOf(marker.color);
+                    // 次の色に変更（循環）
+                    const nextIndex = (currentIndex + 1) % colorCycle.length;
+                    marker.color = colorCycle[nextIndex];
+                    
+                    drawMarkers();
+                    saveMarkersToFirebase();
                     return;
                 }
             }
