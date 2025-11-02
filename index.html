@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.00.3</title>
+    <title>MyAnkiApp v7.01</title>
     <style>
         * {
             margin: 0;
@@ -1022,11 +1022,40 @@
         .pdf-header h2 {
             margin: 0;
         }
+        
+        /* v7.01: 学習統計パネル */
+        .study-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.3s;
+        }
+        
+        .study-stats.inactive {
+            opacity: 0.5;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .stat-separator {
+            color: #ddd;
+            font-weight: normal;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.00.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.01</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1145,10 +1174,19 @@
         
         <div id="pdf-section" class="section">
             <div class="pdf-viewer">
-                <!-- v7.00: PDF学習ヘッダー -->
+                <!-- v7.01: PDF学習ヘッダーと統計パネル -->
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
+                    <!-- v7.01: 学習統計パネル -->
+                    <div class="study-stats inactive" id="studyStats" style="display: none;">
+                        <span class="stat-item">⏱️ <span id="studyTime">00:00:00</span></span>
+                        <span class="stat-separator">|</span>
+                        <span class="stat-item">✅ <span id="correctCount">0</span></span>
+                        <span class="stat-item">❌ <span id="incorrectCount">0</span></span>
+                        <span class="stat-item">🔲 <span id="unstudiedCount">0</span></span>
+                        <span class="stat-item">📊 <span id="accuracyRate">N/A</span></span>
+                    </div>
                 </div>
                 
                 <div id="pdfUploadArea" class="pdf-upload-area" onclick="handlePDFUploadClick()">
@@ -1168,8 +1206,8 @@
                         <button class="color-btn green" id="markerGreen" onclick="selectMarkerColor('green')">緑</button>
                         <button class="color-btn blue" id="markerBlue" onclick="selectMarkerColor('blue')">青</button>
                         <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
-                        <span class="separator">//</span>
-                        <button class="btn btn-danger" id="clearMarkersBtn" onclick="clearPageMarkers()">ページ内マーカー全削除</button>
+                        <button class="btn btn-danger" id="clearPageMarkersBtn" onclick="clearPageMarkers()">ページ内全削除</button>
+                        <button class="btn btn-danger" id="clearAllMarkersBtn" onclick="clearAllMarkers()">PDF内全削除</button>
                     </div>
 
                     <div class="pdf-controls-row">
@@ -1309,6 +1347,11 @@
         
         // v7.00.2: 学習OFF時のシート機能でのクリック明転管理（ページ・シートボタン変更でリセット）
         let sheetClickToggles = {}; // { 'pageNum-markerIndex': true/false }
+        
+        // v7.01: 学習統計管理
+        let studyStartTime = null; // 学習開始時刻
+        let studyElapsedTime = 0; // 累積学習時間（ミリ秒）
+        let studyTimerInterval = null; // タイマーのインターバルID
         
         let pdfDB = null;
         let useFileSystemAPI = false;
@@ -2632,9 +2675,20 @@
                 // v7.00: 学習モードボタンを表示
                 document.getElementById('studyModeBtn').style.display = 'block';
                 
+                // v7.01: 統計パネルを表示し、統計をリセット
+                const statsPanel = document.getElementById('studyStats');
+                if (statsPanel) {
+                    statsPanel.style.display = 'flex';
+                    statsPanel.classList.add('inactive');
+                }
+                resetStudyTimer();
+                
                 await loadMarkersFromFirebase();
                 
                 await renderPage(currentPage);
+                
+                // v7.01: 初期統計を更新
+                updateStudyStats();
                 
             } catch (error) {
                 console.error('PDF読み込みエラー:', error);
@@ -2667,9 +2721,20 @@
                 // v7.00: 学習モードボタンを表示
                 document.getElementById('studyModeBtn').style.display = 'block';
                 
+                // v7.01: 統計パネルを表示し、統計をリセット
+                const statsPanel = document.getElementById('studyStats');
+                if (statsPanel) {
+                    statsPanel.style.display = 'flex';
+                    statsPanel.classList.add('inactive');
+                }
+                resetStudyTimer();
+                
                 await loadMarkersFromFirebase();
                 
                 await renderPage(currentPage);
+                
+                // v7.01: 初期統計を更新
+                updateStudyStats();
                 
             } catch (error) {
                 console.error('PDF読み込みエラー:', error);
@@ -2951,11 +3016,91 @@
             drawMarkers();
         }
         
-        // v7.00.3: 学習モードトグル
+        // v7.01: 学習統計を更新
+        function updateStudyStats() {
+            if (!pdfHash || !markers[pdfHash]) return;
+            
+            let correctCount = 0;
+            let incorrectCount = 0;
+            let unstudiedCount = 0;
+            
+            // PDF全体のマーカーを集計
+            Object.keys(markers[pdfHash]).forEach(pageNum => {
+                markers[pdfHash][pageNum].forEach(marker => {
+                    if (marker.studyState === 'correct') {
+                        correctCount++;
+                    } else if (marker.studyState === 'incorrect') {
+                        incorrectCount++;
+                    } else {
+                        // undefined, 'hidden', 'visible' はすべて未学習扱い
+                        unstudiedCount++;
+                    }
+                });
+            });
+            
+            // 統計表示を更新
+            document.getElementById('correctCount').textContent = correctCount;
+            document.getElementById('incorrectCount').textContent = incorrectCount;
+            document.getElementById('unstudiedCount').textContent = unstudiedCount;
+            
+            // 正答率を計算
+            const totalStudied = correctCount + incorrectCount;
+            let accuracyRate = 'N/A';
+            if (totalStudied > 0) {
+                accuracyRate = Math.round((correctCount / totalStudied) * 100) + '%';
+            }
+            document.getElementById('accuracyRate').textContent = accuracyRate;
+        }
+        
+        // v7.01: タイマー開始
+        function startStudyTimer() {
+            if (studyTimerInterval) return; // 既に動作中
+            
+            studyStartTime = Date.now() - studyElapsedTime;
+            
+            studyTimerInterval = setInterval(() => {
+                studyElapsedTime = Date.now() - studyStartTime;
+                updateTimerDisplay();
+            }, 1000);
+        }
+        
+        // v7.01: タイマー停止（一時停止）
+        function pauseStudyTimer() {
+            if (studyTimerInterval) {
+                clearInterval(studyTimerInterval);
+                studyTimerInterval = null;
+            }
+        }
+        
+        // v7.01: タイマーリセット
+        function resetStudyTimer() {
+            pauseStudyTimer();
+            studyElapsedTime = 0;
+            studyStartTime = null;
+            updateTimerDisplay();
+        }
+        
+        // v7.01: タイマー表示更新
+        function updateTimerDisplay() {
+            const totalSeconds = Math.floor(studyElapsedTime / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            const timeString = 
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+            
+            document.getElementById('studyTime').textContent = timeString;
+        }
+        
+        // v7.01: 学習モードトグル
         function toggleStudyMode() {
             studyMode = !studyMode;
             const btn = document.getElementById('studyModeBtn');
             const canvas = document.getElementById('markerCanvas');
+            const statsPanel = document.getElementById('studyStats');
             
             if (studyMode) {
                 // 学習モードON
@@ -2976,6 +3121,13 @@
                 // ボタンをグレーアウト
                 disableButtons();
                 
+                // v7.01: タイマー開始と統計パネルをアクティブ化
+                startStudyTimer();
+                if (statsPanel) {
+                    statsPanel.classList.remove('inactive');
+                }
+                updateStudyStats();
+                
             } else {
                 // 学習モードOFF
                 btn.textContent = '学習OFF';
@@ -2989,6 +3141,12 @@
                 
                 // ボタンを有効化
                 enableButtons();
+                
+                // v7.01: タイマー一時停止と統計パネルを非アクティブ化
+                pauseStudyTimer();
+                if (statsPanel) {
+                    statsPanel.classList.add('inactive');
+                }
             }
             
             drawMarkers();
@@ -3026,11 +3184,17 @@
                 deleteModeBtn.style.pointerEvents = 'none';
             }
             
-            // ページ内マーカー全削除ボタン
-            const clearMarkersBtn = document.getElementById('clearMarkersBtn');
-            if (clearMarkersBtn) {
-                clearMarkersBtn.classList.add('btn-disabled');
-                clearMarkersBtn.style.pointerEvents = 'none';
+            // v7.01: ページ内全削除ボタンとPDF内全削除ボタン
+            const clearPageMarkersBtn = document.getElementById('clearPageMarkersBtn');
+            if (clearPageMarkersBtn) {
+                clearPageMarkersBtn.classList.add('btn-disabled');
+                clearPageMarkersBtn.style.pointerEvents = 'none';
+            }
+            
+            const clearAllMarkersBtn = document.getElementById('clearAllMarkersBtn');
+            if (clearAllMarkersBtn) {
+                clearAllMarkersBtn.classList.add('btn-disabled');
+                clearAllMarkersBtn.style.pointerEvents = 'none';
             }
             
             // v7.00.2: シートボタンもグレーアウト
@@ -3075,11 +3239,17 @@
                 deleteModeBtn.style.pointerEvents = '';
             }
             
-            // ページ内マーカー全削除ボタン
-            const clearMarkersBtn = document.getElementById('clearMarkersBtn');
-            if (clearMarkersBtn) {
-                clearMarkersBtn.classList.remove('btn-disabled');
-                clearMarkersBtn.style.pointerEvents = '';
+            // v7.01: ページ内全削除ボタンとPDF内全削除ボタン
+            const clearPageMarkersBtn = document.getElementById('clearPageMarkersBtn');
+            if (clearPageMarkersBtn) {
+                clearPageMarkersBtn.classList.remove('btn-disabled');
+                clearPageMarkersBtn.style.pointerEvents = '';
+            }
+            
+            const clearAllMarkersBtn = document.getElementById('clearAllMarkersBtn');
+            if (clearAllMarkersBtn) {
+                clearAllMarkersBtn.classList.remove('btn-disabled');
+                clearAllMarkersBtn.style.pointerEvents = '';
             }
             
             // v7.00.2: シートボタンも有効化
@@ -3226,6 +3396,8 @@
                     
                     drawMarkers();
                     saveMarkersToFirebase();
+                    // v7.01: 統計を更新
+                    updateStudyStats();
                     return;
                 }
             }
@@ -3748,6 +3920,23 @@
                     delete markers[pdfHash][currentPage];
                     drawMarkers();
                     saveMarkersToFirebase();
+                    // v7.01: 統計を更新
+                    updateStudyStats();
+                }
+            }
+        }
+        
+        // v7.01: PDF内全削除
+        function clearAllMarkers() {
+            if (!pdfHash) return;
+            
+            if (confirm('このPDFの全ページのマーカーをすべて削除しますか？\nこの操作は取り消せません。')) {
+                if (markers[pdfHash]) {
+                    markers[pdfHash] = {};
+                    drawMarkers();
+                    saveMarkersToFirebase();
+                    // v7.01: 統計を更新
+                    updateStudyStats();
                 }
             }
         }
