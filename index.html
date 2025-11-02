@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.03</title>
+    <title>MyAnkiApp v8.00</title>
     <style>
         * {
             margin: 0;
@@ -1054,12 +1054,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.03</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab('home')">ホーム</button>
+            <button class="tab" onclick="switchTab('study')">学習</button>
             <button class="tab" onclick="switchTab('pdf')">PDF</button>
             <button class="tab" onclick="switchTab('cards')">カード管理</button>
         </div>
@@ -1069,6 +1070,55 @@
                 <h2 style="margin-bottom: 20px;">デッキ一覧</h2>
                 <button class="btn" onclick="createNewDeck()" style="margin-bottom: 20px;">新規デッキ作成</button>
                 <div id="deckList"></div>
+            </div>
+        </div>
+        
+        <div id="study-section" class="section">
+            <div class="card-viewer">
+                <h2 style="margin-bottom: 20px;">カード学習</h2>
+                
+                <div id="studyDeckSelector" style="margin-bottom: 20px;">
+                    <div class="input-group">
+                        <label for="studyDeckId">学習するデッキを選択</label>
+                        <select id="studyDeckId" onchange="loadStudySession()">
+                            <option value="">デッキを選択してください</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="startStudySession()">学習開始</button>
+                </div>
+                
+                <div id="studyCardDisplay" style="display: none;">
+                    <div id="studyStatsPanel" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <strong>新規:</strong> <span id="newCardsCount">0</span>
+                            </div>
+                            <div>
+                                <strong>学習中:</strong> <span id="learningCardsCount">0</span>
+                            </div>
+                            <div>
+                                <strong>復習:</strong> <span id="reviewCardsCount">0</span>
+                            </div>
+                            <div>
+                                <strong>再学習:</strong> <span id="relearnCardsCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="studyCardContainer"></div>
+                    
+                    <div id="studyControls" style="margin-top: 20px;"></div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="btn btn-secondary" onclick="endStudySession()">学習終了</button>
+                    </div>
+                </div>
+                
+                <div id="studyComplete" style="display: none; text-align: center; padding: 40px;">
+                    <h2>🎉 学習完了！</h2>
+                    <p style="margin: 20px 0;">本日の学習目標を達成しました</p>
+                    <button class="btn" onclick="endStudySession()">戻る</button>
+                </div>
             </div>
         </div>
         
@@ -1326,6 +1376,33 @@
         let decksLoaded = false;
         let cardsLoaded = false;
         
+        // v8.00: 学習機能用変数
+        let studySession = {
+            deckId: null,
+            cards: [],
+            currentCardIndex: 0,
+            showingAnswer: false,
+            stats: {
+                new: 0,
+                learning: 0,
+                review: 0,
+                relearning: 0
+            }
+        };
+        
+        // v8.00: Anki改良版のデフォルト設定
+        const defaultStudySettings = {
+            learningSteps: [1, 10], // 分単位
+            graduatingInterval: 1, // 日
+            easyInterval: 4, // 日
+            startingEase: 2.5,
+            easyBonus: 1.3,
+            intervalModifier: 1.0,
+            maximumInterval: 36500, // 100年
+            newCardsPerDay: 20,
+            reviewCardsPerDay: 200
+        };
+        
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -1386,6 +1463,7 @@
             });
             decksLoaded = true;
             updateDeckSelectors();
+            updateStudyDeckSelector(); // v8.00: 学習用セレクターも更新
             // v6.01.1: 両方のデータが揃ったら表示
             if (cardsLoaded) {
                 displayDecks();
@@ -1500,6 +1578,114 @@
                 editClozeText.addEventListener('input', updateEditClozePreview);
             }
         });
+        
+        // ========== v8.00: Anki改良版アルゴリズム ==========
+        
+        // カードの初期化（新規カード用）
+        function initializeCard(card) {
+            if (!card.state) {
+                card.state = 'new';
+                card.easeFactor = defaultStudySettings.startingEase;
+                card.interval = 0;
+                card.learningStep = 0;
+                card.repetitions = 0;
+                card.nextReview = Date.now();
+                card.lastReviewed = null;
+                card.lapses = 0;
+            }
+            return card;
+        }
+        
+        // 次回復習日時を計算
+        function calculateNextReview(card, rating, settings = defaultStudySettings) {
+            const now = Date.now();
+            let newInterval = 0;
+            let newState = card.state;
+            
+            if (card.state === 'new' || card.state === 'learning') {
+                // 新規カードまたは学習中カード
+                if (rating === 'again') {
+                    // 最初のステップに戻る
+                    card.learningStep = 0;
+                    newInterval = settings.learningSteps[0] * 60 * 1000; // ミリ秒に変換
+                    newState = 'learning';
+                } else if (rating === 'hard') {
+                    // 現在のステップを維持
+                    const step = Math.min(card.learningStep, settings.learningSteps.length - 1);
+                    newInterval = settings.learningSteps[step] * 60 * 1000;
+                    newState = 'learning';
+                } else if (rating === 'good') {
+                    // 次のステップへ進む
+                    card.learningStep++;
+                    if (card.learningStep >= settings.learningSteps.length) {
+                        // 卒業 → Review状態へ
+                        newState = 'review';
+                        newInterval = settings.graduatingInterval * 24 * 60 * 60 * 1000;
+                        card.interval = settings.graduatingInterval;
+                        card.repetitions = 1;
+                    } else {
+                        newInterval = settings.learningSteps[card.learningStep] * 60 * 1000;
+                        newState = 'learning';
+                    }
+                } else if (rating === 'easy') {
+                    // 即座に卒業
+                    newState = 'review';
+                    newInterval = settings.easyInterval * 24 * 60 * 60 * 1000;
+                    card.interval = settings.easyInterval;
+                    card.repetitions = 1;
+                }
+            } else if (card.state === 'review' || card.state === 'relearning') {
+                // 復習カードまたは再学習カード
+                if (rating === 'again') {
+                    // 再学習モードへ
+                    newState = 'relearning';
+                    card.learningStep = 0;
+                    newInterval = settings.learningSteps[0] * 60 * 1000;
+                    card.lapses = (card.lapses || 0) + 1;
+                    card.easeFactor = Math.max(1.3, card.easeFactor - 0.2);
+                    card.repetitions = 0;
+                } else if (rating === 'hard') {
+                    newInterval = card.interval * 1.2 * 24 * 60 * 60 * 1000;
+                    card.interval = Math.round(card.interval * 1.2);
+                    card.easeFactor = Math.max(1.3, card.easeFactor - 0.15);
+                    card.repetitions++;
+                } else if (rating === 'good') {
+                    newInterval = card.interval * card.easeFactor * settings.intervalModifier * 24 * 60 * 60 * 1000;
+                    card.interval = Math.round(card.interval * card.easeFactor * settings.intervalModifier);
+                    card.repetitions++;
+                } else if (rating === 'easy') {
+                    newInterval = card.interval * card.easeFactor * settings.easyBonus * settings.intervalModifier * 24 * 60 * 60 * 1000;
+                    card.interval = Math.round(card.interval * card.easeFactor * settings.easyBonus * settings.intervalModifier);
+                    card.easeFactor += 0.15;
+                    card.repetitions++;
+                }
+                
+                // 最大間隔でキャップ
+                card.interval = Math.min(card.interval, settings.maximumInterval);
+                newInterval = Math.min(newInterval, settings.maximumInterval * 24 * 60 * 60 * 1000);
+            }
+            
+            card.state = newState;
+            card.nextReview = now + newInterval;
+            card.lastReviewed = now;
+            
+            return card;
+        }
+        
+        // 次回出題時間を人間が読める形式で表示
+        function formatNextReviewTime(milliseconds) {
+            const minutes = Math.round(milliseconds / (60 * 1000));
+            const hours = Math.round(milliseconds / (60 * 60 * 1000));
+            const days = Math.round(milliseconds / (24 * 60 * 60 * 1000));
+            
+            if (minutes < 1) return '1分';
+            if (minutes < 60) return `${minutes}分`;
+            if (hours < 24) return `${hours}時間`;
+            if (days === 1) return '1日';
+            if (days < 31) return `${days}日`;
+            if (days < 365) return `${Math.round(days / 30)}ヶ月`;
+            return `${Math.round(days / 365)}年`;
+        }
 
         function updateSyncStatus(status) {
             const statusEl = document.getElementById('syncStatus');
@@ -1529,7 +1715,316 @@
                 showingQuestion = true;
                 displayCard();
                 displayCardList();
+            } else if (tab === 'study') {
+                // v8.00: 学習タブに切り替え時にデッキセレクターを更新
+                updateStudyDeckSelector();
             }
+        }
+        
+        // v8.00: 学習用デッキセレクターを更新
+        function updateStudyDeckSelector() {
+            const selector = document.getElementById('studyDeckId');
+            if (!selector) return;
+            
+            let options = '<option value="">デッキを選択してください</option>';
+            
+            function buildOptions(parentId = null, prefix = '') {
+                const children = decks.filter(d => {
+                    if (parentId === null) return !d.parentId;
+                    return d.parentId === parentId;
+                });
+                
+                children.forEach(deck => {
+                    const displayName = prefix + deck.name;
+                    options += `<option value="${deck.id}">${displayName}</option>`;
+                    buildOptions(deck.id, displayName + ' > ');
+                });
+            }
+            
+            buildOptions();
+            selector.innerHTML = options;
+        }
+        
+        // v8.00: 学習セッション読み込み
+        function loadStudySession() {
+            const deckId = document.getElementById('studyDeckId').value;
+            if (!deckId) return;
+            
+            // デッキのカードを取得し、学習対象を抽出
+            const deckCards = cards.filter(c => c.deckId === deckId).map(c => initializeCard(c));
+            
+            // 今日学習すべきカードをフィルタリング
+            const now = Date.now();
+            const dueCards = deckCards.filter(card => {
+                return !card.nextReview || card.nextReview <= now;
+            });
+            
+            // 状態別にカウント
+            const stats = {
+                new: dueCards.filter(c => c.state === 'new').length,
+                learning: dueCards.filter(c => c.state === 'learning').length,
+                review: dueCards.filter(c => c.state === 'review').length,
+                relearning: dueCards.filter(c => c.state === 'relearning').length
+            };
+            
+            // 統計を表示
+            if (stats.new + stats.learning + stats.review + stats.relearning === 0) {
+                alert('本日学習するカードはありません');
+                return;
+            }
+            
+            alert(`学習カード: 新規${stats.new}枚、学習中${stats.learning}枚、復習${stats.review}枚、再学習${stats.relearning}枚`);
+        }
+        
+        // v8.00: 学習セッション開始
+        function startStudySession() {
+            const deckId = document.getElementById('studyDeckId').value;
+            if (!deckId) {
+                alert('デッキを選択してください');
+                return;
+            }
+            
+            studySession.deckId = deckId;
+            
+            // デッキのカードを取得
+            const deckCards = cards.filter(c => c.deckId === deckId).map(c => initializeCard(c));
+            
+            // 今日学習すべきカードをフィルタリング
+            const now = Date.now();
+            studySession.cards = deckCards.filter(card => {
+                return !card.nextReview || card.nextReview <= now;
+            });
+            
+            // 状態別にソート（新規→学習中→復習→再学習）
+            studySession.cards.sort((a, b) => {
+                const stateOrder = { new: 0, learning: 1, review: 2, relearning: 3 };
+                return stateOrder[a.state] - stateOrder[b.state];
+            });
+            
+            if (studySession.cards.length === 0) {
+                alert('本日学習するカードはありません');
+                return;
+            }
+            
+            // 統計を更新
+            updateStudyStats();
+            
+            // UIを切り替え
+            document.getElementById('studyDeckSelector').style.display = 'none';
+            document.getElementById('studyCardDisplay').style.display = 'block';
+            document.getElementById('studyComplete').style.display = 'none';
+            
+            // 最初のカードを表示
+            studySession.currentCardIndex = 0;
+            studySession.showingAnswer = false;
+            displayStudyCard();
+        }
+        
+        // v8.00: 学習統計を更新
+        function updateStudyStats() {
+            studySession.stats = {
+                new: studySession.cards.filter(c => c.state === 'new').length,
+                learning: studySession.cards.filter(c => c.state === 'learning').length,
+                review: studySession.cards.filter(c => c.state === 'review').length,
+                relearning: studySession.cards.filter(c => c.state === 'relearning').length
+            };
+            
+            document.getElementById('newCardsCount').textContent = studySession.stats.new;
+            document.getElementById('learningCardsCount').textContent = studySession.stats.learning;
+            document.getElementById('reviewCardsCount').textContent = studySession.stats.review;
+            document.getElementById('relearnCardsCount').textContent = studySession.stats.relearning;
+        }
+        
+        // v8.00: 学習カードを表示
+        function displayStudyCard() {
+            if (studySession.currentCardIndex >= studySession.cards.length) {
+                // 学習完了
+                document.getElementById('studyCardDisplay').style.display = 'none';
+                document.getElementById('studyComplete').style.display = 'block';
+                return;
+            }
+            
+            const card = studySession.cards[studySession.currentCardIndex];
+            const container = document.getElementById('studyCardContainer');
+            const controls = document.getElementById('studyControls');
+            
+            // カード状態バッジ
+            const stateBadges = {
+                new: '🆕 新規',
+                learning: '📖 学習中',
+                review: '🔄 復習',
+                relearning: '🔁 再学習'
+            };
+            const stateBadge = stateBadges[card.state] || '';
+            
+            if (!studySession.showingAnswer) {
+                // 問題面を表示
+                let questionContent = '';
+                
+                if (card.type === 'cloze') {
+                    // 穴埋めカード
+                    const clozeRegex = /\{\{c(\d+)::([^}]+)\}\}/g;
+                    questionContent = card.text.replace(clozeRegex, (match, num) => {
+                        return `<span class="cloze-blank">[...]</span>`;
+                    });
+                } else if (card.type === 'typing') {
+                    // タイピング式カード
+                    questionContent = card.question.replace(/\n/g, '<br>');
+                } else {
+                    // 基本カード
+                    if (card.enableReverse && Math.random() < 0.5) {
+                        questionContent = card.answer;
+                    } else {
+                        questionContent = card.question;
+                    }
+                }
+                
+                container.innerHTML = `
+                    <div class="card" onclick="showStudyAnswer()" style="cursor: pointer;">
+                        <div class="card-category">${stateBadge}</div>
+                        <div class="card-content">${questionContent}</div>
+                    </div>
+                `;
+                
+                controls.innerHTML = `
+                    <div style="text-align: center;">
+                        <button class="btn" onclick="showStudyAnswer()">答えを表示</button>
+                    </div>
+                `;
+            } else {
+                // 答え面を表示
+                let answerContent = '';
+                
+                if (card.type === 'cloze') {
+                    // 穴埋めカード
+                    const clozeRegex = /\{\{c(\d+)::([^}]+)\}\}/g;
+                    answerContent = card.text.replace(clozeRegex, (match, num, answer) => {
+                        return `<span class="cloze-answer-shown">${answer}</span>`;
+                    });
+                } else if (card.type === 'typing') {
+                    // タイピング式カード
+                    const question = card.question.replace(/\n/g, '<br>');
+                    const answer = card.answer;
+                    answerContent = `
+                        <div style="margin-bottom: 20px;">${question}</div>
+                        <div style="font-size: 18px; color: rgba(255,255,255,0.9);">
+                            <strong>正解:</strong> ${answer}
+                        </div>
+                    `;
+                } else {
+                    // 基本カード
+                    answerContent = card.answer;
+                }
+                
+                container.innerHTML = `
+                    <div class="card" style="cursor: default;">
+                        <div class="card-category">${stateBadge}</div>
+                        <div class="card-content">${answerContent}</div>
+                    </div>
+                `;
+                
+                // 各評価ボタンの次回出題時間を計算
+                const timeAgain = formatNextReviewTime(defaultStudySettings.learningSteps[0] * 60 * 1000);
+                let timeHard, timeGood, timeEasy;
+                
+                if (card.state === 'new' || card.state === 'learning') {
+                    const currentStep = Math.min(card.learningStep, defaultStudySettings.learningSteps.length - 1);
+                    timeHard = formatNextReviewTime(defaultStudySettings.learningSteps[currentStep] * 60 * 1000);
+                    
+                    if (card.learningStep + 1 >= defaultStudySettings.learningSteps.length) {
+                        timeGood = formatNextReviewTime(defaultStudySettings.graduatingInterval * 24 * 60 * 60 * 1000);
+                    } else {
+                        timeGood = formatNextReviewTime(defaultStudySettings.learningSteps[card.learningStep + 1] * 60 * 1000);
+                    }
+                    
+                    timeEasy = formatNextReviewTime(defaultStudySettings.easyInterval * 24 * 60 * 60 * 1000);
+                } else {
+                    timeHard = formatNextReviewTime(card.interval * 1.2 * 24 * 60 * 60 * 1000);
+                    timeGood = formatNextReviewTime(card.interval * card.easeFactor * 24 * 60 * 60 * 1000);
+                    timeEasy = formatNextReviewTime(card.interval * card.easeFactor * defaultStudySettings.easyBonus * 24 * 60 * 60 * 1000);
+                }
+                
+                controls.innerHTML = `
+                    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-danger" onclick="rateCard('again')" style="min-width: 100px;">
+                            <div>もう一度</div>
+                            <div style="font-size: 12px; margin-top: 5px;">${timeAgain}</div>
+                        </button>
+                        <button class="btn btn-warning" onclick="rateCard('hard')" style="min-width: 100px;">
+                            <div>難しい</div>
+                            <div style="font-size: 12px; margin-top: 5px;">${timeHard}</div>
+                        </button>
+                        <button class="btn btn-success" onclick="rateCard('good')" style="min-width: 100px;">
+                            <div>普通</div>
+                            <div style="font-size: 12px; margin-top: 5px;">${timeGood}</div>
+                        </button>
+                        <button class="btn" onclick="rateCard('easy')" style="min-width: 100px; background: #3498db;">
+                            <div>簡単</div>
+                            <div style="font-size: 12px; margin-top: 5px;">${timeEasy}</div>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // v8.00: 答えを表示
+        function showStudyAnswer() {
+            studySession.showingAnswer = true;
+            displayStudyCard();
+        }
+        
+        // v8.00: カードを評価
+        async function rateCard(rating) {
+            const card = studySession.cards[studySession.currentCardIndex];
+            
+            // Anki改良版アルゴリズムで次回復習日を計算
+            calculateNextReview(card, rating);
+            
+            // Firestoreに保存
+            try {
+                await db.collection('flashcards').doc(card.id).update({
+                    state: card.state,
+                    easeFactor: card.easeFactor,
+                    interval: card.interval,
+                    learningStep: card.learningStep,
+                    repetitions: card.repetitions,
+                    nextReview: card.nextReview,
+                    lastReviewed: card.lastReviewed,
+                    lapses: card.lapses
+                });
+            } catch (error) {
+                console.error('カード更新エラー:', error);
+            }
+            
+            // 次のカードへ
+            studySession.currentCardIndex++;
+            studySession.showingAnswer = false;
+            
+            // 統計を更新
+            updateStudyStats();
+            
+            // カードを表示
+            displayStudyCard();
+        }
+        
+        // v8.00: 学習セッション終了
+        function endStudySession() {
+            document.getElementById('studyDeckSelector').style.display = 'block';
+            document.getElementById('studyCardDisplay').style.display = 'none';
+            document.getElementById('studyComplete').style.display = 'none';
+            
+            studySession = {
+                deckId: null,
+                cards: [],
+                currentCardIndex: 0,
+                showingAnswer: false,
+                stats: {
+                    new: 0,
+                    learning: 0,
+                    review: 0,
+                    relearning: 0
+                }
+            };
         }
 
         // v5.01: カードタイプ切り替え
@@ -4328,6 +4823,14 @@
             const deckCards = cards.filter(c => c.deckId === deck.id);
             const cardCount = deckCards.length;
             
+            // v8.00: 今日学習すべきカード数を計算
+            const now = Date.now();
+            const dueCards = deckCards.filter(c => {
+                const card = initializeCard(c);
+                return !card.nextReview || card.nextReview <= now;
+            });
+            const dueCount = dueCards.length;
+            
             const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
             
             let html = `
@@ -4335,9 +4838,10 @@
                     <div class="deck-header">
                         <div style="cursor: pointer;" onclick="viewDeckCards('${deck.id}')">
                             <div class="deck-name">${deck.name}</div>
-                            <div class="deck-count">${cardCount}枚</div>
+                            <div class="deck-count">${cardCount}枚 ${dueCount > 0 ? `<span style="color: #e74c3c; font-weight: bold;">(${dueCount}枚学習)</span>` : ''}</div>
                         </div>
                         <div class="deck-actions">
+                            ${dueCount > 0 ? `<button class="btn btn-small btn-success" onclick="startDeckStudy('${deck.id}')">学習開始</button>` : ''}
                             <button class="btn btn-small btn-secondary" onclick="editDeck('${deck.id}')">編集</button>
                             ${level < 2 ? `<button class="btn btn-small" onclick="addSubDeck('${deck.id}')">サブデッキ追加</button>` : ''}
                             <button class="btn btn-small btn-danger" onclick="deleteDeck('${deck.id}')">削除</button>
@@ -4351,6 +4855,21 @@
             });
             
             return html;
+        }
+        
+        // v8.00: ホーム画面から直接学習を開始
+        function startDeckStudy(deckId) {
+            // 学習タブに切り替え
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            const studyTab = document.querySelectorAll('.tab')[1]; // 学習タブ
+            studyTab.classList.add('active');
+            document.getElementById('study-section').classList.add('active');
+            
+            // デッキを選択して学習開始
+            document.getElementById('studyDeckId').value = deckId;
+            startStudySession();
         }
         
         // v6.01: デッキのカードを表示
