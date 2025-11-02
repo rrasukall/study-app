@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v7.02.1</title>
+    <title>MyAnkiApp v7.02.2</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.02.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v7.02.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3084,11 +3084,11 @@
                 updateTimerDisplay();
             }, 1000);
             
-            // v7.02.1: 30秒ごとに自動保存
+            // v7.02.1: 3秒ごとに自動保存
             if (!autoSaveInterval) {
                 autoSaveInterval = setInterval(() => {
                     saveStudySessionToFirebase();
-                }, 30000); // 30秒
+                }, 3000); // 3秒
             }
         }
         
@@ -3277,29 +3277,6 @@
                 if (document.hidden && studyMode) {
                     // タブが非アクティブになった → 自動で学習OFF
                     await toggleStudyMode();
-                    
-                    // 通知表示（3秒後に消える）
-                    const notification = document.createElement('div');
-                    notification.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: rgba(0, 0, 0, 0.8);
-                        color: white;
-                        padding: 15px 20px;
-                        border-radius: 8px;
-                        z-index: 10000;
-                        font-size: 14px;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                    `;
-                    notification.textContent = '⏸️ タブが非アクティブになったため、学習タイマーを一時停止しました';
-                    document.body.appendChild(notification);
-                    
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 3000);
                 }
             });
         }
