@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.00.1</title>
+    <title>MyAnkiApp v8.00.2</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.00.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1745,35 +1745,10 @@
             selector.innerHTML = options;
         }
         
-        // v8.00: 学習セッション読み込み
+        // v8.00: 学習セッション読み込み（プレビュー用）
         function loadStudySession() {
-            const deckId = document.getElementById('studyDeckId').value;
-            if (!deckId) return;
-            
-            // デッキのカードを取得し、学習対象を抽出
-            const deckCards = cards.filter(c => c.deckId === deckId).map(c => initializeCard(c));
-            
-            // 今日学習すべきカードをフィルタリング
-            const now = Date.now();
-            const dueCards = deckCards.filter(card => {
-                return !card.nextReview || card.nextReview <= now;
-            });
-            
-            // 状態別にカウント
-            const stats = {
-                new: dueCards.filter(c => c.state === 'new').length,
-                learning: dueCards.filter(c => c.state === 'learning').length,
-                review: dueCards.filter(c => c.state === 'review').length,
-                relearning: dueCards.filter(c => c.state === 'relearning').length
-            };
-            
-            // 統計を表示
-            if (stats.new + stats.learning + stats.review + stats.relearning === 0) {
-                alert('本日学習するカードはありません');
-                return;
-            }
-            
-            alert(`学習カード: 新規${stats.new}枚、学習中${stats.learning}枚、復習${stats.review}枚、再学習${stats.relearning}枚`);
+            // この関数は現在使用していません
+            // 統計の確認は学習開始時に行われます
         }
         
         // v8.00: 学習セッション開始
@@ -1784,16 +1759,24 @@
                 return;
             }
             
+            console.log('=== 学習セッション開始 ===');
+            console.log('選択デッキID:', deckId);
+            
             studySession.deckId = deckId;
             
             // デッキのカードを取得
             let deckCards = cards.filter(c => c.deckId === deckId);
+            console.log('デッキ内カード数:', deckCards.length);
             
             // v8.00.1: 既存カードを初期化してFirestoreに保存
             const updatePromises = [];
             deckCards = deckCards.map(card => {
                 const needsInitialization = !card.state;
                 const initializedCard = initializeCard(card);
+                
+                if (needsInitialization) {
+                    console.log('初期化:', card.id);
+                }
                 
                 // 初期化が必要だったカードはFirestoreに保存
                 if (needsInitialization) {
@@ -1824,11 +1807,19 @@
                 }
             }
             
+            console.log('初期化後のカード:', deckCards);
+            
             // 今日学習すべきカードをフィルタリング
             const now = Date.now();
             studySession.cards = deckCards.filter(card => {
-                return !card.nextReview || card.nextReview <= now;
+                const isDue = !card.nextReview || card.nextReview <= now;
+                if (isDue) {
+                    console.log('学習対象:', card.id, card.state, new Date(card.nextReview));
+                }
+                return isDue;
             });
+            
+            console.log('学習対象カード数:', studySession.cards.length);
             
             // 状態別にソート（新規→学習中→復習→再学習）
             studySession.cards.sort((a, b) => {
@@ -1844,6 +1835,8 @@
             // 統計を更新
             updateStudyStats();
             
+            console.log('統計:', studySession.stats);
+            
             // UIを切り替え
             document.getElementById('studyDeckSelector').style.display = 'none';
             document.getElementById('studyCardDisplay').style.display = 'block';
@@ -1853,6 +1846,8 @@
             studySession.currentCardIndex = 0;
             studySession.showingAnswer = false;
             displayStudyCard();
+            
+            console.log('=== 学習セッション開始完了 ===');
         }
         
         // v8.00: 学習統計を更新
@@ -4917,7 +4912,7 @@
         }
         
         // v8.00: ホーム画面から直接学習を開始
-        function startDeckStudy(deckId) {
+        async function startDeckStudy(deckId) {
             // 学習タブに切り替え
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -4928,7 +4923,7 @@
             
             // デッキを選択して学習開始
             document.getElementById('studyDeckId').value = deckId;
-            startStudySession();
+            await startStudySession();
         }
         
         // v6.01: デッキのカードを表示
