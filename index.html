@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.01.1</title>
+    <title>MyAnkiApp v8.01.2</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.01.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.01.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1127,6 +1127,12 @@
                                     <option value="random">ランダム</option>
                                 </select>
                             </div>
+                        </div>
+                        
+                        <!-- v8.01.2: 新規と復習を混ぜる設定 -->
+                        <div class="checkbox-group" style="margin-top: 10px;">
+                            <input type="checkbox" id="mixNewAndReview">
+                            <label for="mixNewAndReview">新規カードと復習カードを混ぜる</label>
                         </div>
                         
                         <div class="checkbox-group" style="margin-top: 10px;">
@@ -1489,7 +1495,8 @@
                 studyMode: 'mixed', // 'new', 'review', 'mixed'
                 includeSubdecks: true,
                 newCardOrder: 'added', // v8.01.1: 'added' or 'random'
-                reviewCardOrder: 'due' // v8.01.1: 'due' or 'random'
+                reviewCardOrder: 'due', // v8.01.1: 'due' or 'random'
+                mixNewAndReview: false // v8.01.2: 新規と復習を混ぜる
             }
         };
         
@@ -1878,7 +1885,8 @@
                 studyMode: document.getElementById('studyMode').value,
                 includeSubdecks: includeSubdecks,
                 newCardOrder: document.getElementById('newCardOrder').value, // v8.01.1
-                reviewCardOrder: document.getElementById('reviewCardOrder').value // v8.01.1
+                reviewCardOrder: document.getElementById('reviewCardOrder').value, // v8.01.1
+                mixNewAndReview: document.getElementById('mixNewAndReview').checked // v8.01.2
             };
             
             // v8.01.1: サブデッキ設定を保存
@@ -1995,11 +2003,19 @@
             studySession.cards = [...limitedNewCards, ...limitedReviewCards];
             studySession.waitingCards = []; // 待機カードは空でスタート
             
-            // 状態別にソート（新規→学習中→復習→再学習）
-            studySession.cards.sort((a, b) => {
-                const stateOrder = { new: 0, learning: 1, review: 2, relearning: 3 };
-                return stateOrder[a.state] - stateOrder[b.state];
-            });
+            // v8.01.2: 新規と復習を混ぜる設定
+            if (studySession.settings.mixNewAndReview) {
+                // 完全にランダムで混ぜる
+                studySession.cards.sort(() => Math.random() - 0.5);
+                console.log('新規と復習を混ぜる: ON（完全ランダム）');
+            } else {
+                // 状態別にソート（新規→学習中→復習→再学習）
+                studySession.cards.sort((a, b) => {
+                    const stateOrder = { new: 0, learning: 1, review: 2, relearning: 3 };
+                    return stateOrder[a.state] - stateOrder[b.state];
+                });
+                console.log('新規と復習を混ぜる: OFF（新規→復習の順）');
+            }
             
             console.log('学習対象カード数:', studySession.cards.length);
             
@@ -2381,7 +2397,8 @@
                     studyMode: 'mixed',
                     includeSubdecks: true,
                     newCardOrder: 'added', // v8.01.1
-                    reviewCardOrder: 'due' // v8.01.1
+                    reviewCardOrder: 'due', // v8.01.1
+                    mixNewAndReview: false // v8.01.2
                 }
             };
         }
