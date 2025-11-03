@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v9.00.3</title>
+    <title>MyAnkiApp v10.00</title>
     <style>
         * {
             margin: 0;
@@ -225,12 +225,24 @@
             background: #5568d3;
         }
         
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
         .btn-danger {
             background: #e74c3c;
         }
         
         .btn-danger:hover {
             background: #c0392b;
+        }
+        
+        .btn-danger:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
         
         .btn-success {
@@ -241,12 +253,24 @@
             background: #229954;
         }
         
+        .btn-success:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
         .btn-secondary {
             background: #95a5a6;
         }
         
         .btn-secondary:hover {
             background: #7f8c8d;
+        }
+        
+        .btn-secondary:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
         
         .btn-warning {
@@ -1082,7 +1106,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00.3</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.00</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1417,6 +1441,19 @@
                     <h3 style="margin-bottom: 15px;">カード一覧</h3>
                     <div style="margin-bottom: 20px;">
                         <button class="btn btn-success" onclick="exportToAnki()">Anki用CSV出力</button>
+                    </div>
+                    <!-- v10.00: 一括操作UI -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <input type="checkbox" id="selectAllCards" onchange="toggleSelectAllCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                            <label for="selectAllCards" style="margin: 0; font-weight: bold; cursor: pointer;">すべて選択</label>
+                            <span id="selectedCardCount" style="color: #667eea; margin-left: 10px;">0枚選択中</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="bulkMoveCards()" id="bulkMoveBtn" disabled>選択カードを移動</button>
+                            <button class="btn btn-danger" onclick="bulkDeleteCards()" id="bulkDeleteBtn" disabled>選択カードを削除</button>
+                            <button class="btn btn-success" onclick="bulkExportCards()" id="bulkExportBtn" disabled>選択カードをエクスポート</button>
+                        </div>
                     </div>
                     <div class="filter-group">
                         <input type="text" id="searchInput" placeholder="検索..." onkeyup="filterCards()">
@@ -3802,7 +3839,10 @@
                     html += `
                         <div class="card-item">
                             <div class="card-item-header">
-                                <span class="card-item-title">タイピング: ${card.question}</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span class="card-item-title">タイピング: ${card.question}</span>
+                                </div>
                                 <div>
                                     <span class="card-item-category">${deckName}</span>
                                     <span class="card-item-typing-badge">⌨️ タイピング</span>
@@ -3827,7 +3867,10 @@
                     html += `
                         <div class="card-item">
                             <div class="card-item-header">
-                                <span class="card-item-title">穴埋め: ${card.text.substring(0, 50)}${card.text.length > 50 ? '...' : ''}</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span class="card-item-title">穴埋め: ${card.text.substring(0, 50)}${card.text.length > 50 ? '...' : ''}</span>
+                                </div>
                                 <div>
                                     <span class="card-item-category">${deckName}</span>
                                     <span class="card-item-cloze-badge">📝 穴埋め</span>
@@ -3844,7 +3887,10 @@
                     html += `
                         <div class="card-item">
                             <div class="card-item-header">
-                                <span class="card-item-title">問題: ${card.question}</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span class="card-item-title">問題: ${card.question}</span>
+                                </div>
                                 <div>
                                     <span class="card-item-category">${deckName}</span>
                                     ${card.enableReverse ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
@@ -3861,6 +3907,9 @@
             });
             
             listEl.innerHTML = html;
+            
+            // v10.00: 選択状態を更新
+            updateSelectedCards();
         }
 
         // v6.00: カードフィルター（デッキフィルター）
@@ -3900,6 +3949,9 @@
             currentIndex = 0;
             showingQuestion = true;
             displayCard();
+            
+            // v10.00: 選択状態を更新
+            updateSelectedCards();
         }
 
         // v6.00.1: フィルター適用済みカードを取得
@@ -3908,6 +3960,210 @@
                 return cards;
             }
             return cards.filter(card => card.deckId === currentDeckFilter);
+        }
+
+        // v10.00: 選択されたカードIDを管理
+        let selectedCardIds = [];
+
+        // v10.00: 選択状態を更新
+        function updateSelectedCards() {
+            selectedCardIds = [];
+            document.querySelectorAll('.card-checkbox:checked').forEach(checkbox => {
+                selectedCardIds.push(checkbox.dataset.cardId);
+            });
+            
+            // 選択数を表示
+            document.getElementById('selectedCardCount').textContent = `${selectedCardIds.length}枚選択中`;
+            
+            // ボタンの有効/無効を切り替え
+            const hasSelection = selectedCardIds.length > 0;
+            document.getElementById('bulkMoveBtn').disabled = !hasSelection;
+            document.getElementById('bulkDeleteBtn').disabled = !hasSelection;
+            document.getElementById('bulkExportBtn').disabled = !hasSelection;
+            
+            // 全選択チェックボックスの状態を更新
+            const allCheckboxes = document.querySelectorAll('.card-checkbox');
+            const checkedCheckboxes = document.querySelectorAll('.card-checkbox:checked');
+            const selectAllCheckbox = document.getElementById('selectAllCards');
+            
+            if (allCheckboxes.length === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCheckboxes.length === allCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCheckboxes.length > 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        }
+
+        // v10.00: 全選択/全解除
+        function toggleSelectAllCards() {
+            const selectAll = document.getElementById('selectAllCards').checked;
+            const visibleCheckboxes = Array.from(document.querySelectorAll('.card-checkbox'))
+                .filter(cb => cb.closest('.card-item').style.display !== 'none');
+            
+            visibleCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAll;
+            });
+            
+            updateSelectedCards();
+        }
+
+        // v10.00: 選択カードを一括移動
+        async function bulkMoveCards() {
+            if (selectedCardIds.length === 0) {
+                alert('移動するカードを選択してください');
+                return;
+            }
+            
+            // 移動先デッキを選択
+            const deckOptions = decks.map(deck => {
+                const indent = '　'.repeat(deck.level || 0);
+                return `<option value="${deck.id}">${indent}${deck.name}</option>`;
+            }).join('');
+            
+            const deckId = prompt(`移動先のデッキを選択してください\n\n選択中: ${selectedCardIds.length}枚\n\n以下のデッキIDを入力してください:\n${decks.map(d => `${d.id}: ${d.name}`).join('\n')}`);
+            
+            if (!deckId) return;
+            
+            const targetDeck = decks.find(d => d.id === deckId);
+            if (!targetDeck) {
+                alert('無効なデッキIDです');
+                return;
+            }
+            
+            if (!confirm(`${selectedCardIds.length}枚のカードを「${targetDeck.name}」に移動しますか？`)) {
+                return;
+            }
+            
+            updateSyncStatus('syncing');
+            
+            try {
+                for (const cardId of selectedCardIds) {
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しました。一部のカードのみ移動されました。');
+                        break;
+                    }
+                    
+                    await db.collection('flashcards').doc(cardId).update({
+                        deckId: deckId
+                    });
+                }
+                
+                alert(`${selectedCardIds.length}枚のカードを移動しました`);
+                
+                // 選択をクリア
+                selectedCardIds = [];
+                document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+                updateSelectedCards();
+                
+            } catch (error) {
+                console.error('カード移動エラー:', error);
+                alert('カードの移動に失敗しました');
+                updateSyncStatus('error');
+            }
+        }
+
+        // v10.00: 選択カードを一括削除
+        async function bulkDeleteCards() {
+            if (selectedCardIds.length === 0) {
+                alert('削除するカードを選択してください');
+                return;
+            }
+            
+            if (!confirm(`${selectedCardIds.length}枚のカードを削除しますか？\nこの操作は取り消せません。`)) {
+                return;
+            }
+            
+            updateSyncStatus('syncing');
+            
+            try {
+                for (const cardId of selectedCardIds) {
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しました。一部のカードのみ削除されました。');
+                        break;
+                    }
+                    
+                    await db.collection('flashcards').doc(cardId).delete();
+                }
+                
+                alert(`${selectedCardIds.length}枚のカードを削除しました`);
+                
+                // 選択をクリア
+                selectedCardIds = [];
+                updateSelectedCards();
+                
+                // インデックスを調整
+                const filteredCards = getFilteredCards();
+                if (currentIndex >= filteredCards.length && currentIndex > 0) {
+                    currentIndex--;
+                }
+                showingQuestion = true;
+                currentCardIsReversed = false;
+                currentClozeAnswers = {};
+                
+            } catch (error) {
+                console.error('カード削除エラー:', error);
+                alert('カードの削除に失敗しました');
+                updateSyncStatus('error');
+            }
+        }
+
+        // v10.00: 選択カードを一括エクスポート
+        function bulkExportCards() {
+            if (selectedCardIds.length === 0) {
+                alert('エクスポートするカードを選択してください');
+                return;
+            }
+            
+            // 選択されたカードのデータを取得
+            const selectedCards = cards.filter(card => selectedCardIds.includes(card.id));
+            
+            // エクスポートデータを作成
+            const exportData = {
+                version: 'v10.00',
+                exportDate: new Date().toISOString(),
+                cardCount: selectedCards.length,
+                cards: selectedCards.map(card => {
+                    // 学習履歴も含める
+                    return {
+                        type: card.type,
+                        question: card.question,
+                        answer: card.answer,
+                        text: card.text,
+                        answers: card.answers,
+                        caseSensitive: card.caseSensitive,
+                        enableReverse: card.enableReverse,
+                        deckId: card.deckId,
+                        category: card.category,
+                        // 学習データ
+                        ease: card.ease,
+                        interval: card.interval,
+                        repetitions: card.repetitions,
+                        nextReview: card.nextReview,
+                        learningStep: card.learningStep,
+                        state: card.state
+                    };
+                })
+            };
+            
+            // JSONファイルとしてダウンロード
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cards_export_${selectedCards.length}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert(`${selectedCards.length}枚のカードをエクスポートしました`);
         }
 
         function flipCard() {
