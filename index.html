@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.02.1</title>
+    <title>MyAnkiApp v8.02.2</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.1</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.2</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1602,7 +1602,11 @@
                 hard: 0,
                 good: 0,
                 easy: 0
-            }
+            },
+            // v8.02.2: Anki式時間計測
+            currentCardStartTime: null, // 現在のカードの表示開始時刻
+            totalStudyDuration: 0, // 累積学習時間（ミリ秒）
+            maxCardDuration: 60000 // 1枚あたりの上限時間（60秒 = 60000ミリ秒）
         };
         
         // v8.00: Anki改良版のデフォルト設定
@@ -2395,9 +2399,12 @@
                 good: 0,
                 easy: 0
             };
+            // v8.02.2: Anki式時間計測の初期化
+            studySession.currentCardStartTime = null;
+            studySession.totalStudyDuration = 0;
             console.log('学習開始時刻:', new Date(studySession.sessionStart));
             
-            console.log('=== v8.02 学習セッション開始完了 ===');
+            console.log('=== v8.02.2 学習セッション開始完了 ===');
         }
         
         // v8.00: 学習統計を更新
@@ -2494,6 +2501,10 @@
             const card = studySession.cards[studySession.currentCardIndex];
             const container = document.getElementById('studyCardContainer');
             const controls = document.getElementById('studyControls');
+            
+            // v8.02.2: カード表示時刻を記録（Anki式）
+            studySession.currentCardStartTime = Date.now();
+            console.log('カード表示開始:', new Date(studySession.currentCardStartTime));
             
             // カード状態バッジ
             const stateBadges = {
@@ -2631,6 +2642,24 @@
             else if (rating === 'easy') studySession.sessionRatings.easy++;
             
             console.log('評価カウント:', studySession.sessionRatings);
+            
+            // v8.02.2: カード表示時間を計算・累積（Anki式）
+            if (studySession.currentCardStartTime) {
+                const cardEndTime = Date.now();
+                const cardDuration = cardEndTime - studySession.currentCardStartTime;
+                
+                // 上限適用（60秒）
+                const cappedDuration = Math.min(cardDuration, studySession.maxCardDuration);
+                
+                // 累積時間に加算
+                studySession.totalStudyDuration += cappedDuration;
+                
+                console.log('カード表示時間:', {
+                    actual: Math.round(cardDuration / 1000) + '秒',
+                    capped: Math.round(cappedDuration / 1000) + '秒',
+                    total: Math.round(studySession.totalStudyDuration / 1000) + '秒'
+                });
+            }
             
             // Anki改良版アルゴリズムで次回復習日を計算
             calculateNextReview(card, rating);
@@ -2771,7 +2800,6 @@
             // v8.02.3: 学習履歴を保存
             if (studySession.sessionStart) {
                 const sessionEnd = Date.now();
-                const studyDuration = sessionEnd - studySession.sessionStart; // ミリ秒
                 const totalRatings = studySession.sessionRatings.again + 
                                     studySession.sessionRatings.hard + 
                                     studySession.sessionRatings.good + 
@@ -2779,11 +2807,14 @@
                 
                 if (totalRatings > 0) {
                     try {
+                        // v8.02.2: Anki式の累積時間を使用
+                        const studyDuration = studySession.totalStudyDuration;
+                        
                         await db.collection('studySessions').add({
                             deckId: studySession.deckId,
                             startTime: studySession.sessionStart,
                             endTime: sessionEnd,
-                            duration: studyDuration,
+                            duration: studyDuration, // v8.02.2: カードごとの累積時間
                             cardsStudied: totalRatings,
                             ratings: {
                                 again: studySession.sessionRatings.again,
@@ -2793,9 +2824,10 @@
                             },
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
-                        console.log('学習履歴を保存:', {
+                        console.log('学習履歴を保存（Anki式）:', {
                             duration: Math.round(studyDuration / 1000 / 60) + '分',
-                            cardsStudied: totalRatings
+                            cardsStudied: totalRatings,
+                            actualDuration: Math.round(studyDuration / 1000) + '秒'
                         });
                     } catch (error) {
                         console.error('学習履歴保存エラー:', error);
@@ -2835,7 +2867,11 @@
                     hard: 0,
                     good: 0,
                     easy: 0
-                }
+                },
+                // v8.02.2: Anki式時間計測
+                currentCardStartTime: null,
+                totalStudyDuration: 0,
+                maxCardDuration: 60000
             };
         }
 
