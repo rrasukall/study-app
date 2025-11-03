@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v9.00.2</title>
+    <title>MyAnkiApp v9.00.3</title>
     <style>
         * {
             margin: 0;
@@ -1082,7 +1082,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00.2</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00.3</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -4888,8 +4888,8 @@
             if (markers[pdfHash]) {
                 Object.keys(markers[pdfHash]).forEach(pageNum => {
                     markers[pdfHash][pageNum].forEach(marker => {
-                        // 正答マーカー: correctCount +1
-                        if (marker.studyState === 'correct') {
+                        // 正答マーカー: correctCount +1（locked済みは除外）
+                        if (marker.studyState === 'correct' && !marker.locked) {
                             marker.correctCount = (marker.correctCount || 0) + 1;
                             marker.lastStudied = Date.now();
                             // v9.00: セッションカウント更新
@@ -4949,8 +4949,8 @@
             if (markers[pdfHash]) {
                 Object.keys(markers[pdfHash]).forEach(pageNum => {
                     markers[pdfHash][pageNum].forEach(marker => {
-                        // 正答マーカー: correctCount +1 & locked設定
-                        if (marker.studyState === 'correct') {
+                        // 正答マーカー: correctCount +1 & locked設定（locked済みは除外）
+                        if (marker.studyState === 'correct' && !marker.locked) {
                             marker.correctCount = (marker.correctCount || 0) + 1;
                             marker.lastStudied = Date.now();
                             marker.locked = true;  // v9.00: クリック不可にする
