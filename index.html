@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.02.3</title>
+    <title>MyAnkiApp v8.02.4</title>
     <style>
         * {
             margin: 0;
@@ -1082,7 +1082,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.3</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.4</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1092,6 +1092,7 @@
             <button class="tab" onclick="switchTab('stats')">統計</button>
             <button class="tab" onclick="switchTab('pdf')">PDF</button>
             <button class="tab" onclick="switchTab('cards')">カード管理</button>
+            <button class="tab" onclick="switchTab('settings')">設定</button>
         </div>
         
         <div id="home-section" class="section active">
@@ -1428,6 +1429,64 @@
             </div>
         </div>
         
+        <!-- v8.02.4: 設定セクション -->
+        <div id="settings-section" class="section">
+            <div class="card-creator">
+                <h2 style="margin-bottom: 30px;">学習設定</h2>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+                    <p style="margin: 0; color: #666;">この設定はすべての新規デッキのデフォルト値になります。<br>デッキごとに個別設定も可能です（デッキ編集から変更できます）。</p>
+                </div>
+                
+                <div class="input-group">
+                    <label>学習ステップ（分）</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;" id="learningStepsContainer"></div>
+                    <button class="btn btn-secondary" onclick="addLearningStep()">+ ステップを追加</button>
+                </div>
+                
+                <div class="input-group">
+                    <label for="graduatingInterval">卒業間隔（日）</label>
+                    <input type="number" id="graduatingInterval" min="1" value="1">
+                    <small style="color: #666;">学習ステップ完了後、最初の復習までの間隔</small>
+                </div>
+                
+                <div class="input-group">
+                    <label for="easyInterval">簡単間隔（日）</label>
+                    <input type="number" id="easyInterval" min="1" value="4">
+                    <small style="color: #666;">学習中に「簡単」を押した時の次回復習までの間隔</small>
+                </div>
+                
+                <div class="input-group">
+                    <label for="startingEase">初期難易度</label>
+                    <input type="number" id="startingEase" min="1.3" max="5.0" step="0.1" value="2.5">
+                    <small style="color: #666;">新規カードの初期難易度係数（推奨: 2.5）</small>
+                </div>
+                
+                <div class="input-group">
+                    <label for="easyBonus">簡単ボーナス</label>
+                    <input type="number" id="easyBonus" min="1.0" max="3.0" step="0.1" value="1.3">
+                    <small style="color: #666;">「簡単」を押した時の間隔倍率（推奨: 1.3）</small>
+                </div>
+                
+                <div class="input-group">
+                    <label for="intervalModifier">間隔調整係数</label>
+                    <input type="number" id="intervalModifier" min="0.5" max="2.0" step="0.05" value="1.0">
+                    <small style="color: #666;">全体的な復習間隔の調整（1.0が標準、大きいほど間隔が長くなる）</small>
+                </div>
+                
+                <div class="input-group">
+                    <label for="maximumInterval">最大間隔（日）</label>
+                    <input type="number" id="maximumInterval" min="1" max="36500" value="36500">
+                    <small style="color: #666;">復習間隔の上限（デフォルト: 36500日 = 100年）</small>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 30px;">
+                    <button class="btn" onclick="saveGlobalSettings()">設定を保存</button>
+                    <button class="btn btn-secondary" onclick="resetToDefaultSettings()">デフォルトに戻す</button>
+                </div>
+            </div>
+        </div>
+        
         <div id="pdf-section" class="section">
             <div class="pdf-viewer">
                 <!-- v7.02: PDF学習ヘッダーと統計パネル -->
@@ -1671,6 +1730,32 @@
             newCardsPerDay: 20,
             reviewCardsPerDay: 200
         };
+        
+        // v8.02.4: グローバル学習設定
+        let globalStudySettings = {...defaultStudySettings};
+        
+        // v8.02.4: グローバル設定の初期化
+        function initGlobalSettings() {
+            const saved = localStorage.getItem('globalStudySettings');
+            if (saved) {
+                try {
+                    globalStudySettings = JSON.parse(saved);
+                } catch (e) {
+                    console.error('設定の読み込みに失敗:', e);
+                    globalStudySettings = {...defaultStudySettings};
+                }
+            }
+        }
+        
+        // v8.02.4: デッキの学習設定を取得
+        function getStudySettings(deckId) {
+            const deck = decks.find(d => d.id === deckId);
+            if (deck && deck.useCustomSettings && deck.settings) {
+                return deck.settings;
+            }
+            return globalStudySettings;
+        }
+
         
         // v8.02.3: Firestore書き込み回数管理
         const FIRESTORE_DAILY_LIMIT = 20000;
@@ -2128,6 +2213,9 @@
             // v8.01.1: デッキ設定を読み込み
             loadDeckSettings();
             
+            // v8.02.4: グローバル設定を初期化
+            initGlobalSettings();
+            
             // v8.02.3: 初期警告チェック
             const currentWrites = getWriteCount();
             if (currentWrites >= FIRESTORE_DAILY_LIMIT * 0.8) {
@@ -2289,6 +2377,9 @@
             } else if (tab === 'stats') {
                 // v8.02: 統計タブに切り替え時に統計を更新
                 updateStatsDisplay();
+            } else if (tab === 'settings') {
+                // v8.02.4: 設定タブに切り替え時に設定UIを読み込み
+                loadGlobalSettingsUI();
             }
         }
         
@@ -2807,7 +2898,9 @@
             }
             
             // Anki改良版アルゴリズムで次回復習日を計算
-            calculateNextReview(card, rating);
+            // v8.02.4: デッキの設定を使用
+            const settings = getStudySettings(card.deckId);
+            calculateNextReview(card, rating, settings);
             
             console.log('評価:', rating);
             console.log('更新後:', {
@@ -3206,7 +3299,7 @@
                         answer: answer,
                         enableReverse: enableReverse,
                         state: 'new',
-                        easeFactor: defaultStudySettings.startingEase,
+                        easeFactor: getStudySettings(deckId).startingEase,
                         interval: 0,
                         learningStep: 0,
                         repetitions: 0,
@@ -3262,7 +3355,7 @@
                         text: text,
                         clozes: clozes,
                         state: 'new',
-                        easeFactor: defaultStudySettings.startingEase,
+                        easeFactor: getStudySettings(deckId).startingEase,
                         interval: 0,
                         learningStep: 0,
                         repetitions: 0,
@@ -3302,7 +3395,7 @@
                         answer: answer,
                         caseSensitive: caseSensitive,
                         state: 'new',
-                        easeFactor: defaultStudySettings.startingEase,
+                        easeFactor: getStudySettings(deckId).startingEase,
                         interval: 0,
                         learningStep: 0,
                         repetitions: 0,
@@ -6065,6 +6158,15 @@
             document.getElementById('deckName').value = '';
             document.getElementById('parentDeckId').value = '';
             updateParentDeckOptions(null);
+            
+            // v8.02.4: 設定タブの初期化
+            document.querySelectorAll('#deckModal .card-type-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#deckModal .card-type-tab')[0].classList.add('active');
+            document.getElementById('deckModalBasic').style.display = 'block';
+            document.getElementById('deckModalSettings').style.display = 'none';
+            document.getElementById('deckUseCustomSettings').checked = false;
+            document.getElementById('deckCustomSettingsPanel').style.display = 'none';
+            
             document.getElementById('deckModal').style.display = 'block';
         }
         
@@ -6092,6 +6194,36 @@
             document.getElementById('deckName').value = deck.name;
             document.getElementById('parentDeckId').value = deck.parentId || '';
             updateParentDeckOptions(deckId);
+            
+            // v8.02.4: 設定タブの初期化
+            document.querySelectorAll('#deckModal .card-type-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#deckModal .card-type-tab')[0].classList.add('active');
+            document.getElementById('deckModalBasic').style.display = 'block';
+            document.getElementById('deckModalSettings').style.display = 'none';
+            
+            // デッキ個別設定の読み込み
+            const useCustom = deck.useCustomSettings || false;
+            document.getElementById('deckUseCustomSettings').checked = useCustom;
+            document.getElementById('deckCustomSettingsPanel').style.display = useCustom ? 'block' : 'none';
+            
+            if (useCustom && deck.settings) {
+                document.getElementById('deckGraduatingInterval').value = deck.settings.graduatingInterval;
+                document.getElementById('deckEasyInterval').value = deck.settings.easyInterval;
+                document.getElementById('deckStartingEase').value = deck.settings.startingEase;
+                document.getElementById('deckEasyBonus').value = deck.settings.easyBonus;
+                document.getElementById('deckIntervalModifier').value = deck.settings.intervalModifier;
+                document.getElementById('deckMaximumInterval').value = deck.settings.maximumInterval;
+                loadDeckSettingsUI();
+            } else {
+                document.getElementById('deckGraduatingInterval').value = globalStudySettings.graduatingInterval;
+                document.getElementById('deckEasyInterval').value = globalStudySettings.easyInterval;
+                document.getElementById('deckStartingEase').value = globalStudySettings.startingEase;
+                document.getElementById('deckEasyBonus').value = globalStudySettings.easyBonus;
+                document.getElementById('deckIntervalModifier').value = globalStudySettings.intervalModifier;
+                document.getElementById('deckMaximumInterval').value = globalStudySettings.maximumInterval;
+                loadDeckSettingsUI();
+            }
+            
             document.getElementById('deckModal').style.display = 'block';
         }
         
@@ -6178,6 +6310,32 @@
             
             const parentId = document.getElementById('parentDeckId').value || null;
             
+            // v8.02.4: デッキ個別設定の取得
+            const useCustomSettings = document.getElementById('deckUseCustomSettings').checked;
+            let deckData = {
+                name: name,
+                parentId: parentId,
+                useCustomSettings: useCustomSettings,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (useCustomSettings) {
+                const stepInputs = document.querySelectorAll('.deck-learning-step');
+                const learningSteps = Array.from(stepInputs).map(input => parseInt(input.value));
+                
+                deckData.settings = {
+                    learningSteps: learningSteps,
+                    graduatingInterval: parseInt(document.getElementById('deckGraduatingInterval').value),
+                    easyInterval: parseInt(document.getElementById('deckEasyInterval').value),
+                    startingEase: parseFloat(document.getElementById('deckStartingEase').value),
+                    easyBonus: parseFloat(document.getElementById('deckEasyBonus').value),
+                    intervalModifier: parseFloat(document.getElementById('deckIntervalModifier').value),
+                    maximumInterval: parseInt(document.getElementById('deckMaximumInterval').value),
+                    newCardsPerDay: globalStudySettings.newCardsPerDay,
+                    reviewCardsPerDay: globalStudySettings.reviewCardsPerDay
+                };
+            }
+            
             try {
                 if (currentEditingDeckId) {
                     // v8.02.3: 書き込みカウンター
@@ -6186,11 +6344,7 @@
                         return;
                     }
                     
-                    await db.collection('decks').doc(currentEditingDeckId).update({
-                        name: name,
-                        parentId: parentId,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    await db.collection('decks').doc(currentEditingDeckId).update(deckData);
                 } else {
                     // v8.02.3: 書き込みカウンター
                     if (!incrementWriteCounter()) {
@@ -6199,13 +6353,9 @@
                     }
                     
                     const order = decks.filter(d => d.parentId === parentId).length;
-                    await db.collection('decks').add({
-                        name: name,
-                        parentId: parentId,
-                        order: order,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    deckData.order = order;
+                    deckData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection('decks').add(deckData);
                 }
                 
                 closeModal();
@@ -6256,6 +6406,145 @@
             document.getElementById('deckModal').style.display = 'none';
         }
         
+        // v8.02.4: グローバル設定タブの関数群
+        function loadGlobalSettingsUI() {
+            const container = document.getElementById('learningStepsContainer');
+            container.innerHTML = '';
+            
+            globalStudySettings.learningSteps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.style.cssText = 'display: flex; align-items: center; gap: 5px;';
+                stepDiv.innerHTML = `
+                    <input type="number" value="${step}" min="1" 
+                           onchange="updateLearningStep(${index}, this.value)"
+                           style="width: 80px; padding: 8px;">
+                    <span>分</span>
+                    <button class="btn btn-danger" onclick="removeLearningStep(${index})" 
+                            style="padding: 8px 12px; margin: 0;">削除</button>
+                `;
+                container.appendChild(stepDiv);
+            });
+            
+            document.getElementById('graduatingInterval').value = globalStudySettings.graduatingInterval;
+            document.getElementById('easyInterval').value = globalStudySettings.easyInterval;
+            document.getElementById('startingEase').value = globalStudySettings.startingEase;
+            document.getElementById('easyBonus').value = globalStudySettings.easyBonus;
+            document.getElementById('intervalModifier').value = globalStudySettings.intervalModifier;
+            document.getElementById('maximumInterval').value = globalStudySettings.maximumInterval;
+        }
+        
+        function addLearningStep() {
+            globalStudySettings.learningSteps.push(1);
+            loadGlobalSettingsUI();
+        }
+        
+        function updateLearningStep(index, value) {
+            globalStudySettings.learningSteps[index] = parseInt(value);
+        }
+        
+        function removeLearningStep(index) {
+            if (globalStudySettings.learningSteps.length <= 1) {
+                alert('学習ステップは最低1つ必要です');
+                return;
+            }
+            globalStudySettings.learningSteps.splice(index, 1);
+            loadGlobalSettingsUI();
+        }
+        
+        function saveGlobalSettings() {
+            globalStudySettings.graduatingInterval = parseInt(document.getElementById('graduatingInterval').value);
+            globalStudySettings.easyInterval = parseInt(document.getElementById('easyInterval').value);
+            globalStudySettings.startingEase = parseFloat(document.getElementById('startingEase').value);
+            globalStudySettings.easyBonus = parseFloat(document.getElementById('easyBonus').value);
+            globalStudySettings.intervalModifier = parseFloat(document.getElementById('intervalModifier').value);
+            globalStudySettings.maximumInterval = parseInt(document.getElementById('maximumInterval').value);
+            
+            localStorage.setItem('globalStudySettings', JSON.stringify(globalStudySettings));
+            alert('設定を保存しました');
+        }
+        
+        function resetToDefaultSettings() {
+            if (!confirm('デフォルト設定に戻しますか？')) return;
+            globalStudySettings = {...defaultStudySettings};
+            loadGlobalSettingsUI();
+            alert('デフォルト設定に戻しました');
+        }
+        
+        // v8.02.4: デッキモーダルタブ切り替え
+        function switchDeckModalTab(tab) {
+            const tabs = document.querySelectorAll('#deckModal .card-type-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('deckModalBasic').style.display = tab === 'basic' ? 'block' : 'none';
+            document.getElementById('deckModalSettings').style.display = tab === 'settings' ? 'block' : 'none';
+        }
+        
+        function toggleDeckCustomSettings() {
+            const checked = document.getElementById('deckUseCustomSettings').checked;
+            document.getElementById('deckCustomSettingsPanel').style.display = checked ? 'block' : 'none';
+        }
+        
+        function loadDeckSettingsUI() {
+            const container = document.getElementById('deckLearningStepsContainer');
+            container.innerHTML = '';
+            
+            const steps = document.getElementById('deckUseCustomSettings').checked && currentEditingDeckId ?
+                          (decks.find(d => d.id === currentEditingDeckId)?.settings?.learningSteps || globalStudySettings.learningSteps) :
+                          globalStudySettings.learningSteps;
+            
+            steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.style.cssText = 'display: flex; align-items: center; gap: 5px;';
+                stepDiv.innerHTML = `
+                    <input type="number" value="${step}" min="1" class="deck-learning-step"
+                           style="width: 80px; padding: 8px;">
+                    <span>分</span>
+                    <button class="btn btn-danger" onclick="removeDeckLearningStep(${index})" 
+                            style="padding: 8px 12px; margin: 0;">削除</button>
+                `;
+                container.appendChild(stepDiv);
+            });
+        }
+        
+        function addDeckLearningStep() {
+            const container = document.getElementById('deckLearningStepsContainer');
+            const stepDiv = document.createElement('div');
+            stepDiv.style.cssText = 'display: flex; align-items: center; gap: 5px;';
+            const index = container.children.length;
+            stepDiv.innerHTML = `
+                <input type="number" value="1" min="1" class="deck-learning-step"
+                       style="width: 80px; padding: 8px;">
+                <span>分</span>
+                <button class="btn btn-danger" onclick="removeDeckLearningStep(${index})" 
+                        style="padding: 8px 12px; margin: 0;">削除</button>
+            `;
+            container.appendChild(stepDiv);
+        }
+        
+        function removeDeckLearningStep(index) {
+            const container = document.getElementById('deckLearningStepsContainer');
+            if (container.children.length <= 1) {
+                alert('学習ステップは最低1つ必要です');
+                return;
+            }
+            container.children[index].remove();
+            loadDeckSettingsUI();
+        }
+        
+        function resetDeckToDefaultSettings() {
+            if (!confirm('このデッキの設定をグローバル設定に戻しますか？')) return;
+            
+            document.getElementById('deckGraduatingInterval').value = globalStudySettings.graduatingInterval;
+            document.getElementById('deckEasyInterval').value = globalStudySettings.easyInterval;
+            document.getElementById('deckStartingEase').value = globalStudySettings.startingEase;
+            document.getElementById('deckEasyBonus').value = globalStudySettings.easyBonus;
+            document.getElementById('deckIntervalModifier').value = globalStudySettings.intervalModifier;
+            document.getElementById('deckMaximumInterval').value = globalStudySettings.maximumInterval;
+            
+            loadDeckSettingsUI();
+        }
+        
         window.addEventListener('load', () => {
             loadDecks();
         });
@@ -6267,16 +6556,75 @@
                 <span class="close" onclick="closeModal()">&times;</span>
                 <h2 id="deckModalTitle">デッキ編集</h2>
             </div>
-            <div class="input-group">
-                <label for="deckName">デッキ名</label>
-                <input type="text" id="deckName" placeholder="例：英語">
+            
+            <!-- v8.02.4: デッキモーダルタブ -->
+            <div class="card-type-tabs">
+                <button class="card-type-tab active" onclick="switchDeckModalTab('basic')">基本情報</button>
+                <button class="card-type-tab" onclick="switchDeckModalTab('settings')">学習設定</button>
             </div>
-            <div class="input-group">
-                <label for="parentDeckId">親デッキ</label>
-                <select id="parentDeckId">
-                    <option value="">なし（トップレベル）</option>
-                </select>
+            
+            <!-- 基本情報タブ -->
+            <div id="deckModalBasic">
+                <div class="input-group">
+                    <label for="deckName">デッキ名</label>
+                    <input type="text" id="deckName" placeholder="例：英語">
+                </div>
+                <div class="input-group">
+                    <label for="parentDeckId">親デッキ</label>
+                    <select id="parentDeckId">
+                        <option value="">なし（トップレベル）</option>
+                    </select>
+                </div>
             </div>
+            
+            <!-- 学習設定タブ -->
+            <div id="deckModalSettings" style="display: none;">
+                <div class="checkbox-group" style="margin-bottom: 20px;">
+                    <input type="checkbox" id="deckUseCustomSettings" onchange="toggleDeckCustomSettings()">
+                    <label for="deckUseCustomSettings">このデッキ専用の設定を使う</label>
+                </div>
+                
+                <div id="deckCustomSettingsPanel" style="display: none;">
+                    <div class="input-group">
+                        <label>学習ステップ（分）</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;" id="deckLearningStepsContainer"></div>
+                        <button class="btn btn-secondary" onclick="addDeckLearningStep()">+ ステップを追加</button>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="deckGraduatingInterval">卒業間隔（日）</label>
+                        <input type="number" id="deckGraduatingInterval" min="1" value="1">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="deckEasyInterval">簡単間隔（日）</label>
+                        <input type="number" id="deckEasyInterval" min="1" value="4">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="deckStartingEase">初期難易度</label>
+                        <input type="number" id="deckStartingEase" min="1.3" max="5.0" step="0.1" value="2.5">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="deckEasyBonus">簡単ボーナス</label>
+                        <input type="number" id="deckEasyBonus" min="1.0" max="3.0" step="0.1" value="1.3">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="deckIntervalModifier">間隔調整係数</label>
+                        <input type="number" id="deckIntervalModifier" min="0.5" max="2.0" step="0.05" value="1.0">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="deckMaximumInterval">最大間隔（日）</label>
+                        <input type="number" id="deckMaximumInterval" min="1" max="36500" value="36500">
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="resetDeckToDefaultSettings()">デフォルト設定に戻す</button>
+                </div>
+            </div>
+            
             <button class="btn" onclick="saveDeck()">保存</button>
             <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
         </div>
