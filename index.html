@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.02.2</title>
+    <title>MyAnkiApp v8.02.3</title>
     <style>
         * {
             margin: 0;
@@ -1050,11 +1050,39 @@
             color: #ddd;
             font-weight: normal;
         }
+        
+        /* v8.02.3: 書き込み上限警告バナー */
+        .write-limit-warning {
+            display: none;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .write-limit-warning.warning-80 {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #f39c12;
+        }
+        
+        .write-limit-warning.warning-95 {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .write-limit-warning.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #e74c3c;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.2</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.3</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1077,6 +1105,9 @@
         <div id="study-section" class="section">
             <div class="card-viewer">
                 <h2 style="margin-bottom: 20px;">カード学習</h2>
+                
+                <!-- v8.02.3: 書き込み上限警告バナー -->
+                <div id="writeLimitWarning" class="write-limit-warning"></div>
                 
                 <div id="studyDeckSelector" style="margin-bottom: 20px;">
                     <div class="input-group">
@@ -1267,6 +1298,25 @@
                                 <div style="font-size: 12px; color: #666;">簡単</div>
                                 <div style="font-size: 20px; font-weight: bold; color: #27ae60;" id="todayEasy">0</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- v8.02.3: Firestore使用状況 -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">💾 Firestore使用状況</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">今日の書き込み</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #667eea;" id="firestoreWrites">0回</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #95a5a6;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">上限</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #95a5a6;">20,000回/日</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">使用率</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #3498db;" id="firestoreUsage">0%</div>
                         </div>
                     </div>
                 </div>
@@ -1622,6 +1672,86 @@
             reviewCardsPerDay: 200
         };
         
+        // v8.02.3: Firestore書き込み回数管理
+        const FIRESTORE_DAILY_LIMIT = 20000;
+        let firestoreWriteStopped = false; // 100%到達フラグ
+        
+        function getTodayKey() {
+            return 'firestoreWrites_' + new Date().toISOString().split('T')[0];
+        }
+        
+        function getWriteCount() {
+            return parseInt(localStorage.getItem(getTodayKey()) || '0');
+        }
+        
+        function incrementWriteCounter() {
+            if (firestoreWriteStopped) {
+                console.warn('Firestore書き込み上限に達しています。保存をスキップします。');
+                return false;
+            }
+            
+            const key = getTodayKey();
+            let count = getWriteCount();
+            count++;
+            localStorage.setItem(key, count);
+            
+            console.log(`Firestore書き込み: ${count}/${FIRESTORE_DAILY_LIMIT} (${(count/FIRESTORE_DAILY_LIMIT*100).toFixed(1)}%)`);
+            
+            // 警告チェック
+            if (count >= FIRESTORE_DAILY_LIMIT) {
+                // 100%到達
+                firestoreWriteStopped = true;
+                alert('🚨 Firestore書き込み上限に達しました\n\nこれ以上学習データを保存できません。\n明日0時（UTC）にリセットされます。\n\n学習は続けられますが、データは保存されません。');
+                showWriteLimitWarning(count);
+            } else if (count >= FIRESTORE_DAILY_LIMIT * 0.95) {
+                // 95%到達
+                showWriteLimitWarning(count);
+            } else if (count >= FIRESTORE_DAILY_LIMIT * 0.8) {
+                // 80%到達
+                showWriteLimitWarning(count);
+            }
+            
+            return true;
+        }
+        
+        function showWriteLimitWarning(count) {
+            const warning = document.getElementById('writeLimitWarning');
+            if (!warning) return;
+            
+            const percentage = (count / FIRESTORE_DAILY_LIMIT * 100).toFixed(1);
+            const remaining = FIRESTORE_DAILY_LIMIT - count;
+            
+            warning.style.display = 'block';
+            
+            if (count >= FIRESTORE_DAILY_LIMIT) {
+                // 100%
+                warning.className = 'write-limit-warning error';
+                warning.innerHTML = `🚨 書き込み上限に達しました：${count.toLocaleString()}/${FIRESTORE_DAILY_LIMIT.toLocaleString()} (${percentage}%)<br>これ以上データを保存できません。`;
+            } else if (count >= FIRESTORE_DAILY_LIMIT * 0.95) {
+                // 95%
+                warning.className = 'write-limit-warning warning-95';
+                warning.innerHTML = `🚨 書き込み上限間近：${count.toLocaleString()}/${FIRESTORE_DAILY_LIMIT.toLocaleString()} (${percentage}%) - 残り${remaining}回`;
+            } else if (count >= FIRESTORE_DAILY_LIMIT * 0.8) {
+                // 80%
+                warning.className = 'write-limit-warning warning-80';
+                warning.innerHTML = `⚠️ 書き込み回数：${count.toLocaleString()}/${FIRESTORE_DAILY_LIMIT.toLocaleString()} (${percentage}%) - 残り${remaining}回`;
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+        
+        // v8.02.3: Firestore使用状況を更新
+        function updateFirestoreUsage() {
+            const count = getWriteCount();
+            const percentage = (count / FIRESTORE_DAILY_LIMIT * 100).toFixed(1);
+            
+            const writesEl = document.getElementById('firestoreWrites');
+            const usageEl = document.getElementById('firestoreUsage');
+            
+            if (writesEl) writesEl.textContent = count.toLocaleString() + '回';
+            if (usageEl) usageEl.textContent = percentage + '%';
+        }
+        
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -1917,6 +2047,9 @@
             // v8.02.1: デッキごとの統計
             displayDeckStats();
             
+            // v8.02.3: Firestore使用状況を更新
+            updateFirestoreUsage();
+            
             console.log('統計表示完了');
         }
         
@@ -1994,6 +2127,12 @@
             
             // v8.01.1: デッキ設定を読み込み
             loadDeckSettings();
+            
+            // v8.02.3: 初期警告チェック
+            const currentWrites = getWriteCount();
+            if (currentWrites >= FIRESTORE_DAILY_LIMIT * 0.8) {
+                showWriteLimitWarning(currentWrites);
+            }
             
             // v5.01: テキストエリアの変更を監視してプレビュー更新
             const clozeText = document.getElementById('clozeText');
@@ -2189,6 +2328,12 @@
             if (!deckId) {
                 alert('デッキを選択してください');
                 return;
+            }
+            
+            // v8.02.3: 書き込み上限をチェック
+            const currentWrites = getWriteCount();
+            if (currentWrites >= FIRESTORE_DAILY_LIMIT * 0.8) {
+                showWriteLimitWarning(currentWrites);
             }
             
             console.log('=== v8.01.1 学習セッション開始 ===');
@@ -2674,18 +2819,50 @@
             
             // Firestoreに保存
             try {
-                await db.collection('flashcards').doc(card.id).update({
-                    state: card.state,
-                    easeFactor: card.easeFactor,
-                    interval: card.interval,
-                    learningStep: card.learningStep,
-                    repetitions: card.repetitions,
-                    nextReview: card.nextReview,
-                    lastReviewed: card.lastReviewed,
-                    lapses: card.lapses
-                });
+                // v8.02.3: カード情報の保存
+                if (incrementWriteCounter()) {
+                    await db.collection('flashcards').doc(card.id).update({
+                        state: card.state,
+                        easeFactor: card.easeFactor,
+                        interval: card.interval,
+                        learningStep: card.learningStep,
+                        repetitions: card.repetitions,
+                        nextReview: card.nextReview,
+                        lastReviewed: card.lastReviewed,
+                        lapses: card.lapses
+                    });
+                }
+                
+                // v8.02.3: セッション情報の保存（カードごと）
+                if (studySession.sessionStart && incrementWriteCounter()) {
+                    const sessionId = `${studySession.sessionStart}_${studySession.deckId}`;
+                    const totalRatings = studySession.sessionRatings.again + 
+                                        studySession.sessionRatings.hard + 
+                                        studySession.sessionRatings.good + 
+                                        studySession.sessionRatings.easy;
+                    
+                    await db.collection('studySessions').doc(sessionId).set({
+                        sessionId: sessionId,
+                        deckId: studySession.deckId,
+                        startTime: studySession.sessionStart,
+                        lastUpdateTime: Date.now(),
+                        duration: studySession.totalStudyDuration,
+                        cardsStudied: totalRatings,
+                        ratings: {
+                            again: studySession.sessionRatings.again,
+                            hard: studySession.sessionRatings.hard,
+                            good: studySession.sessionRatings.good,
+                            easy: studySession.sessionRatings.easy
+                        },
+                        isComplete: false,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
             } catch (error) {
                 console.error('カード更新エラー:', error);
+                if (error.code === 'resource-exhausted') {
+                    showWriteLimitWarning(FIRESTORE_DAILY_LIMIT);
+                }
             }
             
             // v8.01: Learning/Relearning状態のカードは待機キューに追加
@@ -2797,7 +2974,7 @@
         
         // v8.00: 学習セッション終了
         async function endStudySession() {
-            // v8.02.3: 学習履歴を保存
+            // v8.02.3: 学習履歴の最終更新
             if (studySession.sessionStart) {
                 const sessionEnd = Date.now();
                 const totalRatings = studySession.sessionRatings.again + 
@@ -2807,30 +2984,39 @@
                 
                 if (totalRatings > 0) {
                     try {
-                        // v8.02.2: Anki式の累積時間を使用
+                        // v8.02.3: セッションを完了状態に更新
+                        const sessionId = `${studySession.sessionStart}_${studySession.deckId}`;
                         const studyDuration = studySession.totalStudyDuration;
                         
-                        await db.collection('studySessions').add({
-                            deckId: studySession.deckId,
-                            startTime: studySession.sessionStart,
-                            endTime: sessionEnd,
-                            duration: studyDuration, // v8.02.2: カードごとの累積時間
-                            cardsStudied: totalRatings,
-                            ratings: {
-                                again: studySession.sessionRatings.again,
-                                hard: studySession.sessionRatings.hard,
-                                good: studySession.sessionRatings.good,
-                                easy: studySession.sessionRatings.easy
-                            },
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        console.log('学習履歴を保存（Anki式）:', {
+                        if (incrementWriteCounter()) {
+                            await db.collection('studySessions').doc(sessionId).set({
+                                sessionId: sessionId,
+                                deckId: studySession.deckId,
+                                startTime: studySession.sessionStart,
+                                endTime: sessionEnd,
+                                duration: studyDuration,
+                                cardsStudied: totalRatings,
+                                ratings: {
+                                    again: studySession.sessionRatings.again,
+                                    hard: studySession.sessionRatings.hard,
+                                    good: studySession.sessionRatings.good,
+                                    easy: studySession.sessionRatings.easy
+                                },
+                                isComplete: true, // v8.02.3: 完了マーク
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                        
+                        console.log('学習セッション完了（Anki式）:', {
                             duration: Math.round(studyDuration / 1000 / 60) + '分',
                             cardsStudied: totalRatings,
                             actualDuration: Math.round(studyDuration / 1000) + '秒'
                         });
                     } catch (error) {
                         console.error('学習履歴保存エラー:', error);
+                        if (error.code === 'resource-exhausted') {
+                            showWriteLimitWarning(FIRESTORE_DAILY_LIMIT);
+                        }
                     }
                 }
             }
@@ -3006,6 +3192,13 @@
                         return;
                     }
                     
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを保存できません。');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
                     await db.collection('flashcards').add({
                         type: enableReverse ? 'basic-reversed' : 'basic',
                         deckId: deckId,
@@ -3056,6 +3249,13 @@
                         return;
                     }
                     
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを保存できません。');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
                     await db.collection('flashcards').add({
                         type: 'cloze',
                         deckId: deckId,
@@ -3084,6 +3284,13 @@
                     
                     if (!question || !answer) {
                         alert('問題と正解の両方を入力してください');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを保存できません。');
                         updateSyncStatus('synced');
                         return;
                     }
@@ -3634,6 +3841,13 @@
             if (confirm('このカードを削除しますか？')) {
                 updateSyncStatus('syncing');
                 try {
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを削除できません。');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
                     await db.collection('flashcards').doc(cardId).delete();
                     
                     // v6.00.1: フィルター適用済みカード数でインデックス調整
@@ -3846,6 +4060,13 @@
                         return;
                     }
                     
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを保存できません。');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
                     await db.collection('flashcards').doc(editingCardId).update({
                         type: enableReverse ? 'basic-reversed' : 'basic',
                         deckId: deckId,
@@ -3883,6 +4104,13 @@
                         return;
                     }
                     
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを保存できません。');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
                     await db.collection('flashcards').doc(editingCardId).update({
                         type: 'cloze',
                         deckId: deckId,
@@ -3902,6 +4130,13 @@
                     
                     if (!question || !answer) {
                         alert('問題と正解の両方を入力してください');
+                        updateSyncStatus('synced');
+                        return;
+                    }
+                    
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。カードを保存できません。');
                         updateSyncStatus('synced');
                         return;
                     }
@@ -4608,6 +4843,12 @@
         async function saveStudySessionToFirebase() {
             if (!pdfHash) return;
             
+            // v8.02.3: 書き込みカウンター
+            if (!incrementWriteCounter()) {
+                console.warn('書き込み上限に達しています。PDF学習記録を保存できません。');
+                return;
+            }
+            
             try {
                 await db.collection('studySessions').doc(pdfHash).set({
                     totalStudyTime: totalStudyTime,
@@ -4617,6 +4858,9 @@
                 });
             } catch (error) {
                 console.error('学習記録の保存エラー:', error);
+                if (error.code === 'resource-exhausted') {
+                    showWriteLimitWarning(FIRESTORE_DAILY_LIMIT);
+                }
             }
         }
         
@@ -5567,6 +5811,12 @@
         async function saveMarkersToFirebase() {
             if (!pdfHash) return;
             
+            // v8.02.3: 書き込みカウンター
+            if (!incrementWriteCounter()) {
+                console.warn('書き込み上限に達しています。マーカーを保存できません。');
+                return;
+            }
+            
             try {
                 await db.collection('pdfMarkers').doc(pdfHash).set({
                     markers: markers[pdfHash] || {},
@@ -5574,6 +5824,9 @@
                 });
             } catch (error) {
                 console.error('マーカー保存エラー:', error);
+                if (error.code === 'resource-exhausted') {
+                    showWriteLimitWarning(FIRESTORE_DAILY_LIMIT);
+                }
             }
         }
         
@@ -5927,12 +6180,24 @@
             
             try {
                 if (currentEditingDeckId) {
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。デッキを保存できません。');
+                        return;
+                    }
+                    
                     await db.collection('decks').doc(currentEditingDeckId).update({
                         name: name,
                         parentId: parentId,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 } else {
+                    // v8.02.3: 書き込みカウンター
+                    if (!incrementWriteCounter()) {
+                        alert('書き込み上限に達しています。デッキを保存できません。');
+                        return;
+                    }
+                    
                     const order = decks.filter(d => d.parentId === parentId).length;
                     await db.collection('decks').add({
                         name: name,
@@ -5973,6 +6238,12 @@
             }
             
             try {
+                // v8.02.3: 書き込みカウンター
+                if (!incrementWriteCounter()) {
+                    alert('書き込み上限に達しています。デッキを削除できません。');
+                    return;
+                }
+                
                 await db.collection('decks').doc(deckId).delete();
                 await loadDecks();
             } catch (error) {
