@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v9.00.1</title>
+    <title>MyAnkiApp v9.00.2</title>
     <style>
         * {
             margin: 0;
@@ -1082,7 +1082,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00.1</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00.2</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -4911,6 +4911,7 @@
                 Object.keys(markers[pdfHash]).forEach(pageNum => {
                     markers[pdfHash][pageNum].forEach(marker => {
                         delete marker.studyState;  // undefined = 暗転状態
+                        delete marker.locked;  // v9.00: ロックも解除
                     });
                 });
             }
@@ -4948,10 +4949,11 @@
             if (markers[pdfHash]) {
                 Object.keys(markers[pdfHash]).forEach(pageNum => {
                     markers[pdfHash][pageNum].forEach(marker => {
-                        // 正答マーカー: correctCount +1
+                        // 正答マーカー: correctCount +1 & locked設定
                         if (marker.studyState === 'correct') {
                             marker.correctCount = (marker.correctCount || 0) + 1;
                             marker.lastStudied = Date.now();
+                            marker.locked = true;  // v9.00: クリック不可にする
                             // v9.00: セッションカウント更新
                             sessionCorrectCount++;
                         }
@@ -4973,6 +4975,7 @@
                         // 正答（correct）以外を初期化
                         if (marker.studyState !== 'correct') {
                             delete marker.studyState;  // undefined = 暗転状態
+                            delete marker.locked;  // ロックも解除
                         }
                     });
                 });
@@ -5407,11 +5410,12 @@
                         return;
                     }
                     
-                    // v9.00: 正答マーカーの扱い
-                    if (marker.studyState === 'correct') {
+                    // v9.00: 復習リセット後の正答マーカー（locked）の扱い
+                    if (marker.studyState === 'correct' && marker.locked) {
                         // Shift+クリックで暗転に戻す（学習対象に復帰）
                         if (event.shiftKey) {
                             marker.studyState = 'hidden';
+                            delete marker.locked;  // ロック解除
                             drawMarkers();
                             saveMarkersToFirebase();
                             updateStudyStats();
@@ -5453,13 +5457,17 @@
             const totalCount = correctCount + incorrectCount;
             const accuracyRate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
             
+            // キャンバスの絶対座標を取得
+            const canvas = document.getElementById('markerCanvas');
+            const canvasRect = canvas.getBoundingClientRect();
+            
             // ツールチップ要素を作成
             const tooltip = document.createElement('div');
             tooltip.id = 'markerStatsTooltip';
             tooltip.style.cssText = `
-                position: absolute;
-                left: ${mx}px;
-                top: ${my - 90}px;
+                position: fixed;
+                left: ${canvasRect.left + mx}px;
+                top: ${canvasRect.top + my - 90}px;
                 background: rgba(0, 0, 0, 0.9);
                 color: white;
                 padding: 10px 15px;
