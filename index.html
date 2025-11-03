@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.02.4</title>
+    <title>MyAnkiApp v9.00</title>
     <style>
         * {
             margin: 0;
@@ -1082,7 +1082,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02.4</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1509,6 +1509,7 @@
                             <span class="stat-item">❌ <span id="incorrectCount">0</span></span>
                             <span class="stat-item">🔲 <span id="unstudiedCount">0</span></span>
                             <span class="stat-item">📊 <span id="accuracyRate">N/A</span></span>
+                            <span class="stat-item" style="color: #0066ff; font-weight: bold;">⚠️ 苦手: <span id="weakMarkerCount">0</span></span>
                         </div>
                     </div>
                 </div>
@@ -1875,6 +1876,12 @@
         // v7.02: PDF単位の学習記録
         let totalStudyTime = 0; // 総学習時間（ミリ秒）
         let lapCount = 1; // 周回数
+        
+        // v9.00: PDF学習セッション履歴
+        let currentSessionStartTime = null; // 現在のセッション開始時刻
+        let sessionCorrectCount = 0; // セッション中の正答数
+        let sessionIncorrectCount = 0; // セッション中の誤答数
+        let sessionStudiedMarkers = new Set(); // セッション中に学習したマーカーのID
         
         // v7.02.1: 定期保存管理
         let autoSaveInterval = null; // 定期保存のインターバルID
@@ -4744,6 +4751,7 @@
             let correctCount = 0;
             let incorrectCount = 0;
             let unstudiedCount = 0;
+            let weakMarkerCount = 0; // v9.00: 苦手マーカー数
             
             // v7.03: 学習モードON時はシートONの色のみ集計、OFF時は全マーカー集計
             Object.keys(markers[pdfHash]).forEach(pageNum => {
@@ -4761,6 +4769,14 @@
                         // undefined, 'hidden', 'visible' はすべて未学習扱い
                         unstudiedCount++;
                     }
+                    
+                    // v9.00: 苦手マーカー判定
+                    const markerCorrectCount = marker.correctCount || 0;
+                    const markerIncorrectCount = marker.incorrectCount || 0;
+                    const markerTotalCount = markerCorrectCount + markerIncorrectCount;
+                    if (markerTotalCount >= 2 && markerIncorrectCount / markerTotalCount >= 0.5) {
+                        weakMarkerCount++;
+                    }
                 });
             });
             
@@ -4768,6 +4784,7 @@
             document.getElementById('correctCount').textContent = correctCount;
             document.getElementById('incorrectCount').textContent = incorrectCount;
             document.getElementById('unstudiedCount').textContent = unstudiedCount;
+            document.getElementById('weakMarkerCount').textContent = weakMarkerCount; // v9.00
             
             // 正答率を計算
             const totalStudied = correctCount + incorrectCount;
@@ -4943,12 +4960,39 @@
             }
             
             try {
+                // 既存の累積データ保存
                 await db.collection('studySessions').doc(pdfHash).set({
                     totalStudyTime: totalStudyTime,
                     lapCount: lapCount,
                     currentLapElapsedTime: studyElapsedTime,  // 今回周の累積時間
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                
+                // v9.00: セッション履歴を保存
+                if (currentSessionStartTime) {
+                    const sessionEndTime = Date.now();
+                    const sessionDuration = sessionEndTime - currentSessionStartTime;
+                    
+                    // 書き込みカウンター（セッション履歴用）
+                    if (!incrementWriteCounter()) {
+                        console.warn('書き込み上限に達しています。セッション履歴を保存できません。');
+                        return;
+                    }
+                    
+                    await db.collection('studySessionHistory').add({
+                        pdfHash: pdfHash,
+                        startTime: firebase.firestore.Timestamp.fromMillis(currentSessionStartTime),
+                        endTime: firebase.firestore.Timestamp.fromMillis(sessionEndTime),
+                        duration: sessionDuration,
+                        correctCount: sessionCorrectCount,
+                        incorrectCount: sessionIncorrectCount,
+                        studiedMarkerCount: sessionStudiedMarkers.size,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // セッション変数をリセット
+                    currentSessionStartTime = null;
+                }
             } catch (error) {
                 console.error('学習記録の保存エラー:', error);
                 if (error.code === 'resource-exhausted') {
@@ -5051,6 +5095,12 @@
                     statsPanel.classList.remove('inactive');
                 }
                 updateStudyStats();
+                
+                // v9.00: セッション開始時刻を記録
+                currentSessionStartTime = Date.now();
+                sessionCorrectCount = 0;
+                sessionIncorrectCount = 0;
+                sessionStudiedMarkers = new Set();
                 
             } else {
                 // 学習モードOFF
@@ -5312,8 +5362,20 @@
                         marker.studyState = 'visible';  // 暗転 → 明転（枠なし、解答確認用）
                     } else if (marker.studyState === 'visible') {
                         marker.studyState = 'correct';  // 明転 → 正答（明転+緑枠）
+                        // v9.00: 正答カウント更新
+                        marker.correctCount = (marker.correctCount || 0) + 1;
+                        marker.lastStudied = Date.now();
+                        // v9.00: セッションカウント更新
+                        sessionCorrectCount++;
+                        sessionStudiedMarkers.add(`${currentPage}-${i}`);
                     } else if (marker.studyState === 'correct') {
                         marker.studyState = 'incorrect';  // 正答 → 誤答（明転+赤枠）
+                        // v9.00: 誤答カウント更新
+                        marker.incorrectCount = (marker.incorrectCount || 0) + 1;
+                        marker.lastStudied = Date.now();
+                        // v9.00: セッションカウント更新
+                        sessionIncorrectCount++;
+                        sessionStudiedMarkers.add(`${currentPage}-${i}`);
                     } else if (marker.studyState === 'incorrect') {
                         marker.studyState = 'hidden';  // 誤答 → 暗転
                     }
@@ -5557,8 +5619,12 @@
                 width: Math.abs(endX - startX),
                 height: Math.abs(endY - startY),
                 color: currentMarkerColor,
-                scale: scale
+                scale: scale,
                 // v7.00.2: studyStateは設定しない（undefined = 学習ON時は暗転からスタート）
+                // v9.00: マーカー統計情報
+                correctCount: 0,
+                incorrectCount: 0,
+                lastStudied: null
             };
             
             if (marker.width > 5 && marker.height > 5) {
@@ -5870,6 +5936,29 @@
                     });
                 }
             });
+            
+            // v9.00: 苦手マーカーの判定と青い太枠表示
+            if (studyMode && pdfHash && markers[pdfHash] && markers[pdfHash][currentPage]) {
+                markers[pdfHash][currentPage].forEach((marker, index) => {
+                    const correctCount = marker.correctCount || 0;
+                    const incorrectCount = marker.incorrectCount || 0;
+                    const totalCount = correctCount + incorrectCount;
+                    
+                    // 総学習回数が2回以上で誤答率50%以上の場合、苦手マーカーと判定
+                    if (totalCount >= 2 && incorrectCount / totalCount >= 0.5) {
+                        const scaleRatio = scale / marker.scale;
+                        const mx = marker.x * scaleRatio;
+                        const my = marker.y * scaleRatio;
+                        const mw = marker.width * scaleRatio;
+                        const mh = marker.height * scaleRatio;
+                        
+                        // 青い太枠を描画
+                        ctx.strokeStyle = '#0066ff';
+                        ctx.lineWidth = 6;
+                        ctx.strokeRect(mx, my, mw, mh);
+                    }
+                });
+            }
         }
         
         function clearPageMarkers() {
