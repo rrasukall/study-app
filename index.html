@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.01.3</title>
+    <title>MyAnkiApp v8.02</title>
     <style>
         * {
             margin: 0;
@@ -1054,13 +1054,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.01.3</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.02</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab('home')">ホーム</button>
             <button class="tab" onclick="switchTab('study')">学習</button>
+            <button class="tab" onclick="switchTab('stats')">統計</button>
             <button class="tab" onclick="switchTab('pdf')">PDF</button>
             <button class="tab" onclick="switchTab('cards')">カード管理</button>
         </div>
@@ -1178,6 +1179,102 @@
                     <h2>🎉 学習完了！</h2>
                     <p style="margin: 20px 0;">本日の学習目標を達成しました</p>
                     <button class="btn" onclick="endStudySession()">戻る</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- v8.02: 統計セクション -->
+        <div id="stats-section" class="section">
+            <div class="deck-manager">
+                <h2 style="margin-bottom: 20px;">📊 学習統計</h2>
+                
+                <!-- v8.02.2: 全体統計 -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">全体の統計</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">総カード数</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #333;" id="totalCards">0</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #e74c3c;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">新規カード</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #e74c3c;" id="totalNew">0</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #f39c12;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">学習中</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #f39c12;" id="totalLearning">0</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">復習カード</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #3498db;" id="totalReview">0</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #27ae60;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">Young（21日未満）</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #27ae60;" id="totalYoung">0</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #16a085;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">Mature（21日以上）</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #16a085;" id="totalMature">0</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #9b59b6;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">今日の学習時間</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #9b59b6;" id="todayStudyTime">0分</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #e67e22;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 5px;">今日の正答率</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #e67e22;" id="todayAccuracy">N/A</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- v8.02.3: 学習履歴 -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">学習履歴</h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 10px;">今週の学習時間</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #667eea;" id="weekStudyTime">0時間0分</div>
+                            <div style="font-size: 12px; color: #999; margin-top: 5px;">平均: <span id="weekAvgTime">0分/日</span></div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 10px;">今月の学習時間</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #667eea;" id="monthStudyTime">0時間0分</div>
+                            <div style="font-size: 12px; color: #999; margin-top: 5px;">学習日数: <span id="monthStudyDays">0日</span></div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 10px; font-weight: bold;">評価ボタンの集計（今日）</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
+                            <div>
+                                <div style="font-size: 12px; color: #666;">もう一度</div>
+                                <div style="font-size: 20px; font-weight: bold; color: #e74c3c;" id="todayAgain">0</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #666;">難しい</div>
+                                <div style="font-size: 20px; font-weight: bold; color: #f39c12;" id="todayHard">0</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #666;">普通</div>
+                                <div style="font-size: 20px; font-weight: bold; color: #3498db;" id="todayGood">0</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #666;">簡単</div>
+                                <div style="font-size: 20px; font-weight: bold; color: #27ae60;" id="todayEasy">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- v8.02.1: デッキごとの統計 -->
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px;">デッキごとの統計</h3>
+                    <div id="deckStats"></div>
                 </div>
             </div>
         </div>
@@ -1497,6 +1594,14 @@
                 newCardOrder: 'added', // v8.01.1: 'added' or 'random'
                 reviewCardOrder: 'due', // v8.01.1: 'due' or 'random'
                 mixNewAndReview: false // v8.01.2: 新規と復習を混ぜる
+            },
+            // v8.02.3: 学習履歴記録
+            sessionStart: null, // 学習開始時刻
+            sessionRatings: { // 評価カウント
+                again: 0,
+                hard: 0,
+                good: 0,
+                easy: 0
             }
         };
         
@@ -1667,6 +1772,213 @@
             return path.join(' > ');
         }
         
+        // v8.02: 統計タブの表示を更新
+        async function updateStatsDisplay() {
+            console.log('=== 統計表示を更新 ===');
+            
+            // v8.02.1: カード状態の集計
+            const now = Date.now();
+            const TWENTY_ONE_DAYS = 21 * 24 * 60 * 60 * 1000;
+            
+            let totalCards = cards.length;
+            let totalNew = 0;
+            let totalLearning = 0;
+            let totalReview = 0;
+            let totalYoung = 0;
+            let totalMature = 0;
+            
+            cards.forEach(card => {
+                const c = initializeCard(card);
+                if (c.state === 'new') totalNew++;
+                else if (c.state === 'learning' || c.state === 'relearning') totalLearning++;
+                else if (c.state === 'review') {
+                    totalReview++;
+                    // Young/Matureの判定
+                    const intervalMs = c.interval * 24 * 60 * 60 * 1000;
+                    if (intervalMs < TWENTY_ONE_DAYS) {
+                        totalYoung++;
+                    } else {
+                        totalMature++;
+                    }
+                }
+            });
+            
+            document.getElementById('totalCards').textContent = totalCards;
+            document.getElementById('totalNew').textContent = totalNew;
+            document.getElementById('totalLearning').textContent = totalLearning;
+            document.getElementById('totalReview').textContent = totalReview;
+            document.getElementById('totalYoung').textContent = totalYoung;
+            document.getElementById('totalMature').textContent = totalMature;
+            
+            // v8.02.3: 今日の学習履歴を集計
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const todayStartMs = todayStart.getTime();
+            
+            try {
+                const sessionsSnapshot = await db.collection('studySessions')
+                    .where('startTime', '>=', todayStartMs)
+                    .get();
+                
+                let todayDuration = 0;
+                let todayAgain = 0;
+                let todayHard = 0;
+                let todayGood = 0;
+                let todayEasy = 0;
+                
+                sessionsSnapshot.forEach(doc => {
+                    const session = doc.data();
+                    todayDuration += session.duration || 0;
+                    todayAgain += session.ratings?.again || 0;
+                    todayHard += session.ratings?.hard || 0;
+                    todayGood += session.ratings?.good || 0;
+                    todayEasy += session.ratings?.easy || 0;
+                });
+                
+                // 学習時間を分単位で表示
+                const todayMinutes = Math.round(todayDuration / 1000 / 60);
+                document.getElementById('todayStudyTime').textContent = todayMinutes + '分';
+                
+                // 正答率を計算
+                const todayTotal = todayAgain + todayHard + todayGood + todayEasy;
+                let todayAccuracy = 'N/A';
+                if (todayTotal > 0) {
+                    const correctCount = todayGood + todayEasy;
+                    todayAccuracy = Math.round((correctCount / todayTotal) * 100) + '%';
+                }
+                document.getElementById('todayAccuracy').textContent = todayAccuracy;
+                
+                // 評価カウントを表示
+                document.getElementById('todayAgain').textContent = todayAgain;
+                document.getElementById('todayHard').textContent = todayHard;
+                document.getElementById('todayGood').textContent = todayGood;
+                document.getElementById('todayEasy').textContent = todayEasy;
+                
+                // 今週の学習時間
+                const weekStart = new Date(todayStart);
+                weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // 日曜日
+                const weekStartMs = weekStart.getTime();
+                
+                const weekSessionsSnapshot = await db.collection('studySessions')
+                    .where('startTime', '>=', weekStartMs)
+                    .get();
+                
+                let weekDuration = 0;
+                weekSessionsSnapshot.forEach(doc => {
+                    const session = doc.data();
+                    weekDuration += session.duration || 0;
+                });
+                
+                const weekMinutes = Math.round(weekDuration / 1000 / 60);
+                const weekHours = Math.floor(weekMinutes / 60);
+                const weekMins = weekMinutes % 60;
+                document.getElementById('weekStudyTime').textContent = 
+                    weekHours + '時間' + weekMins + '分';
+                
+                const daysInWeek = Math.ceil((now - weekStartMs) / (1000 * 60 * 60 * 24));
+                const weekAvg = Math.round(weekMinutes / Math.max(daysInWeek, 1));
+                document.getElementById('weekAvgTime').textContent = weekAvg + '分/日';
+                
+                // 今月の学習時間
+                const monthStart = new Date(todayStart);
+                monthStart.setDate(1);
+                const monthStartMs = monthStart.getTime();
+                
+                const monthSessionsSnapshot = await db.collection('studySessions')
+                    .where('startTime', '>=', monthStartMs)
+                    .get();
+                
+                let monthDuration = 0;
+                const studyDaysSet = new Set();
+                monthSessionsSnapshot.forEach(doc => {
+                    const session = doc.data();
+                    monthDuration += session.duration || 0;
+                    const sessionDate = new Date(session.startTime);
+                    const dateKey = sessionDate.toISOString().split('T')[0];
+                    studyDaysSet.add(dateKey);
+                });
+                
+                const monthMinutes = Math.round(monthDuration / 1000 / 60);
+                const monthHours = Math.floor(monthMinutes / 60);
+                const monthMins = monthMinutes % 60;
+                document.getElementById('monthStudyTime').textContent = 
+                    monthHours + '時間' + monthMins + '分';
+                
+                document.getElementById('monthStudyDays').textContent = studyDaysSet.size + '日';
+                
+            } catch (error) {
+                console.error('統計取得エラー:', error);
+            }
+            
+            // v8.02.1: デッキごとの統計
+            displayDeckStats();
+            
+            console.log('統計表示完了');
+        }
+        
+        // v8.02.1: デッキごとの統計を表示
+        function displayDeckStats() {
+            const deckStatsEl = document.getElementById('deckStats');
+            if (!deckStatsEl) return;
+            
+            if (decks.length === 0) {
+                deckStatsEl.innerHTML = '<p style="color: #999;">デッキがありません</p>';
+                return;
+            }
+            
+            const now = Date.now();
+            let html = '';
+            
+            decks.forEach(deck => {
+                const deckCards = cards.filter(c => c.deckId === deck.id);
+                if (deckCards.length === 0) return;
+                
+                let newCount = 0;
+                let learningCount = 0;
+                let reviewCount = 0;
+                let dueCount = 0;
+                
+                deckCards.forEach(card => {
+                    const c = initializeCard(card);
+                    if (c.state === 'new') newCount++;
+                    else if (c.state === 'learning' || c.state === 'relearning') learningCount++;
+                    else if (c.state === 'review') reviewCount++;
+                    
+                    if (!c.nextReview || c.nextReview <= now) dueCount++;
+                });
+                
+                html += `
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 10px;">${deck.name}</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; font-size: 14px;">
+                            <div>
+                                <span style="color: #666;">総カード数:</span>
+                                <strong>${deckCards.length}</strong>
+                            </div>
+                            <div>
+                                <span style="color: #e74c3c;">新規:</span>
+                                <strong>${newCount}</strong>
+                            </div>
+                            <div>
+                                <span style="color: #f39c12;">学習中:</span>
+                                <strong>${learningCount}</strong>
+                            </div>
+                            <div>
+                                <span style="color: #3498db;">復習:</span>
+                                <strong>${reviewCount}</strong>
+                            </div>
+                            <div>
+                                <span style="color: #27ae60;">今日学習可能:</span>
+                                <strong>${dueCount}</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            deckStatsEl.innerHTML = html;
+        }
+        
         window.addEventListener('load', async () => {
             if ('showOpenFilePicker' in window) {
                 await initIndexedDB();
@@ -1831,6 +2143,9 @@
             } else if (tab === 'study') {
                 // v8.00: 学習タブに切り替え時にデッキセレクターを更新
                 updateStudyDeckSelector();
+            } else if (tab === 'stats') {
+                // v8.02: 統計タブに切り替え時に統計を更新
+                updateStatsDisplay();
             }
         }
         
@@ -2072,7 +2387,17 @@
             studySession.showingAnswer = false;
             displayStudyCard();
             
-            console.log('=== v8.01.1 学習セッション開始完了 ===');
+            // v8.02.3: 学習開始時刻を記録
+            studySession.sessionStart = Date.now();
+            studySession.sessionRatings = {
+                again: 0,
+                hard: 0,
+                good: 0,
+                easy: 0
+            };
+            console.log('学習開始時刻:', new Date(studySession.sessionStart));
+            
+            console.log('=== v8.02 学習セッション開始完了 ===');
         }
         
         // v8.00: 学習統計を更新
@@ -2272,6 +2597,14 @@
         async function rateCard(rating) {
             const card = studySession.cards[studySession.currentCardIndex];
             
+            // v8.02.3: 評価カウントを記録
+            if (rating === 'again') studySession.sessionRatings.again++;
+            else if (rating === 'hard') studySession.sessionRatings.hard++;
+            else if (rating === 'good') studySession.sessionRatings.good++;
+            else if (rating === 'easy') studySession.sessionRatings.easy++;
+            
+            console.log('評価カウント:', studySession.sessionRatings);
+            
             // Anki改良版アルゴリズムで次回復習日を計算
             calculateNextReview(card, rating);
             
@@ -2407,7 +2740,42 @@
         }
         
         // v8.00: 学習セッション終了
-        function endStudySession() {
+        async function endStudySession() {
+            // v8.02.3: 学習履歴を保存
+            if (studySession.sessionStart) {
+                const sessionEnd = Date.now();
+                const studyDuration = sessionEnd - studySession.sessionStart; // ミリ秒
+                const totalRatings = studySession.sessionRatings.again + 
+                                    studySession.sessionRatings.hard + 
+                                    studySession.sessionRatings.good + 
+                                    studySession.sessionRatings.easy;
+                
+                if (totalRatings > 0) {
+                    try {
+                        await db.collection('studySessions').add({
+                            deckId: studySession.deckId,
+                            startTime: studySession.sessionStart,
+                            endTime: sessionEnd,
+                            duration: studyDuration,
+                            cardsStudied: totalRatings,
+                            ratings: {
+                                again: studySession.sessionRatings.again,
+                                hard: studySession.sessionRatings.hard,
+                                good: studySession.sessionRatings.good,
+                                easy: studySession.sessionRatings.easy
+                            },
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log('学習履歴を保存:', {
+                            duration: Math.round(studyDuration / 1000 / 60) + '分',
+                            cardsStudied: totalRatings
+                        });
+                    } catch (error) {
+                        console.error('学習履歴保存エラー:', error);
+                    }
+                }
+            }
+            
             document.getElementById('studyDeckSelector').style.display = 'block';
             document.getElementById('studyCardDisplay').style.display = 'none';
             document.getElementById('studyComplete').style.display = 'none';
@@ -2432,6 +2800,14 @@
                     newCardOrder: 'added', // v8.01.1
                     reviewCardOrder: 'due', // v8.01.1
                     mixNewAndReview: false // v8.01.2
+                },
+                // v8.02.3
+                sessionStart: null,
+                sessionRatings: {
+                    again: 0,
+                    hard: 0,
+                    good: 0,
+                    easy: 0
                 }
             };
         }
