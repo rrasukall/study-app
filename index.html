@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v8.01.2</title>
+    <title>MyAnkiApp v8.01.3</title>
     <style>
         * {
             margin: 0;
@@ -1054,7 +1054,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.01.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v8.01.3</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1950,13 +1950,46 @@
             
             console.log('初期化後のカード:', deckCards);
             
-            // 今日学習すべきカードをフィルタリング
+            // v8.01.3: 待機カード（nextReviewが未来のLearning/Relearningカード）をチェック
             const now = Date.now();
-            let dueCards = deckCards.filter(card => {
-                return !card.nextReview || card.nextReview <= now;
+            const waitingCards = deckCards.filter(card => {
+                const isWaiting = card.nextReview && card.nextReview > now;
+                const isLearningState = card.state === 'learning' || card.state === 'relearning';
+                return isWaiting && isLearningState;
             });
             
-            console.log('期限到達カード数:', dueCards.length);
+            console.log('待機カード数:', waitingCards.length);
+            
+            // 待機カードがある場合は確認ダイアログを表示
+            let includeWaitingCards = false;
+            if (waitingCards.length > 0) {
+                const waitingMinutes = Math.ceil((Math.min(...waitingCards.map(c => c.nextReview)) - now) / 60000);
+                const confirmed = confirm(
+                    `待機中のカードが${waitingCards.length}枚あります。\n` +
+                    `（あと約${waitingMinutes}分で学習可能）\n\n` +
+                    `待機時間を待たずに、すぐに学習を開始しますか？`
+                );
+                includeWaitingCards = confirmed;
+                console.log('待機カードを含める:', includeWaitingCards);
+            }
+            
+            // 今日学習すべきカードをフィルタリング
+            let dueCards;
+            if (includeWaitingCards) {
+                // 待機カードも含める（期限チェックをスキップ）
+                dueCards = deckCards.filter(card => {
+                    // 期限到達カード または 待機カード
+                    return !card.nextReview || card.nextReview <= now || 
+                           (waitingCards.includes(card));
+                });
+                console.log('期限到達カード + 待機カード:', dueCards.length);
+            } else {
+                // 通常通り（期限到達カードのみ）
+                dueCards = deckCards.filter(card => {
+                    return !card.nextReview || card.nextReview <= now;
+                });
+                console.log('期限到達カード数:', dueCards.length);
+            }
             
             // v8.01: 学習モードによるフィルタリング
             if (studySession.settings.studyMode === 'new') {
