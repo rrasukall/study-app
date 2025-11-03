@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.00.1</title>
+    <title>MyAnkiApp v10.00.2</title>
     <style>
         * {
             margin: 0;
@@ -1133,7 +1133,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.00.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.00.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -4004,6 +4004,7 @@
         let selectedCardIds = [];
 
         // v10.00: 選択状態を更新
+        // v10.00.2: 選択状態を更新（表示中のカードのみで判定）
         function updateSelectedCards() {
             selectedCardIds = [];
             document.querySelectorAll('.card-checkbox:checked').forEach(checkbox => {
@@ -4019,9 +4020,10 @@
             document.getElementById('bulkDeleteBtn').disabled = !hasSelection;
             document.getElementById('bulkExportBtn').disabled = !hasSelection;
             
-            // 全選択チェックボックスの状態を更新
-            const allCheckboxes = document.querySelectorAll('.card-checkbox');
-            const checkedCheckboxes = document.querySelectorAll('.card-checkbox:checked');
+            // v10.00.2: 全選択チェックボックスの状態を更新（表示中のカードのみを基準）
+            const allCheckboxes = Array.from(document.querySelectorAll('.card-checkbox'))
+                .filter(cb => cb.closest('.card-item').style.display !== 'none');
+            const checkedCheckboxes = allCheckboxes.filter(cb => cb.checked);
             const selectAllCheckbox = document.getElementById('selectAllCards');
             
             if (allCheckboxes.length === 0) {
@@ -4039,15 +4041,26 @@
             }
         }
 
-        // v10.00: 全選択/全解除
+        // v10.00.2: 全選択/全解除（indeterminate状態のクリックで全選択）
         function toggleSelectAllCards() {
-            const selectAll = document.getElementById('selectAllCards').checked;
+            const selectAllCheckbox = document.getElementById('selectAllCards');
             const visibleCheckboxes = Array.from(document.querySelectorAll('.card-checkbox'))
                 .filter(cb => cb.closest('.card-item').style.display !== 'none');
             
-            visibleCheckboxes.forEach(checkbox => {
-                checkbox.checked = selectAll;
-            });
+            // v10.00.2: indeterminate状態（部分選択）の場合は全選択にする
+            if (selectAllCheckbox.indeterminate) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+                visibleCheckboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+            } else {
+                // 通常の全選択/全解除
+                const selectAll = selectAllCheckbox.checked;
+                visibleCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAll;
+                });
+            }
             
             updateSelectedCards();
         }
