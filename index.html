@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v9.00</title>
+    <title>MyAnkiApp v9.00.1</title>
     <style>
         * {
             margin: 0;
@@ -1082,7 +1082,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00</span></h1></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v9.00.1</span></h1></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -4874,7 +4874,7 @@
         async function resetLapFull() {
             if (!pdfHash) return;
             
-            if (!confirm('この周を終了して次の周を開始しますか？\n\n・すべてのマーカー状態が初期化されます（暗転に戻る）\n・今回周の統計がリセットされます\n・総学習時間に加算されます')) {
+            if (!confirm('この周を終了して次の周を開始しますか？\n\n・すべてのマーカー状態が初期化されます（暗転に戻る）\n・正答マーカーも学習対象に戻ります\n・今回周の統計がリセットされます\n・総学習時間に加算されます')) {
                 return;
             }
             
@@ -4883,6 +4883,28 @@
             
             // 周回数を+1
             lapCount++;
+            
+            // v9.00: マーカー統計を更新（周回終了時に確定）
+            if (markers[pdfHash]) {
+                Object.keys(markers[pdfHash]).forEach(pageNum => {
+                    markers[pdfHash][pageNum].forEach(marker => {
+                        // 正答マーカー: correctCount +1
+                        if (marker.studyState === 'correct') {
+                            marker.correctCount = (marker.correctCount || 0) + 1;
+                            marker.lastStudied = Date.now();
+                            // v9.00: セッションカウント更新
+                            sessionCorrectCount++;
+                        }
+                        // 誤答マーカー: incorrectCount +1
+                        else if (marker.studyState === 'incorrect') {
+                            marker.incorrectCount = (marker.incorrectCount || 0) + 1;
+                            marker.lastStudied = Date.now();
+                            // v9.00: セッションカウント更新
+                            sessionIncorrectCount++;
+                        }
+                    });
+                });
+            }
             
             // マーカー状態を初期化（全ページ・すべてのマーカー）
             if (markers[pdfHash]) {
@@ -4921,6 +4943,28 @@
             
             // 周回数を+1
             lapCount++;
+            
+            // v9.00: マーカー統計を更新（周回終了時に確定）
+            if (markers[pdfHash]) {
+                Object.keys(markers[pdfHash]).forEach(pageNum => {
+                    markers[pdfHash][pageNum].forEach(marker => {
+                        // 正答マーカー: correctCount +1
+                        if (marker.studyState === 'correct') {
+                            marker.correctCount = (marker.correctCount || 0) + 1;
+                            marker.lastStudied = Date.now();
+                            // v9.00: セッションカウント更新
+                            sessionCorrectCount++;
+                        }
+                        // 誤答マーカー: incorrectCount +1
+                        else if (marker.studyState === 'incorrect') {
+                            marker.incorrectCount = (marker.incorrectCount || 0) + 1;
+                            marker.lastStudied = Date.now();
+                            // v9.00: セッションカウント更新
+                            sessionIncorrectCount++;
+                        }
+                    });
+                });
+            }
             
             // マーカー状態を初期化（正答以外のみ）
             if (markers[pdfHash]) {
@@ -5357,25 +5401,35 @@
                         return;  // シートOFFの色は何もしない
                     }
                     
+                    // v9.00: Ctrl+クリックで統計表示
+                    if (event.ctrlKey || event.metaKey) {
+                        showMarkerStatsTooltip(marker, mx, my, mw, mh);
+                        return;
+                    }
+                    
+                    // v9.00: 正答マーカーの扱い
+                    if (marker.studyState === 'correct') {
+                        // Shift+クリックで暗転に戻す（学習対象に復帰）
+                        if (event.shiftKey) {
+                            marker.studyState = 'hidden';
+                            drawMarkers();
+                            saveMarkersToFirebase();
+                            updateStudyStats();
+                            return;
+                        }
+                        // 通常クリックは反応しない（学習対象外）
+                        return;
+                    }
+                    
                     // v7.03: トグルサイクル: 暗転(初期) → 明転(枠なし) → 正答(緑枠) → 誤答(赤枠) → 暗転
                     if (!marker.studyState || marker.studyState === 'hidden') {
                         marker.studyState = 'visible';  // 暗転 → 明転（枠なし、解答確認用）
                     } else if (marker.studyState === 'visible') {
                         marker.studyState = 'correct';  // 明転 → 正答（明転+緑枠）
-                        // v9.00: 正答カウント更新
-                        marker.correctCount = (marker.correctCount || 0) + 1;
-                        marker.lastStudied = Date.now();
-                        // v9.00: セッションカウント更新
-                        sessionCorrectCount++;
-                        sessionStudiedMarkers.add(`${currentPage}-${i}`);
+                        // v9.00: カウント更新は周回終了時に移動（ここでは更新しない）
                     } else if (marker.studyState === 'correct') {
                         marker.studyState = 'incorrect';  // 正答 → 誤答（明転+赤枠）
-                        // v9.00: 誤答カウント更新
-                        marker.incorrectCount = (marker.incorrectCount || 0) + 1;
-                        marker.lastStudied = Date.now();
-                        // v9.00: セッションカウント更新
-                        sessionIncorrectCount++;
-                        sessionStudiedMarkers.add(`${currentPage}-${i}`);
+                        // v9.00: カウント更新は周回終了時に移動（ここでは更新しない）
                     } else if (marker.studyState === 'incorrect') {
                         marker.studyState = 'hidden';  // 誤答 → 暗転
                     }
@@ -5386,6 +5440,56 @@
                     updateStudyStats();
                     return;
                 }
+            }
+        }
+        
+        // v9.00: マーカー統計ツールチップ表示
+        function showMarkerStatsTooltip(marker, mx, my, mw, mh) {
+            // 既存のツールチップを削除
+            hideMarkerStatsTooltip();
+            
+            const correctCount = marker.correctCount || 0;
+            const incorrectCount = marker.incorrectCount || 0;
+            const totalCount = correctCount + incorrectCount;
+            const accuracyRate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+            
+            // ツールチップ要素を作成
+            const tooltip = document.createElement('div');
+            tooltip.id = 'markerStatsTooltip';
+            tooltip.style.cssText = `
+                position: absolute;
+                left: ${mx}px;
+                top: ${my - 90}px;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 13px;
+                line-height: 1.6;
+                z-index: 10000;
+                pointer-events: none;
+                white-space: nowrap;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            
+            tooltip.innerHTML = `
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.3); margin-bottom: 6px; padding-bottom: 4px; font-weight: bold;">マーカー統計</div>
+                <div>✅ 正答: ${correctCount}回</div>
+                <div>❌ 誤答: ${incorrectCount}回</div>
+                <div>📊 合計: ${totalCount}回</div>
+                <div>📈 正答率: ${accuracyRate}%</div>
+            `;
+            
+            document.body.appendChild(tooltip);
+            
+            // 3秒後に自動的に消す
+            setTimeout(hideMarkerStatsTooltip, 3000);
+        }
+        
+        function hideMarkerStatsTooltip() {
+            const tooltip = document.getElementById('markerStatsTooltip');
+            if (tooltip) {
+                tooltip.remove();
             }
         }
         
@@ -5937,7 +6041,7 @@
                 }
             });
             
-            // v9.00: 苦手マーカーの判定と青い太枠表示
+            // v9.00: 苦手マーカーの判定とビックリマーク表示
             if (studyMode && pdfHash && markers[pdfHash] && markers[pdfHash][currentPage]) {
                 markers[pdfHash][currentPage].forEach((marker, index) => {
                     const correctCount = marker.correctCount || 0;
@@ -5952,10 +6056,23 @@
                         const mw = marker.width * scaleRatio;
                         const mh = marker.height * scaleRatio;
                         
-                        // 青い太枠を描画
-                        ctx.strokeStyle = '#0066ff';
-                        ctx.lineWidth = 6;
-                        ctx.strokeRect(mx, my, mw, mh);
+                        // 左上角に黄色のビックリマークを描画
+                        const iconSize = 16;
+                        const iconX = mx + 4;
+                        const iconY = my + 4;
+                        
+                        // 背景円（黒）
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                        ctx.beginPath();
+                        ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2 + 2, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // ビックリマーク（黄色）
+                        ctx.fillStyle = '#FFD700';
+                        ctx.font = 'bold ' + iconSize + 'px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('⚠', iconX + iconSize/2, iconY + iconSize/2);
                     }
                 });
             }
