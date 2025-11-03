@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.00</title>
+    <title>MyAnkiApp v10.00.1</title>
     <style>
         * {
             margin: 0;
@@ -1035,6 +1035,33 @@
             color: #000;
         }
         
+        /* v10.00.1: デッキ選択モーダル用スタイル */
+        .deck-selector-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 2px solid transparent;
+        }
+        
+        .deck-selector-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .deck-selector-item.selected {
+            background: #e8f0fe;
+            border-color: #667eea;
+        }
+        
+        .deck-selector-item.child-deck {
+            margin-left: 20px;
+        }
+        
+        .deck-selector-item.grandchild-deck {
+            margin-left: 40px;
+        }
+        
         /* v7.00.2: PDF学習ヘッダー（学習ボタンを「PDF学習」の右横に配置） */
         .pdf-header {
             display: flex;
@@ -1106,7 +1133,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.00</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.00.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1441,6 +1468,9 @@
                     <h3 style="margin-bottom: 15px;">カード一覧</h3>
                     <div style="margin-bottom: 20px;">
                         <button class="btn btn-success" onclick="exportToAnki()">Anki用CSV出力</button>
+                        <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                            ※選択カードまたはフィルター中のデッキのカードをエクスポート（問題・答えのみ）
+                        </div>
                     </div>
                     <!-- v10.00: 一括操作UI -->
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
@@ -1453,6 +1483,9 @@
                             <button class="btn btn-secondary" onclick="bulkMoveCards()" id="bulkMoveBtn" disabled>選択カードを移動</button>
                             <button class="btn btn-danger" onclick="bulkDeleteCards()" id="bulkDeleteBtn" disabled>選択カードを削除</button>
                             <button class="btn btn-success" onclick="bulkExportCards()" id="bulkExportBtn" disabled>選択カードをエクスポート</button>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                            ※エクスポート: 学習データを含む完全バックアップ（JSON形式）
                         </div>
                     </div>
                     <div class="filter-group">
@@ -3942,6 +3975,11 @@
                     item.style.display = 'block';
                 } else {
                     item.style.display = 'none';
+                    // v10.00.1: 非表示になったカードのチェックを外す
+                    const checkbox = item.querySelector('.card-checkbox');
+                    if (checkbox && checkbox.checked) {
+                        checkbox.checked = false;
+                    }
                 }
             });
             
@@ -4015,25 +4053,75 @@
         }
 
         // v10.00: 選択カードを一括移動
+        // v10.00.1: 選択カードを一括移動（モーダル表示）
+        let selectedDeckForMove = null;
+        
         async function bulkMoveCards() {
             if (selectedCardIds.length === 0) {
                 alert('移動するカードを選択してください');
                 return;
             }
             
-            // 移動先デッキを選択
-            const deckOptions = decks.map(deck => {
+            // モーダルを開く
+            openDeckSelectorModal();
+        }
+        
+        // v10.00.1: デッキ選択モーダルを開く
+        function openDeckSelectorModal() {
+            document.getElementById('moveCardCount').textContent = selectedCardIds.length;
+            
+            const listEl = document.getElementById('deckSelectorList');
+            listEl.innerHTML = '';
+            
+            decks.forEach(deck => {
+                const deckItem = document.createElement('div');
+                deckItem.className = 'deck-selector-item';
+                
+                if (deck.level === 1) {
+                    deckItem.classList.add('child-deck');
+                } else if (deck.level >= 2) {
+                    deckItem.classList.add('grandchild-deck');
+                }
+                
                 const indent = '　'.repeat(deck.level || 0);
-                return `<option value="${deck.id}">${indent}${deck.name}</option>`;
-            }).join('');
+                deckItem.textContent = `${indent}${deck.name}`;
+                deckItem.dataset.deckId = deck.id;
+                
+                deckItem.onclick = function() {
+                    // 他の選択を解除
+                    document.querySelectorAll('.deck-selector-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    
+                    // この項目を選択
+                    this.classList.add('selected');
+                    selectedDeckForMove = deck.id;
+                    
+                    // 移動ボタンを有効化
+                    document.getElementById('confirmMoveBtn').disabled = false;
+                };
+                
+                listEl.appendChild(deckItem);
+            });
             
-            const deckId = prompt(`移動先のデッキを選択してください\n\n選択中: ${selectedCardIds.length}枚\n\n以下のデッキIDを入力してください:\n${decks.map(d => `${d.id}: ${d.name}`).join('\n')}`);
+            selectedDeckForMove = null;
+            document.getElementById('confirmMoveBtn').disabled = true;
+            document.getElementById('deckSelectorModal').style.display = 'block';
+        }
+        
+        // v10.00.1: デッキ選択モーダルを閉じる
+        function closeDeckSelectorModal() {
+            document.getElementById('deckSelectorModal').style.display = 'none';
+            selectedDeckForMove = null;
+        }
+        
+        // v10.00.1: デッキ移動を確定
+        async function confirmDeckMove() {
+            if (!selectedDeckForMove) return;
             
-            if (!deckId) return;
-            
-            const targetDeck = decks.find(d => d.id === deckId);
+            const targetDeck = decks.find(d => d.id === selectedDeckForMove);
             if (!targetDeck) {
-                alert('無効なデッキIDです');
+                alert('無効なデッキです');
                 return;
             }
             
@@ -4041,6 +4129,7 @@
                 return;
             }
             
+            closeDeckSelectorModal();
             updateSyncStatus('syncing');
             
             try {
@@ -4051,7 +4140,7 @@
                     }
                     
                     await db.collection('flashcards').doc(cardId).update({
-                        deckId: deckId
+                        deckId: selectedDeckForMove
                     });
                 }
                 
@@ -4115,6 +4204,9 @@
         }
 
         // v10.00: 選択カードを一括エクスポート
+        // v10.00: 選択カードを一括エクスポート（JSON形式）
+        // 学習データ（ease, interval, repetitions等）を含めた完全バックアップ
+        // このアプリへのインポート機能で学習進捗を復元可能
         function bulkExportCards() {
             if (selectedCardIds.length === 0) {
                 alert('エクスポートするカードを選択してください');
@@ -4126,9 +4218,10 @@
             
             // エクスポートデータを作成
             const exportData = {
-                version: 'v10.00',
+                version: 'v10.00.1',
                 exportDate: new Date().toISOString(),
                 cardCount: selectedCards.length,
+                description: 'MyAnkiApp完全バックアップ（学習データ含む）',
                 cards: selectedCards.map(card => {
                     // 学習履歴も含める
                     return {
@@ -4157,13 +4250,13 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `cards_export_${selectedCards.length}_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `cards_backup_${selectedCards.length}_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            alert(`${selectedCards.length}枚のカードをエクスポートしました`);
+            alert(`${selectedCards.length}枚のカードをエクスポートしました\n\n※学習データを含む完全バックアップです（JSON形式）`);
         }
 
         function flipCard() {
@@ -4519,14 +4612,35 @@
         }
 
         // CSV出力（デッキ名対応）
+        // v10.00.1: Anki用CSV出力（フィルター・選択対応）
         function exportToAnki() {
-            if (cards.length === 0) {
+            // v10.00.1: エクスポート対象を決定
+            // 優先順位: 1.選択カード → 2.フィルターされたカード → 3.全カード
+            let targetCards = [];
+            let exportInfo = '';
+            
+            if (selectedCardIds.length > 0) {
+                // 選択カードがある場合
+                targetCards = cards.filter(card => selectedCardIds.includes(card.id));
+                exportInfo = `選択された${targetCards.length}枚`;
+            } else if (currentDeckFilter) {
+                // デッキフィルターが設定されている場合
+                targetCards = cards.filter(card => card.deckId === currentDeckFilter);
+                const deckName = getDeckNameById(currentDeckFilter);
+                exportInfo = `「${deckName}」の${targetCards.length}枚`;
+            } else {
+                // 全カード
+                targetCards = cards;
+                exportInfo = `全${targetCards.length}枚`;
+            }
+            
+            if (targetCards.length === 0) {
                 alert('エクスポートするカードがありません');
                 return;
             }
             
             let csv = '\ufeff';
-            cards.forEach(card => {
+            targetCards.forEach(card => {
                 const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
                 
                 if (card.type === 'typing') {
@@ -4560,7 +4674,7 @@
             link.click();
             document.body.removeChild(link);
             
-            alert('CSVファイルをダウンロードしました！');
+            alert(`CSVファイルをダウンロードしました！\n\n対象: ${exportInfo}\n\n※Ankiへのインポート用（問題・答えのみ）`);
         }
 
         // ========== PDF機能（変更なし） ==========
@@ -6876,6 +6990,23 @@
             document.getElementById('deckModal').style.display = 'none';
         }
         
+        // v10.00.1: モーダルの外側クリックで閉じる
+        window.onclick = function(event) {
+            const deckModal = document.getElementById('deckModal');
+            const cardEditModal = document.getElementById('cardEditModal');
+            const deckSelectorModal = document.getElementById('deckSelectorModal');
+            
+            if (event.target === deckModal) {
+                closeModal();
+            }
+            if (event.target === cardEditModal) {
+                closeCardEditModal();
+            }
+            if (event.target === deckSelectorModal) {
+                closeDeckSelectorModal();
+            }
+        }
+        
         // v8.02.4: グローバル設定タブの関数群
         function loadGlobalSettingsUI() {
             const container = document.getElementById('learningStepsContainer');
@@ -7173,6 +7304,25 @@
             
             <button class="btn" onclick="saveEditedCard()">変更を保存</button>
             <button class="btn btn-secondary" onclick="closeCardEditModal()">キャンセル</button>
+        </div>
+    </div>
+    
+    <!-- v10.00.1: デッキ選択モーダル -->
+    <div id="deckSelectorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeDeckSelectorModal()">&times;</span>
+                <h2>移動先デッキを選択</h2>
+            </div>
+            <div style="margin-bottom: 20px; color: #666;">
+                <strong id="moveCardCount">0</strong>枚のカードを移動します
+            </div>
+            <div id="deckSelectorList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="confirmDeckMove()" id="confirmMoveBtn" disabled>移動する</button>
+                <button class="btn btn-secondary" onclick="closeDeckSelectorModal()">キャンセル</button>
+            </div>
         </div>
     </div>
 </body>
