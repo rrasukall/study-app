@@ -3,8 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.03.1</title>
+    <title>MyAnkiApp v12.03.2</title>
     <style>
+        /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
+        :root {
+            /* 1. 背景色 */
+            --bg-main: #f5f7fa;
+            --bg-section: #ffffff;
+            --bg-item: #ffffff;
+            --bg-modal: #ffffff;
+            --bg-header-start: #667eea;
+            --bg-header-end: #764ba2;
+            --bg-input: #ffffff;
+            
+            /* 2. 文字色 */
+            --text-main: #333333;
+            --text-sub: #666666;
+            --text-link: #667eea;
+            --text-placeholder: #999999;
+            
+            /* 3. ボーダー・区切り線 */
+            --border-color: #dddddd;
+            --divider-color: #e0e0e0;
+            
+            /* 4. ボタン */
+            --btn-primary-bg: #667eea;
+            --btn-primary-text: #ffffff;
+            --btn-secondary-bg: #95a5a6;
+            --btn-secondary-text: #ffffff;
+            --btn-danger-bg: #e74c3c;
+            --btn-danger-text: #ffffff;
+            --btn-hover-bg: #5568d3;
+            --btn-disabled-bg: #cccccc;
+            --btn-disabled-text: #999999;
+            
+            /* 5. タブ */
+            --tab-bg-inactive: transparent;
+            --tab-bg-active: rgba(255, 255, 255, 0.2);
+            --tab-text: rgba(255, 255, 255, 0.8);
+            
+            /* 6. カード学習画面 */
+            --card-study-bg-start: #f093fb;
+            --card-study-bg-end: #f5576c;
+            --card-study-stat-bg: #f8f9fa;
+            
+            /* 7. 状態表示 */
+            --color-success: #27ae60;
+            --color-error: #e74c3c;
+            --color-warning: #f39c12;
+            --color-info: #3498db;
+            
+            /* 8. PDFマーカー */
+            --marker-yellow: rgba(255, 255, 0, 0.4);
+            --marker-red: rgba(255, 0, 0, 0.3);
+            --marker-green: rgba(0, 255, 0, 0.3);
+            --marker-blue: rgba(0, 150, 255, 0.3);
+            
+            /* 9. その他UI要素 */
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --hover-bg: #f8f9fa;
+            --selected-bg: #e3f2fd;
+            --scrollbar-color: #cccccc;
+            --icon-color: #666666;
+        }
+        
+        /* v12.03.2: ダークモードプリセット */
+        body.theme-dark {
+            --bg-main: #1a1a1a;
+            --bg-section: #2a2a2a;
+            --bg-item: #2a2a2a;
+            --bg-modal: #2a2a2a;
+            --bg-header-start: #2c3e50;
+            --bg-header-end: #34495e;
+            --bg-input: #333333;
+            
+            --text-main: #f0f0f0;
+            --text-sub: #bbbbbb;
+            --text-link: #8b9cff;
+            --text-placeholder: #777777;
+            
+            --border-color: #444444;
+            --divider-color: #444444;
+            
+            --btn-primary-bg: #667eea;
+            --btn-primary-text: #ffffff;
+            --btn-secondary-bg: #555555;
+            --btn-secondary-text: #ffffff;
+            --btn-danger-bg: #e74c3c;
+            --btn-danger-text: #ffffff;
+            --btn-hover-bg: #5568d3;
+            --btn-disabled-bg: #444444;
+            --btn-disabled-text: #777777;
+            
+            --tab-bg-inactive: transparent;
+            --tab-bg-active: rgba(255, 255, 255, 0.2);
+            --tab-text: rgba(255, 255, 255, 0.9);
+            
+            --card-study-bg-start: #3a3a3a;
+            --card-study-bg-end: #4a4a4a;
+            --card-study-stat-bg: #333333;
+            
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --hover-bg: #333333;
+            --selected-bg: #3a4a5a;
+            --scrollbar-color: #555555;
+            --icon-color: #aaaaaa;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -12,6 +117,8 @@
         }
         
         body {
+            background: var(--bg-main);
+            color: var(--text-main);
             font-family: 'Segoe UI', Meirio, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -246,7 +353,7 @@
         }
         
         .btn:hover {
-            background: #5568d3;
+            background: var(--btn-hover-bg);
         }
         
         .btn:disabled {
@@ -256,7 +363,8 @@
         }
         
         .btn-danger {
-            background: #e74c3c;
+            background: var(--btn-danger-bg);
+            color: var(--btn-danger-text);
         }
         
         .btn-danger:hover {
@@ -284,7 +392,8 @@
         }
         
         .btn-secondary {
-            background: #95a5a6;
+            background: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
         }
         
         .btn-secondary:hover {
@@ -306,7 +415,7 @@
         }
         
         .card {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, var(--card-study-bg-start) 0%, var(--card-study-bg-end) 100%);
             min-height: 300px;
             border-radius: 15px;
             display: flex;
@@ -1292,12 +1401,12 @@
         }
         
         body.dark-mode .tab:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.15);
             color: white;
         }
         
         body.dark-mode .tab.active {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--tab-bg-active);
             color: white;
         }
         
@@ -1381,7 +1490,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
