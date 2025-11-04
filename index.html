@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.03.7</title>
+    <title>MyAnkiApp v14.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.7</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2260,6 +2260,30 @@
                         <button class="btn btn-secondary" onclick="resetCustomColors()">リセット</button>
                     </div>
                 </div>
+                
+                <!-- v14.00: データ管理 -->
+                <hr style="margin: 50px 0; border: none; border-top: 2px solid #e0e0e0;">
+                
+                <h2 style="margin-bottom: 30px;">データ管理</h2>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">完全バックアップ</h3>
+                    <p style="margin-bottom: 15px; color: #666; line-height: 1.6;">
+                        すべてのデッキ、カード、学習記録、PDFマーカー、設定を含む完全なバックアップをエクスポートします。<br>
+                        定期的なバックアップを推奨します。
+                    </p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn" onclick="exportCompleteBackup()">📦 完全バックアップをエクスポート</button>
+                        <span id="exportStatus" style="color: #27ae60; display: none;">✓ エクスポート完了</span>
+                    </div>
+                </div>
+                
+                <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <p style="margin: 0; color: #856404;">
+                        <strong>⚠️ 注意:</strong> バックアップファイルは安全な場所に保管してください。<br>
+                        データの復元機能は今後のバージョンで実装予定です。
+                    </p>
+                </div>
             </div>
         </div>
         
@@ -2727,6 +2751,136 @@
             alert('カスタムカラーをリセットしました');
         }
 
+        // v14.00: 完全バックアップのエクスポート
+        async function exportCompleteBackup() {
+            try {
+                // エクスポート開始メッセージ
+                const statusEl = document.getElementById('exportStatus');
+                if (statusEl) {
+                    statusEl.textContent = '⏳ エクスポート中...';
+                    statusEl.style.color = '#f39c12';
+                    statusEl.style.display = 'inline';
+                }
+                
+                // 1. Firestoreからすべてのデータを取得
+                const decksSnapshot = await db.collection('decks').orderBy('order').get();
+                const flashcardsSnapshot = await db.collection('flashcards').get();
+                const studySessionsSnapshot = await db.collection('studySessions').get();
+                const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+                
+                // データを配列に変換
+                const decks = [];
+                decksSnapshot.forEach(doc => {
+                    decks.push({ id: doc.id, ...doc.data() });
+                });
+                
+                const flashcards = [];
+                flashcardsSnapshot.forEach(doc => {
+                    flashcards.push({ id: doc.id, ...doc.data() });
+                });
+                
+                const studySessions = [];
+                studySessionsSnapshot.forEach(doc => {
+                    studySessions.push({ id: doc.id, ...doc.data() });
+                });
+                
+                const pdfMarkers = [];
+                const pdfMetadata = [];
+                pdfMarkersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    pdfMarkers.push({ 
+                        pdfHash: doc.id, 
+                        ...data 
+                    });
+                    // PDFメタデータの対応表
+                    if (data.fileName) {
+                        pdfMetadata.push({
+                            pdfHash: doc.id,
+                            fileName: data.fileName,
+                            totalPages: data.totalPages || 0,
+                            fileSize: data.fileSize || 0
+                        });
+                    }
+                });
+                
+                // 2. localStorageから設定を取得
+                const settings = {
+                    theme: localStorage.getItem('theme') || 'light',
+                    fontSize: localStorage.getItem('fontSize') || 'medium',
+                    customColors: localStorage.getItem('customColors') || null,
+                    deckStudySettings: localStorage.getItem('deckStudySettings') || null,
+                    globalStudySettings: localStorage.getItem('globalStudySettings') || null,
+                    collapsedDecks: localStorage.getItem('collapsedDecks') || '{}',
+                    cardsPerPage: localStorage.getItem('cardsPerPage') || '50',
+                    lastSelectedDeckId: localStorage.getItem('lastSelectedDeckId') || null,
+                    instantDeleteMode: localStorage.getItem('instantDeleteMode') || 'false'
+                };
+                
+                // 3. バックアップデータ構造を作成
+                const backup = {
+                    version: '1.0',
+                    userId: null,  // 将来の複数ユーザー対応用
+                    exportDate: new Date().toISOString(),
+                    appVersion: 'v14.00',
+                    data: {
+                        decks: decks,
+                        flashcards: flashcards,
+                        studySessions: studySessions,
+                        pdfMarkers: pdfMarkers,
+                        pdfMetadata: pdfMetadata
+                    },
+                    settings: settings
+                };
+                
+                // 4. JSONファイルとしてダウンロード
+                const jsonStr = JSON.stringify(backup, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                // ファイル名: MyAnkiApp_Backup_YYYYMMDD_HHMMSS.json
+                const now = new Date();
+                const dateStr = now.getFullYear() + 
+                    String(now.getMonth() + 1).padStart(2, '0') + 
+                    String(now.getDate()).padStart(2, '0') + '_' +
+                    String(now.getHours()).padStart(2, '0') + 
+                    String(now.getMinutes()).padStart(2, '0') + 
+                    String(now.getSeconds()).padStart(2, '0');
+                const filename = `MyAnkiApp_Backup_${dateStr}.json`;
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // 完了メッセージ
+                if (statusEl) {
+                    statusEl.textContent = '✓ エクスポート完了';
+                    statusEl.style.color = '#27ae60';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
+                }
+                
+                console.log('バックアップ完了:', {
+                    decks: decks.length,
+                    flashcards: flashcards.length,
+                    studySessions: studySessions.length,
+                    pdfMarkers: pdfMarkers.length
+                });
+                
+            } catch (error) {
+                console.error('バックアップエラー:', error);
+                const statusEl = document.getElementById('exportStatus');
+                if (statusEl) {
+                    statusEl.textContent = '✗ エクスポート失敗';
+                    statusEl.style.color = '#e74c3c';
+                }
+                alert('バックアップのエクスポートに失敗しました。\nエラー: ' + error.message);
+            }
+        }
         
         // v12.03: フォントサイズ適用
         function applyFontSize(size) {
@@ -2983,6 +3137,14 @@
         let scale = 1.0;
         let pdfHash = null;
         let currentPDFFile = null;
+        
+        // v14.00: PDFメタデータ保存用
+        let currentPdfMetadata = {
+            fileName: '',
+            totalPages: 0,
+            fileSize: 0,
+            lastUpdated: null
+        };
         
         let markers = {};
         let currentMarkerColor = 'yellow';
@@ -6711,6 +6873,15 @@
                 totalPages = pdfDoc.numPages;
                 currentPage = 1;
                 
+                // v14.00: PDFメタデータを記録
+                currentPdfMetadata = {
+                    fileName: file.name,
+                    totalPages: totalPages,
+                    fileSize: file.size,
+                    lastUpdated: Date.now()
+                };
+                console.log('PDF Metadata:', currentPdfMetadata);
+                
                 document.getElementById('pdfUploadArea').style.display = 'none';
                 document.getElementById('pdfViewerContainer').style.display = 'block';
                 document.getElementById('pdfFilename').textContent = file.name;
@@ -8451,8 +8622,13 @@
             }
             
             try {
+                // v14.00: PDFメタデータも保存
                 await db.collection('pdfMarkers').doc(pdfHash).set({
                     markers: markers[pdfHash] || {},
+                    fileName: currentPdfMetadata.fileName,
+                    totalPages: currentPdfMetadata.totalPages,
+                    fileSize: currentPdfMetadata.fileSize,
+                    lastUpdated: currentPdfMetadata.lastUpdated,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             } catch (error) {
