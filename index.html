@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.00.0</title>
+    <title>MyAnkiApp v12.00.2</title>
     <style>
         * {
             margin: 0;
@@ -1201,11 +1201,39 @@
             transition: all 0.2s;
         }
 
+
+        /* v12.00.2: ドラッグ&ドロップ用スタイル */
+        .deck-item {
+            transition: all 0.2s;
+        }
+        
+        .deck-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+        }
+        
+        .deck-item.drag-over {
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px dashed #667eea;
+        }
+        
+        .drag-handle {
+            cursor: move;
+            font-size: 18px;
+            color: #999;
+            margin-right: 10px;
+            user-select: none;
+        }
+        
+        .drag-handle:hover {
+            color: #667eea;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2064,6 +2092,9 @@
         
         // v7.02.1: 定期保存管理
         let autoSaveInterval = null; // 定期保存のインターバルID
+        
+        // v12.00: デッキ折りたたみ状態管理
+        let collapsedDecks = JSON.parse(localStorage.getItem('collapsedDecks') || '{}');
         
         let pdfDB = null;
         let useFileSystemAPI = false;
@@ -7377,9 +7408,12 @@
                 </div>
             `;
             
-            childDecks.forEach(child => {
-                html += renderDeckItem(child, level + 1);
-            });
+            // v12.00: 折りたたまれていない場合のみサブデッキを表示
+            if (!isCollapsed) {
+                childDecks.forEach(child => {
+                    html += renderDeckItem(child, level + 1);
+                });
+            }
             
             return html;
         }
@@ -7391,6 +7425,13 @@
             setDeckSetting(deckId, 'includeSubdecks', includeSubdecks);
             console.log(`デッキ ${deckId} のサブデッキ含む設定: ${includeSubdecks}`);
         }
+        // v12.00: デッキ折りたたみ機能
+        function toggleDeckCollapse(deckId) {
+            collapsedDecks[deckId] = !collapsedDecks[deckId];
+            localStorage.setItem('collapsedDecks', JSON.stringify(collapsedDecks));
+            displayDecks();
+        }
+        
         
         // v8.00: ホーム画面から直接学習を開始
         async function startDeckStudy(deckId) {
@@ -7672,6 +7713,139 @@
             event.target.style.border = '3px solid #667eea';
         }
         
+
+        // v12.00.2: ドラッグ&ドロップ機能
+        let draggedDeckId = null;
+        let dropTargetDeckId = null;
+        
+        function setupDragAndDrop() {
+            const deckItems = document.querySelectorAll('.deck-item');
+            
+            deckItems.forEach(item => {
+                item.addEventListener('dragstart', handleDeckDragStart);
+                item.addEventListener('dragend', handleDeckDragEnd);
+                item.addEventListener('dragover', handleDeckDragOver);
+                item.addEventListener('dragleave', handleDeckDragLeave);
+                item.addEventListener('drop', handleDeckDrop);
+            });
+        }
+        
+        function handleDeckDragStart(e) {
+            draggedDeckId = e.currentTarget.dataset.deckId;
+            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDeckDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.deck-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+            draggedDeckId = null;
+            dropTargetDeckId = null;
+        }
+        
+        function handleDeckDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const targetDeckId = e.currentTarget.dataset.deckId;
+            if (targetDeckId && targetDeckId !== draggedDeckId) {
+                e.currentTarget.classList.add('drag-over');
+                dropTargetDeckId = targetDeckId;
+            }
+        }
+        
+        function handleDeckDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+        
+        async function handleDeckDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const targetDeckId = e.currentTarget.dataset.deckId;
+            
+            if (!draggedDeckId || !targetDeckId || draggedDeckId === targetDeckId) {
+                return;
+            }
+            
+            const draggedDeck = decks.find(d => d.id === draggedDeckId);
+            const targetDeck = decks.find(d => d.id === targetDeckId);
+            
+            if (!draggedDeck || !targetDeck) {
+                return;
+            }
+            
+            // 循環参照チェック
+            if (isDescendant(targetDeck, draggedDeck)) {
+                alert('サブデッキを親デッキにすることはできません');
+                return;
+            }
+            
+            // Ctrlキー押下時は並び替え、通常は親デッキ変更
+            if (e.ctrlKey || e.metaKey) {
+                // 並び替え：同じ親デッキ内でorder値を入れ替え
+                if (draggedDeck.parentId === targetDeck.parentId) {
+                    const draggedOrder = draggedDeck.order || 0;
+                    const targetOrder = targetDeck.order || 0;
+                    
+                    try {
+                        await db.collection('decks').doc(draggedDeckId).update({
+                            order: targetOrder,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        await db.collection('decks').doc(targetDeckId).update({
+                            order: draggedOrder,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        draggedDeck.order = targetOrder;
+                        targetDeck.order = draggedOrder;
+                        
+                        await displayDecks();
+                    } catch (error) {
+                        console.error('並び替えエラー:', error);
+                        alert('並び替えに失敗しました');
+                    }
+                } else {
+                    alert('同じ階層のデッキ同士でのみ並び替えできます');
+                }
+            } else {
+                // 親デッキ変更
+                if (confirm(`「${draggedDeck.name}」を「${targetDeck.name}」のサブデッキにしますか？
+
+ヒント: Ctrl+ドラッグで並び替えもできます`)) {
+                    try {
+                        await db.collection('decks').doc(draggedDeckId).update({
+                            parentId: targetDeckId,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        draggedDeck.parentId = targetDeckId;
+                        await displayDecks();
+                    } catch (error) {
+                        console.error('デッキ移動エラー:', error);
+                        alert('デッキの移動に失敗しました');
+                    }
+                }
+            }
+        }
+        
+        // 子孫デッキチェック
+        function isDescendant(potentialAncestor, potentialDescendant) {
+            let current = potentialAncestor;
+            while (current.parentId) {
+                if (current.parentId === potentialDescendant.id) {
+                    return true;
+                }
+                current = decks.find(d => d.id === current.parentId);
+                if (!current) break;
+            }
+            return false;
+        }
+
         async function saveDeck() {
             const name = document.getElementById('deckName').value.trim();
             if (!name) {
@@ -7694,6 +7868,7 @@
                 useCustomSettings: useCustomSettings,
                 icon: icon,
                 color: color,
+                order: editingDeckId ? (decks.find(d => d.id === editingDeckId)?.order || 0) : 0,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
