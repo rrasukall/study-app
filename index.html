@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.03</title>
+    <title>MyAnkiApp v10.03.2</title>
     <style>
         * {
             margin: 0;
@@ -1190,7 +1190,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.03</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.03.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3843,7 +3843,7 @@
                             </div>
                         </div>
                         <div class="typing-input-container">
-                            <input type="text" class="typing-input" id="typingInput" placeholder="答えを入力してください" onkeypress="if(event.key==='Enter') checkTypingAnswer()">
+                            <input type="text" class="typing-input" id="typingInput" placeholder="答えを入力してください" onkeypress="if(event.key==='Enter') checkTypingAnswerPreview()">
                             <div id="typingResult"></div>
                         </div>
                     `;
@@ -3853,7 +3853,7 @@
                             <div class="nav-buttons">
                                 <button class="btn" onclick="previousCard()">← 前へ</button>
                                 <button class="btn" onclick="nextCard()">次へ →</button>
-                                <button class="btn" onclick="checkTypingAnswer()">判定</button>
+                                <button class="btn" onclick="checkTypingAnswerPreview()">判定</button>
                                 <button class="btn" onclick="flipCard()">答え</button>
                             </div>
                             <div class="card-info">
@@ -4059,7 +4059,7 @@
         }
 
         // v5.02.1: タイピング式カードの入力判定
-        function checkTypingAnswer() {
+        function checkTypingAnswerPreview() {
             // v6.00.1: フィルター適用済みカードを使用
             const filteredCards = getFilteredCards();
             const card = filteredCards[currentIndex];
