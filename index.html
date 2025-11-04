@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.1</title>
+    <title>MyAnkiApp v12.01.2</title>
     <style>
         * {
             margin: 0;
@@ -1289,7 +1289,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -4362,6 +4362,7 @@
             }
             
             // v10.02.1: 統計情報を生成する関数
+            // v12.01.2: 次回復習予定日と難易度係数を追加
             function generateCardStats(card) {
                 let stats = [];
                 
@@ -4406,6 +4407,20 @@
                     }
                 }
                 
+                // v12.01.2: 次回復習予定日
+                if (card.nextReview) {
+                    const date = new Date(card.nextReview);
+                    const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+                    stats.push(`⏰ 次回: ${dateStr}`);
+                } else if (total > 0) {
+                    stats.push(`⏰ 次回: -`);
+                }
+                
+                // v12.01.2: 難易度係数
+                if (card.easeFactor) {
+                    stats.push(`📊 難易度: ${card.easeFactor.toFixed(2)}`);
+                }
+                
                 return stats.join(' ');
             }
             
@@ -4439,12 +4454,14 @@
                                 </div>
                             </div>
                             <div class="card-item-content">
-                                正解: ${answer}
+                                <div><strong>問題:</strong> <span class="inline-editable" data-field="question" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${card.question}</span></div>
+                                <div><strong>正解:</strong> <span class="inline-editable" data-field="answer" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${answer}</span></div>
                                 ${card.caseSensitive ? ' <span style="color: #e67e22;">(大文字小文字・全角半角区別)</span>' : ''}
                                 ${tagsHtml}
                             </div>
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn" onclick="duplicateCard('${card.id}')" style="background: #3498db; color: white;">複製</button>
                                 <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
                                 <span class="card-stats">${statsHtml}</span>
                             </div>
@@ -4484,6 +4501,7 @@
                             </div>
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn" onclick="duplicateCard('${card.id}')" style="background: #3498db; color: white;">複製</button>
                                 <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
                                 <span class="card-stats">${statsHtml}</span>
                             </div>
@@ -4513,11 +4531,13 @@
                                 </div>
                             </div>
                             <div class="card-item-content">
-                                答え: ${card.answer}
+                                <div><strong>問題:</strong> <span class="inline-editable" data-field="question" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${card.question}</span></div>
+                                <div><strong>答え:</strong> <span class="inline-editable" data-field="answer" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${card.answer}</span></div>
                                 ${tagsHtml}
                             </div>
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn" onclick="duplicateCard('${card.id}')" style="background: #3498db; color: white;">複製</button>
                                 <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
                                 <span class="card-stats">${statsHtml}</span>
                             </div>
@@ -4530,6 +4550,8 @@
             
             // v10.00: 選択状態を更新
             updateSelectedCards();
+            
+            // v12.01.2: インライン編集のイベントリスナーは不要（ondblclick属性で直接呼び出し）
         }
 
         // v10.01: カードフィルター（タグ検索、カードタイプ、学習状態対応）
