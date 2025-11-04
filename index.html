@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.12</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.13</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2964,7 +2964,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.12',
+                    appVersion: 'v14.00.13',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3055,7 +3055,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.12',
+                    appVersion: 'v14.00.13',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -7166,6 +7166,11 @@
                 pdfHash = await calculateFileHash(file);
                 console.log('PDF Hash:', pdfHash);
                 
+                // v14.00.12: PDF切り替え時に全モードをリセット
+                if (markerMode) toggleMarkerMode();
+                if (editMode) toggleEditMode();
+                if (deleteMode) toggleDeleteMode();
+                
                 const arrayBuffer = await file.arrayBuffer();
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
@@ -7266,6 +7271,20 @@
                 // v7.01: 初期統計を更新
                 updateStudyStats();
                 
+                // v14.00.12: PDF読み込み完了後、マーカーモードを確実にOFFにする
+                if (markerMode) {
+                    markerMode = false;
+                    const markerModeBtn = document.getElementById('markerModeBtn');
+                    if (markerModeBtn) {
+                        markerModeBtn.textContent = 'マーカーOFF';
+                        markerModeBtn.className = 'btn btn-mode-off';
+                    }
+                    const canvas = document.getElementById('markerCanvas');
+                    if (canvas) {
+                        canvas.style.cursor = 'default';
+                    }
+                }
+                
             } catch (error) {
                 console.error('PDF読み込みエラー:', error);
                 alert('PDFの読み込みに失敗しました: ' + error.message);
@@ -7320,6 +7339,13 @@
                 
                 markerCanvas.width = viewport.width;
                 markerCanvas.height = viewport.height;
+                
+                // v14.00.12: Canvas再作成時にマーカーモードの状態を反映
+                if (markerMode) {
+                    markerCanvas.style.cursor = 'crosshair';
+                } else {
+                    markerCanvas.style.cursor = 'default';
+                }
                 
                 setupMarkerEvents(markerCanvas);
                 
