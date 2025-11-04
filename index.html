@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.03.2</title>
+    <title>MyAnkiApp v12.03.3</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -66,8 +66,6 @@
             --scrollbar-color: #cccccc;
             --icon-color: #666666;
         }
-        
-        /* v12.03.2: ダークモードプリセット */
         body.theme-dark {
             --bg-main: #1a1a1a;
             --bg-section: #2a2a2a;
@@ -1490,7 +1488,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1965,15 +1963,11 @@
                 <h2 style="margin-bottom: 30px;">表示設定</h2>
                 
                 <div class="input-group">
-                    <label>テーマ</label>
+                    <label>カラーテーマ</label>
                     <div style="display: flex; gap: 15px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="radio" name="theme" value="light" id="themeLight" onchange="changeTheme('light')">
-                            <span>☀️ ライトモード</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="radio" name="theme" value="dark" id="themeDark" onchange="changeTheme('dark')">
-                            <span>🌙 ダークモード</span>
+                            <span>☀️ ライトモード（デフォルト）</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="radio" name="theme" value="custom" id="themeCustom" onchange="changeTheme('custom')">
@@ -2003,136 +1997,260 @@
                         </label>
                     </div>
                 </div>
+
                 
-                <div class="input-group">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="pdfDarkMode" onchange="togglePDFDarkMode()">
-                        <span>PDFダークモード（PDF表示を反転）</span>
-                    </label>
-                    <small style="color: var(--text-sub);">※PDFの背景を暗くします（実験的機能）</small>
-                </div>
-                
-                <!-- v12.03.2: カスタムカラー設定 -->
+                <!-- v12.03.3: カスタムカラー設定（41項目完全版） -->
                 <div id="customColorSettings" style="display: none; margin-top: 30px; padding: 20px; background: var(--bg-section); border: 2px solid var(--border-color); border-radius: 8px;">
-                    <h3 style="margin-bottom: 20px;">詳細カラー設定</h3>
+                    <h3 style="margin-bottom: 20px; color: var(--text-main);">詳細カラー設定（41項目）</h3>
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                        <!-- 1. 背景色 -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                        <!-- 1. 背景色（7項目） -->
                         <div>
-                            <h4 style="margin-bottom: 10px; color: var(--text-main);">背景色</h4>
+                            <h4 style="margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">背景色（7項目）</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">メイン背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">メイン背景:</label>
                                     <input type="color" id="color_bg_main" onchange="updateColorVar('--bg-main', this.value)">
-                                    <input type="text" id="text_bg_main" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-main', this.value)">
+                                    <input type="text" id="text_bg_main" value="#f5f7fa" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-main', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">セクション背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">セクション背景:</label>
                                     <input type="color" id="color_bg_section" onchange="updateColorVar('--bg-section', this.value)">
-                                    <input type="text" id="text_bg_section" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-section', this.value)">
+                                    <input type="text" id="text_bg_section" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-section', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">アイテム背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">アイテム背景:</label>
                                     <input type="color" id="color_bg_item" onchange="updateColorVar('--bg-item', this.value)">
-                                    <input type="text" id="text_bg_item" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-item', this.value)">
+                                    <input type="text" id="text_bg_item" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-item', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">モーダル背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">モーダル背景:</label>
                                     <input type="color" id="color_bg_modal" onchange="updateColorVar('--bg-modal', this.value)">
-                                    <input type="text" id="text_bg_modal" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-modal', this.value)">
+                                    <input type="text" id="text_bg_modal" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-modal', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">ヘッダー開始:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">ヘッダー開始:</label>
                                     <input type="color" id="color_bg_header_start" onchange="updateColorVar('--bg-header-start', this.value)">
-                                    <input type="text" id="text_bg_header_start" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-header-start', this.value)">
+                                    <input type="text" id="text_bg_header_start" value="#667eea" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-header-start', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">ヘッダー終了:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">ヘッダー終了:</label>
                                     <input type="color" id="color_bg_header_end" onchange="updateColorVar('--bg-header-end', this.value)">
-                                    <input type="text" id="text_bg_header_end" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-header-end', this.value)">
+                                    <input type="text" id="text_bg_header_end" value="#764ba2" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-header-end', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">入力背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">入力背景:</label>
                                     <input type="color" id="color_bg_input" onchange="updateColorVar('--bg-input', this.value)">
-                                    <input type="text" id="text_bg_input" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--bg-input', this.value)">
+                                    <input type="text" id="text_bg_input" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-input', this.value)">
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- 2. 文字色 -->
+                        <!-- 2. 文字色（4項目） -->
                         <div>
-                            <h4 style="margin-bottom: 10px; color: var(--text-main);">文字色</h4>
+                            <h4 style="margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">文字色（4項目）</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">メイン文字:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">メイン文字:</label>
                                     <input type="color" id="color_text_main" onchange="updateColorVar('--text-main', this.value)">
-                                    <input type="text" id="text_text_main" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--text-main', this.value)">
+                                    <input type="text" id="text_text_main" value="#333333" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--text-main', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">サブ文字:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">サブ文字:</label>
                                     <input type="color" id="color_text_sub" onchange="updateColorVar('--text-sub', this.value)">
-                                    <input type="text" id="text_text_sub" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--text-sub', this.value)">
+                                    <input type="text" id="text_text_sub" value="#666666" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--text-sub', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">リンク:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">リンク:</label>
                                     <input type="color" id="color_text_link" onchange="updateColorVar('--text-link', this.value)">
-                                    <input type="text" id="text_text_link" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--text-link', this.value)">
+                                    <input type="text" id="text_text_link" value="#667eea" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--text-link', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">プレースホルダー:</label>
+                                    <input type="color" id="color_text_placeholder" onchange="updateColorVar('--text-placeholder', this.value)">
+                                    <input type="text" id="text_text_placeholder" value="#999999" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--text-placeholder', this.value)">
                                 </div>
                             </div>
                             
-                            <h4 style="margin: 20px 0 10px; color: var(--text-main);">ボーダー</h4>
+                            <h4 style="margin: 20px 0 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">ボーダー（2項目）</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">ボーダー:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">ボーダー:</label>
                                     <input type="color" id="color_border_color" onchange="updateColorVar('--border-color', this.value)">
-                                    <input type="text" id="text_border_color" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--border-color', this.value)">
+                                    <input type="text" id="text_border_color" value="#dddddd" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--border-color', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">区切り線:</label>
+                                    <input type="color" id="color_divider_color" onchange="updateColorVar('--divider-color', this.value)">
+                                    <input type="text" id="text_divider_color" value="#e0e0e0" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--divider-color', this.value)">
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- 3. ボタン -->
+                        <!-- 3. ボタン（9項目） -->
                         <div>
-                            <h4 style="margin-bottom: 10px; color: var(--text-main);">ボタン</h4>
+                            <h4 style="margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">ボタン（9項目）</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">プライマリ背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">プライマリ背景:</label>
                                     <input type="color" id="color_btn_primary_bg" onchange="updateColorVar('--btn-primary-bg', this.value)">
-                                    <input type="text" id="text_btn_primary_bg" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--btn-primary-bg', this.value)">
+                                    <input type="text" id="text_btn_primary_bg" value="#667eea" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-primary-bg', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">プライマリ文字:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">プライマリ文字:</label>
                                     <input type="color" id="color_btn_primary_text" onchange="updateColorVar('--btn-primary-text', this.value)">
-                                    <input type="text" id="text_btn_primary_text" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--btn-primary-text', this.value)">
+                                    <input type="text" id="text_btn_primary_text" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-primary-text', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">セカンダリ背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">セカンダリ背景:</label>
                                     <input type="color" id="color_btn_secondary_bg" onchange="updateColorVar('--btn-secondary-bg', this.value)">
-                                    <input type="text" id="text_btn_secondary_bg" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--btn-secondary-bg', this.value)">
+                                    <input type="text" id="text_btn_secondary_bg" value="#95a5a6" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-secondary-bg', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">削除背景:</label>
+                                    <label style="min-width: 140px; font-size: 13px;">セカンダリ文字:</label>
+                                    <input type="color" id="color_btn_secondary_text" onchange="updateColorVar('--btn-secondary-text', this.value)">
+                                    <input type="text" id="text_btn_secondary_text" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-secondary-text', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">削除背景:</label>
                                     <input type="color" id="color_btn_danger_bg" onchange="updateColorVar('--btn-danger-bg', this.value)">
-                                    <input type="text" id="text_btn_danger_bg" style="width: 90px; font-size: 12px;" onchange="updateColorFromText('--btn-danger-bg', this.value)">
+                                    <input type="text" id="text_btn_danger_bg" value="#e74c3c" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-danger-bg', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">削除文字:</label>
+                                    <input type="color" id="color_btn_danger_text" onchange="updateColorVar('--btn-danger-text', this.value)">
+                                    <input type="text" id="text_btn_danger_text" value="#ffffff" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-danger-text', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">ホバー背景:</label>
+                                    <input type="color" id="color_btn_hover_bg" onchange="updateColorVar('--btn-hover-bg', this.value)">
+                                    <input type="text" id="text_btn_hover_bg" value="#5568d3" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-hover-bg', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">無効時背景:</label>
+                                    <input type="color" id="color_btn_disabled_bg" onchange="updateColorVar('--btn-disabled-bg', this.value)">
+                                    <input type="text" id="text_btn_disabled_bg" value="#cccccc" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-disabled-bg', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">無効時文字:</label>
+                                    <input type="color" id="color_btn_disabled_text" onchange="updateColorVar('--btn-disabled-text', this.value)">
+                                    <input type="text" id="text_btn_disabled_text" value="#999999" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--btn-disabled-text', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 4. タブ（3項目） -->
+                        <div>
+                            <h4 style="margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">タブ（3項目）</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">非アクティブ背景:</label>
+                                    <input type="text" id="text_tab_bg_inactive" value="transparent" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--tab-bg-inactive', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">アクティブ背景:</label>
+                                    <input type="text" id="text_tab_bg_active" value="rgba(255, 255, 255, 0.2)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--tab-bg-active', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">タブ文字:</label>
+                                    <input type="text" id="text_tab_text" value="rgba(255, 255, 255, 0.8)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--tab-text', this.value)">
                                 </div>
                             </div>
                             
-                            <h4 style="margin: 20px 0 10px; color: var(--text-main);">PDFマーカー</h4>
+                            <h4 style="margin: 20px 0 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">カード学習（3項目）</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">黄色:</label>
-                                    <input type="text" id="text_marker_yellow" value="rgba(255, 255, 0, 0.4)" style="width: 190px; font-size: 12px;" onchange="updateColorFromText('--marker-yellow', this.value)">
+                                    <label style="min-width: 140px; font-size: 13px;">グラデ開始:</label>
+                                    <input type="color" id="color_card_study_bg_start" onchange="updateColorVar('--card-study-bg-start', this.value)">
+                                    <input type="text" id="text_card_study_bg_start" value="#f093fb" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--card-study-bg-start', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">赤色:</label>
-                                    <input type="text" id="text_marker_red" value="rgba(255, 0, 0, 0.3)" style="width: 190px; font-size: 12px;" onchange="updateColorFromText('--marker-red', this.value)">
+                                    <label style="min-width: 140px; font-size: 13px;">グラデ終了:</label>
+                                    <input type="color" id="color_card_study_bg_end" onchange="updateColorVar('--card-study-bg-end', this.value)">
+                                    <input type="text" id="text_card_study_bg_end" value="#f5576c" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--card-study-bg-end', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">緑色:</label>
-                                    <input type="text" id="text_marker_green" value="rgba(0, 255, 0, 0.3)" style="width: 190px; font-size: 12px;" onchange="updateColorFromText('--marker-green', this.value)">
+                                    <label style="min-width: 140px; font-size: 13px;">統計パネル背景:</label>
+                                    <input type="color" id="color_card_study_stat_bg" onchange="updateColorVar('--card-study-stat-bg', this.value)">
+                                    <input type="text" id="text_card_study_stat_bg" value="#f8f9fa" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--card-study-stat-bg', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 5. 状態表示（4項目） -->
+                        <div>
+                            <h4 style="margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">状態表示（4項目）</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">成功色（緑）:</label>
+                                    <input type="color" id="color_success" onchange="updateColorVar('--color-success', this.value)">
+                                    <input type="text" id="text_color_success" value="#27ae60" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--color-success', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="min-width: 120px;">青色:</label>
-                                    <input type="text" id="text_marker_blue" value="rgba(0, 150, 255, 0.3)" style="width: 190px; font-size: 12px;" onchange="updateColorFromText('--marker-blue', this.value)">
+                                    <label style="min-width: 140px; font-size: 13px;">エラー色（赤）:</label>
+                                    <input type="color" id="color_error" onchange="updateColorVar('--color-error', this.value)">
+                                    <input type="text" id="text_color_error" value="#e74c3c" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--color-error', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">警告色（黄）:</label>
+                                    <input type="color" id="color_warning" onchange="updateColorVar('--color-warning', this.value)">
+                                    <input type="text" id="text_color_warning" value="#f39c12" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--color-warning', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">情報色（青）:</label>
+                                    <input type="color" id="color_info" onchange="updateColorVar('--color-info', this.value)">
+                                    <input type="text" id="text_color_info" value="#3498db" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--color-info', this.value)">
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin: 20px 0 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">その他UI（5項目）</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">シャドウ:</label>
+                                    <input type="text" id="text_shadow_color" value="rgba(0, 0, 0, 0.1)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--shadow-color', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">ホバー背景:</label>
+                                    <input type="color" id="color_hover_bg" onchange="updateColorVar('--hover-bg', this.value)">
+                                    <input type="text" id="text_hover_bg" value="#f8f9fa" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--hover-bg', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">選択背景:</label>
+                                    <input type="color" id="color_selected_bg" onchange="updateColorVar('--selected-bg', this.value)">
+                                    <input type="text" id="text_selected_bg" value="#e3f2fd" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--selected-bg', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">スクロールバー:</label>
+                                    <input type="color" id="color_scrollbar_color" onchange="updateColorVar('--scrollbar-color', this.value)">
+                                    <input type="text" id="text_scrollbar_color" value="#cccccc" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--scrollbar-color', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">アイコン:</label>
+                                    <input type="color" id="color_icon_color" onchange="updateColorVar('--icon-color', this.value)">
+                                    <input type="text" id="text_icon_color" value="#666666" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--icon-color', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 6. PDFマーカー（4項目） -->
+                        <div>
+                            <h4 style="margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid var(--border-color); padding-bottom: 5px;">PDFマーカー（4項目）</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">黄色:</label>
+                                    <input type="text" id="text_marker_yellow" value="rgba(255, 255, 0, 0.4)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--marker-yellow', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">赤色:</label>
+                                    <input type="text" id="text_marker_red" value="rgba(255, 0, 0, 0.3)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--marker-red', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">緑色:</label>
+                                    <input type="text" id="text_marker_green" value="rgba(0, 255, 0, 0.3)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--marker-green', this.value)">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="min-width: 140px; font-size: 13px;">青色:</label>
+                                    <input type="text" id="text_marker_blue" value="rgba(0, 150, 255, 0.3)" style="width: 200px; font-size: 12px;" onchange="updateColorFromText('--marker-blue', this.value)">
                                 </div>
                             </div>
                         </div>
@@ -2143,6 +2261,10 @@
                         <button class="btn btn-secondary" onclick="resetCustomColors()">リセット</button>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <div id="pdf-section"                </div>
             </div>
         </div>
         
@@ -2283,7 +2405,7 @@
         // v12.03: テーマとフォントサイズ管理
         let currentTheme = localStorage.getItem('theme') || 'light';
         let currentFontSize = localStorage.getItem('fontSize') || 'medium';
-        let pdfDarkModeEnabled = localStorage.getItem('pdfDarkMode') === 'true';
+        
         
         // v12.03: テーマ適用
         function applyTheme(theme) {
@@ -2304,8 +2426,7 @@
             }
         }
         
-        // v12.03: テーマ変更
-        // v12.03.2: カスタムテーマ対応
+        // v12.03.3: テーマ変更（ライトモードとカスタムのみ）
         function changeTheme(theme) {
             currentTheme = theme;
             localStorage.setItem('theme', theme);
@@ -2316,21 +2437,11 @@
                 customColorSettings.style.display = (theme === 'custom') ? 'block' : 'none';
             }
             
-            // プリセットテーマの場合はクラスを切り替え
-            if (theme === 'light') {
-                document.body.classList.remove('theme-dark');
-            } else if (theme === 'dark') {
-                document.body.classList.add('theme-dark');
-            }
-            // カスタムの場合は何もしない（CSS変数を直接使用）
-            
             // ラジオボタンを更新
             const lightRadio = document.getElementById('themeLight');
-            const darkRadio = document.getElementById('themeDark');
             const customRadio = document.getElementById('themeCustom');
-            if (lightRadio && darkRadio && customRadio) {
+            if (lightRadio && customRadio) {
                 lightRadio.checked = (theme === 'light');
-                darkRadio.checked = (theme === 'dark');
                 customRadio.checked = (theme === 'custom');
             }
             
@@ -2365,18 +2476,25 @@
             }
         }
         
-        // v12.03.2: カスタムカラーを保存
+        // v12.03.3: カスタムカラーを保存（41項目）
         function saveCustomColors() {
             const customColors = {};
             
-            // すべてのCSS変数を取得
+            // すべてのCSS変数を取得（41項目）
             const varNames = [
                 '--bg-main', '--bg-section', '--bg-item', '--bg-modal',
                 '--bg-header-start', '--bg-header-end', '--bg-input',
-                '--text-main', '--text-sub', '--text-link',
-                '--border-color',
+                '--text-main', '--text-sub', '--text-link', '--text-placeholder',
+                '--border-color', '--divider-color',
                 '--btn-primary-bg', '--btn-primary-text',
-                '--btn-secondary-bg', '--btn-danger-bg',
+                '--btn-secondary-bg', '--btn-secondary-text',
+                '--btn-danger-bg', '--btn-danger-text',
+                '--btn-hover-bg', '--btn-disabled-bg', '--btn-disabled-text',
+                '--tab-bg-inactive', '--tab-bg-active', '--tab-text',
+                '--card-study-bg-start', '--card-study-bg-end', '--card-study-stat-bg',
+                '--color-success', '--color-error', '--color-warning', '--color-info',
+                '--shadow-color', '--hover-bg', '--selected-bg',
+                '--scrollbar-color', '--icon-color',
                 '--marker-yellow', '--marker-red', '--marker-green', '--marker-blue'
             ];
             
@@ -2459,36 +2577,11 @@
             applyFontSize(size);
         }
         
-        // v12.03: PDFダークモード切替
-        function togglePDFDarkMode() {
-            const checkbox = document.getElementById('pdfDarkMode');
-            if (!checkbox) return;
-            
-            pdfDarkModeEnabled = checkbox.checked;
-            localStorage.setItem('pdfDarkMode', pdfDarkModeEnabled);
-            
-            // PDFキャンバスに反転フィルターを適用
-            const canvas = document.getElementById('pdfCanvas');
-            if (canvas) {
-                if (pdfDarkModeEnabled) {
-                    canvas.style.filter = 'invert(1) hue-rotate(180deg)';
-                } else {
-                    canvas.style.filter = 'none';
-                }
-            }
-        }
-        
-        // v12.03: 初期化時に設定を適用
-        // v12.03.2: カスタムカラー対応
+
+        // v12.03.3: 初期化時に設定を適用
         document.addEventListener('DOMContentLoaded', function() {
             applyFontSize(currentFontSize);
-            changeTheme(currentTheme); // applyThemeではなくchangeThemeを使用
-            
-            // PDFダークモードのチェックボックスを設定
-            const pdfDarkModeCheckbox = document.getElementById('pdfDarkMode');
-            if (pdfDarkModeCheckbox) {
-                pdfDarkModeCheckbox.checked = pdfDarkModeEnabled;
-            }
+            changeTheme(currentTheme);
         });
         
         let cards = [];
