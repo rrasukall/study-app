@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.02.2</title>
+    <title>MyAnkiApp v10.03</title>
     <style>
         * {
             margin: 0;
@@ -188,6 +188,30 @@
             border-radius: 4px;
             font-weight: bold;
             color: #856404;
+        }
+        
+        /* v10.03: クリック可能な穴埋め */
+        .cloze-clickable {
+            background: #fff3cd;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #856404;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .cloze-clickable:hover {
+            background: #ffc107;
+            transform: scale(1.05);
+        }
+        
+        .cloze-revealed {
+            background: rgba(102, 126, 234, 0.3);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: white;
         }
         
         .cloze-answer-hidden {
@@ -1166,7 +1190,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.02.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.03</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2918,14 +2942,24 @@
                 let questionContent = '';
                 
                 if (card.type === 'cloze') {
-                    // 穴埋めカード
+                    // v10.03: 穴埋めカード - クリック可能に
                     const clozeRegex = /\{\{c(\d+)::([^}]+)\}\}/g;
-                    questionContent = card.text.replace(clozeRegex, (match, num) => {
-                        return `<span class="cloze-blank">[...]</span>`;
+                    let clozeIndex = 0;
+                    questionContent = card.text.replace(clozeRegex, (match, num, answer) => {
+                        const idx = clozeIndex++;
+                        return `<span class="cloze-blank cloze-clickable" onclick="revealCloze(${idx})" id="cloze-${idx}" data-answer="${answer}">[...]</span>`;
                     });
                 } else if (card.type === 'typing') {
-                    // タイピング式カード
-                    questionContent = card.question.replace(/\n/g, '<br>');
+                    // v10.03: タイピング式カード - 入力フィールド表示
+                    questionContent = `
+                        <div style="margin-bottom: 20px;">${card.question.replace(/\n/g, '<br>')}</div>
+                        <div class="typing-input-container">
+                            <input type="text" id="studyTypingInput" class="typing-input" 
+                                   placeholder="答えを入力してください" 
+                                   onkeypress="if(event.key==='Enter') checkTypingAnswer()">
+                        </div>
+                        <div id="studyTypingResult" style="margin-top: 15px;"></div>
+                    `;
                 } else {
                     // 基本カード
                     if (card.enableReverse && Math.random() < 0.5) {
@@ -2935,18 +2969,56 @@
                     }
                 }
                 
-                container.innerHTML = `
-                    <div class="card" onclick="showStudyAnswer()" style="cursor: pointer;">
-                        <div class="card-category">${stateBadge}</div>
-                        <div class="card-content">${questionContent}</div>
-                    </div>
-                `;
-                
-                controls.innerHTML = `
-                    <div style="text-align: center;">
-                        <button class="btn" onclick="showStudyAnswer()">答えを表示</button>
-                    </div>
-                `;
+                // v10.03: カードタイプによって表示方法を変更
+                if (card.type === 'typing') {
+                    // タイピング式は入力フィールド付きで表示（クリック不可）
+                    container.innerHTML = `
+                        <div class="card" style="cursor: default;">
+                            <div class="card-category">${stateBadge}</div>
+                            <div class="card-content">${questionContent}</div>
+                        </div>
+                    `;
+                    
+                    controls.innerHTML = `
+                        <div style="text-align: center;">
+                            <button class="btn" onclick="checkTypingAnswer()">解答する</button>
+                        </div>
+                    `;
+                    
+                    // 入力フィールドにフォーカス
+                    setTimeout(() => {
+                        const input = document.getElementById('studyTypingInput');
+                        if (input) input.focus();
+                    }, 100);
+                } else if (card.type === 'cloze') {
+                    // 穴埋めはクリック可能で表示
+                    container.innerHTML = `
+                        <div class="card" style="cursor: default;">
+                            <div class="card-category">${stateBadge}</div>
+                            <div class="card-content">${questionContent}</div>
+                        </div>
+                    `;
+                    
+                    controls.innerHTML = `
+                        <div style="text-align: center;">
+                            <button class="btn" onclick="showStudyAnswer()">答えを表示</button>
+                        </div>
+                    `;
+                } else {
+                    // 基本カードは従来通り
+                    container.innerHTML = `
+                        <div class="card" onclick="showStudyAnswer()" style="cursor: pointer;">
+                            <div class="card-category">${stateBadge}</div>
+                            <div class="card-content">${questionContent}</div>
+                        </div>
+                    `;
+                    
+                    controls.innerHTML = `
+                        <div style="text-align: center;">
+                            <button class="btn" onclick="showStudyAnswer()">答えを表示</button>
+                        </div>
+                    `;
+                }
             } else {
                 // 答え面を表示
                 let answerContent = '';
@@ -3021,6 +3093,93 @@
                     </div>
                 `;
             }
+        }
+        
+        // v10.03: 穴埋めカードのクリック表示機能
+        function revealCloze(index) {
+            const clozeElement = document.getElementById(`cloze-${index}`);
+            if (clozeElement && clozeElement.classList.contains('cloze-clickable')) {
+                const answer = clozeElement.getAttribute('data-answer');
+                clozeElement.textContent = answer;
+                clozeElement.classList.remove('cloze-clickable');
+                clozeElement.classList.add('cloze-revealed');
+                clozeElement.style.backgroundColor = 'rgba(102, 126, 234, 0.3)';
+                clozeElement.style.cursor = 'default';
+                clozeElement.onclick = null;
+            }
+        }
+        
+        // v10.03: タイピング式カードの解答チェック機能
+        function checkTypingAnswer() {
+            const input = document.getElementById('studyTypingInput');
+            const result = document.getElementById('studyTypingResult');
+            
+            if (!input || !result) return;
+            
+            const userAnswer = input.value.trim();
+            if (!userAnswer) {
+                alert('答えを入力してください');
+                return;
+            }
+            
+            const card = studySession.cards[studySession.currentCardIndex];
+            const correctAnswer = card.answer;
+            const caseSensitive = card.caseSensitive || false;
+            
+            // 正誤判定
+            let isCorrect = false;
+            if (caseSensitive) {
+                isCorrect = userAnswer === correctAnswer;
+            } else {
+                // 大文字小文字・全角半角を正規化
+                const normalize = (str) => {
+                    return str.replace(/[A-Z]/g, c => c.toLowerCase())
+                              .replace(/[Ａ-Ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0).toLowerCase())
+                              .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                              .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                              .replace(/\s+/g, '');
+                };
+                isCorrect = normalize(userAnswer) === normalize(correctAnswer);
+            }
+            
+            // 結果表示
+            input.disabled = true;
+            if (isCorrect) {
+                input.className = 'typing-input correct';
+                result.innerHTML = `
+                    <div style="color: #2ecc71; font-size: 18px; font-weight: bold;">
+                        ✅ 正解！
+                    </div>
+                `;
+            } else {
+                input.className = 'typing-input incorrect';
+                result.innerHTML = `
+                    <div style="color: #e74c3c; font-size: 18px; font-weight: bold; margin-bottom: 10px;">
+                        ❌ 不正解
+                    </div>
+                    <div style="font-size: 16px; color: rgba(255,255,255,0.9);">
+                        <strong>正解:</strong> ${correctAnswer}
+                    </div>
+                `;
+            }
+            
+            // コントロールを更新
+            const controls = document.getElementById('studyControls');
+            controls.innerHTML = `
+                <div style="text-align: center;">
+                    <button class="btn" onclick="rateTypingCard(${isCorrect})">次へ</button>
+                </div>
+            `;
+        }
+        
+        // v10.03: タイピング式カードの評価（自動）
+        async function rateTypingCard(isCorrect) {
+            const card = studySession.cards[studySession.currentCardIndex];
+            
+            // 正解なら「簡単」、不正解なら「もう一度」として処理
+            const quality = isCorrect ? 'easy' : 'again';
+            
+            await rateCard(quality);
         }
         
         // v8.00: 答えを表示
