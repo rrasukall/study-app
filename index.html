@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.6</title>
+    <title>MyAnkiApp v12.01.7</title>
     <style>
         * {
             margin: 0;
@@ -1275,7 +1275,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.6</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.7</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2662,7 +2662,7 @@
                 currentIndex = 0;
                 showingQuestion = true;
                 displayCard();
-                displayCardList();
+                displayCardListWithPagination();
             } else if (tab === 'study') {
                 // v8.00: 学習タブに切り替え時にデッキセレクターを更新
                 updateStudyDeckSelector();
@@ -4427,7 +4427,18 @@
         }
         
         // v12.01.6: 初期化時に表示件数セレクターの値を設定
+        // v12.01.7: 初期化を強化
         window.addEventListener('DOMContentLoaded', () => {
+            // localStorageから読み込み（デフォルト50）
+            const savedPerPage = localStorage.getItem('cardsPerPage');
+            if (savedPerPage) {
+                cardsPerPage = parseInt(savedPerPage);
+            } else {
+                cardsPerPage = 50;
+                localStorage.setItem('cardsPerPage', '50');
+            }
+            
+            // セレクターに反映
             const select = document.getElementById('cardsPerPageSelect');
             if (select) {
                 select.value = cardsPerPage.toString();
@@ -4896,7 +4907,7 @@
                 }
                 
                 // UIを再描画
-                displayCardList();
+                displayCardListWithPagination();
                 updateSyncStatus('synced');
             } catch (error) {
                 console.error('順序更新エラー:', error);
@@ -4971,7 +4982,9 @@
             cards = sortedCards;
             
             // UIを再描画
-            displayCardList();
+            // v12.01.7: ページネーション対応
+            currentCardPage = 1; // ソート時は1ページ目に戻る
+            displayCardListWithPagination();
         }
 
         // v10.00: 選択されたカードIDを管理
