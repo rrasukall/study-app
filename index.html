@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.2</title>
+    <title>MyAnkiApp v14.00.3</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2964,7 +2964,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.2',
+                    appVersion: 'v14.00.3',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3055,7 +3055,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.2',
+                    appVersion: 'v14.00.3',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -10026,7 +10026,7 @@
         
         // マーカー情報検索モーダルを開く
         function openMarkerSearch() {
-            if (!currentPdfHash) {
+            if (!pdfHash) {
                 alert('PDFが読み込まれていません');
                 return;
             }
@@ -10069,7 +10069,7 @@
         
         // PDFマーカー情報を検索
         async function searchPdfMarkers() {
-            if (!currentPdfHash) {
+            if (!pdfHash) {
                 alert('PDFが読み込まれていません');
                 return;
             }
@@ -10086,10 +10086,10 @@
                 
                 pdfMarkersSnapshot.forEach(doc => {
                     const data = doc.data();
-                    const pdfHash = doc.id;
+                    const docPdfHash = doc.id;
                     
                     // 現在のPDFは除外
-                    if (pdfHash === currentPdfHash) return;
+                    if (docPdfHash === pdfHash) return;
                     
                     // メタデータがない場合はスキップ
                     if (!data.fileName || !data.totalPages || !data.fileSize) return;
@@ -10144,7 +10144,7 @@
                         }
                         
                         searchedMarkerData.push({
-                            pdfHash: pdfHash,
+                            pdfHash: docPdfHash,
                             fileName: data.fileName,
                             totalPages: data.totalPages,
                             fileSize: data.fileSize,
@@ -10309,9 +10309,9 @@
             
             // 現在のマーカー数を確認
             let currentMarkerCount = 0;
-            if (pdfMarkers[currentPdfHash]) {
-                Object.keys(pdfMarkers[currentPdfHash]).forEach(pageNum => {
-                    currentMarkerCount += pdfMarkers[currentPdfHash][pageNum].length;
+            if (pdfMarkers[pdfHash]) {
+                Object.keys(pdfMarkers[pdfHash]).forEach(pageNum => {
+                    currentMarkerCount += pdfMarkers[pdfHash][pageNum].length;
                 });
             }
             
@@ -10349,7 +10349,7 @@
         
         // マーカー情報を適用
         async function applyMarkerData() {
-            if (!selectedMarkerData || !currentPdfHash) {
+            if (!selectedMarkerData || !pdfHash) {
                 return;
             }
             
@@ -10369,7 +10369,7 @@
                 }
                 
                 // グローバル変数を更新
-                pdfMarkers[currentPdfHash] = newMarkers;
+                pdfMarkers[pdfHash] = newMarkers;
                 
                 // Firestoreに保存
                 await saveMarkersToFirebase();
