@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.00.2</title>
+    <title>MyAnkiApp v12.00.3</title>
     <style>
         * {
             margin: 0;
@@ -1233,7 +1233,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7348,7 +7348,14 @@
                 return;
             }
             
-            const topLevelDecks = decks.filter(d => !d.parentId);
+            // v12.00.2: order順でソート、次に名前順
+            const topLevelDecks = decks.filter(d => !d.parentId).sort((a, b) => {
+                if ((a.order || 0) !== (b.order || 0)) {
+                    return (a.order || 0) - (b.order || 0);
+                }
+                return a.name.localeCompare(b.name);
+            });
+            
             let html = '';
             
             topLevelDecks.forEach(deck => {
@@ -7356,10 +7363,19 @@
             });
             
             deckList.innerHTML = html;
+            
+            // v12.00.2: ドラッグ&ドロップイベントリスナーを追加
+            setupDragAndDrop();
         }
         
         function renderDeckItem(deck, level) {
-            const childDecks = decks.filter(d => d.parentId === deck.id);
+            // v12.00.2: childDecksをorder順でソート
+            const childDecks = decks.filter(d => d.parentId === deck.id).sort((a, b) => {
+                if ((a.order || 0) !== (b.order || 0)) {
+                    return (a.order || 0) - (b.order || 0);
+                }
+                return a.name.localeCompare(b.name);
+            });
             
             // v6.01.2: デッキ自体のカード数のみを計算（サブデッキを含めない）
             const deckCards = cards.filter(c => c.deckId === deck.id);
@@ -7376,6 +7392,11 @@
             // v8.01.1: サブデッキを含む設定を取得
             const includeSubdecks = getDeckSetting(deck.id, 'includeSubdecks', true);
             
+            // v12.00: 折りたたみ状態を取得
+            const isCollapsed = collapsedDecks[deck.id] || false;
+            const hasChildren = childDecks.length > 0;
+            const collapseIcon = hasChildren ? (isCollapsed ? '▶' : '▼') : '';
+            
             const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
             
             // v12.00: アイコンと色のスタイル準備
@@ -7383,9 +7404,11 @@
             const colorStyle = deck.color ? `background: ${deck.color}20; border-left: 4px solid ${deck.color};` : '';
             
             let html = `
-                <div class="deck-item ${depthClass}">
+                <div class="deck-item ${depthClass}" draggable="true" data-deck-id="${deck.id}">
                     <div class="deck-header" style="${colorStyle}">
-                        <div style="cursor: pointer; display: flex; align-items: center;" onclick="viewDeckCards('${deck.id}')">
+                        <span class="drag-handle" title="ドラッグして並び替え">⋮⋮</span>
+                        ${hasChildren ? `<button onclick="event.stopPropagation(); toggleDeckCollapse('${deck.id}')" style="background: none; border: none; font-size: 16px; cursor: pointer; padding: 5px; margin-right: 5px; color: #333;">${collapseIcon}</button>` : '<span style="width: 26px; display: inline-block;"></span>'}
+                        <div style="cursor: pointer; display: flex; align-items: center; flex: 1;" onclick="viewDeckCards('${deck.id}')">
                             <div class="deck-name">${iconDisplay}${deck.name}</div>
                             <div class="deck-count">${cardCount}枚 ${dueCount > 0 ? `<span style="color: #e74c3c; font-weight: bold;">(${dueCount}枚学習)</span>` : ''}</div>
                         </div>
@@ -7783,8 +7806,30 @@
                 return;
             }
             
-            // Ctrlキー押下時は並び替え、通常は親デッキ変更
+            // v12.00.2: 通常ドラッグは並び替え、Ctrlキー押下時は親デッキ変更
             if (e.ctrlKey || e.metaKey) {
+                // 親デッキ変更
+                // 循環参照チェック
+                if (isDescendant(targetDeck, draggedDeck)) {
+                    alert('サブデッキを親デッキにすることはできません');
+                    return;
+                }
+                
+                if (confirm(`「${draggedDeck.name}」を「${targetDeck.name}」のサブデッキにしますか？\n\nヒント: 通常ドラッグで並び替えもできます`)) {
+                    try {
+                        await db.collection('decks').doc(draggedDeckId).update({
+                            parentId: targetDeckId,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        draggedDeck.parentId = targetDeckId;
+                        await displayDecks();
+                    } catch (error) {
+                        console.error('デッキ移動エラー:', error);
+                        alert('デッキの移動に失敗しました');
+                    }
+                }
+            } else {
                 // 並び替え：同じ親デッキ内でorder値を入れ替え
                 if (draggedDeck.parentId === targetDeck.parentId) {
                     const draggedOrder = draggedDeck.order || 0;
@@ -7810,25 +7855,7 @@
                         alert('並び替えに失敗しました');
                     }
                 } else {
-                    alert('同じ階層のデッキ同士でのみ並び替えできます');
-                }
-            } else {
-                // 親デッキ変更
-                if (confirm(`「${draggedDeck.name}」を「${targetDeck.name}」のサブデッキにしますか？
-
-ヒント: Ctrl+ドラッグで並び替えもできます`)) {
-                    try {
-                        await db.collection('decks').doc(draggedDeckId).update({
-                            parentId: targetDeckId,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        draggedDeck.parentId = targetDeckId;
-                        await displayDecks();
-                    } catch (error) {
-                        console.error('デッキ移動エラー:', error);
-                        alert('デッキの移動に失敗しました');
-                    }
+                    alert('同じ階層のデッキ同士でのみ並び替えできます\n\nヒント: Ctrl+ドラッグで親デッキを変更できます');
                 }
             }
         }
