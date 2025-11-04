@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.00.3</title>
+    <title>MyAnkiApp v12.00.4</title>
     <style>
         * {
             margin: 0;
@@ -1233,7 +1233,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7366,6 +7366,11 @@
             
             // v12.00.2: ドラッグ&ドロップイベントリスナーを追加
             setupDragAndDrop();
+            
+            // v12.00.4: 空白エリアへのドロップでトップレベル昇格
+            const deckList = document.getElementById('deckList');
+            deckList.addEventListener('dragover', handleEmptyAreaDragOver);
+            deckList.addEventListener('drop', handleEmptyAreaDrop);
         }
         
         function renderDeckItem(deck, level) {
@@ -7806,8 +7811,32 @@
                 return;
             }
             
-            // v12.00.2: 通常ドラッグは並び替え、Ctrlキー押下時は親デッキ変更
-            if (e.ctrlKey || e.metaKey) {
+            // v12.00.4: 自動判定（同階層=並び替え、異なる階層=親変更）
+            if (draggedDeck.parentId === targetDeck.parentId) {
+                // 並び替え：同じ親デッキ内でorder値を入れ替え
+                const draggedOrder = draggedDeck.order || 0;
+                const targetOrder = targetDeck.order || 0;
+                
+                try {
+                    await db.collection('decks').doc(draggedDeckId).update({
+                        order: targetOrder,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    await db.collection('decks').doc(targetDeckId).update({
+                        order: draggedOrder,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    draggedDeck.order = targetOrder;
+                    targetDeck.order = draggedOrder;
+                    
+                    await displayDecks();
+                } catch (error) {
+                    console.error('並び替えエラー:', error);
+                    alert('並び替えに失敗しました');
+                }
+            } else {
                 // 親デッキ変更
                 // 循環参照チェック
                 if (isDescendant(targetDeck, draggedDeck)) {
@@ -7815,47 +7844,17 @@
                     return;
                 }
                 
-                if (confirm(`「${draggedDeck.name}」を「${targetDeck.name}」のサブデッキにしますか？\n\nヒント: 通常ドラッグで並び替えもできます`)) {
-                    try {
-                        await db.collection('decks').doc(draggedDeckId).update({
-                            parentId: targetDeckId,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        draggedDeck.parentId = targetDeckId;
-                        await displayDecks();
-                    } catch (error) {
-                        console.error('デッキ移動エラー:', error);
-                        alert('デッキの移動に失敗しました');
-                    }
-                }
-            } else {
-                // 並び替え：同じ親デッキ内でorder値を入れ替え
-                if (draggedDeck.parentId === targetDeck.parentId) {
-                    const draggedOrder = draggedDeck.order || 0;
-                    const targetOrder = targetDeck.order || 0;
+                try {
+                    await db.collection('decks').doc(draggedDeckId).update({
+                        parentId: targetDeckId,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     
-                    try {
-                        await db.collection('decks').doc(draggedDeckId).update({
-                            order: targetOrder,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        await db.collection('decks').doc(targetDeckId).update({
-                            order: draggedOrder,
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        draggedDeck.order = targetOrder;
-                        targetDeck.order = draggedOrder;
-                        
-                        await displayDecks();
-                    } catch (error) {
-                        console.error('並び替えエラー:', error);
-                        alert('並び替えに失敗しました');
-                    }
-                } else {
-                    alert('同じ階層のデッキ同士でのみ並び替えできます\n\nヒント: Ctrl+ドラッグで親デッキを変更できます');
+                    draggedDeck.parentId = targetDeckId;
+                    await displayDecks();
+                } catch (error) {
+                    console.error('デッキ移動エラー:', error);
+                    alert('デッキの移動に失敗しました');
                 }
             }
         }
@@ -7871,6 +7870,45 @@
                 if (!current) break;
             }
             return false;
+        }
+
+
+        // v12.00.4: 空白エリアへのドロップでトップレベル昇格
+        function handleEmptyAreaDragOver(e) {
+            // デッキアイテム上でない場合のみ処理
+            if (!e.target.closest('.deck-item')) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            }
+        }
+        
+        async function handleEmptyAreaDrop(e) {
+            // デッキアイテム上でない場合のみ処理
+            if (!e.target.closest('.deck-item') && draggedDeckId) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const draggedDeck = decks.find(d => d.id === draggedDeckId);
+                if (!draggedDeck) return;
+                
+                // 既にトップレベルの場合は何もしない
+                if (!draggedDeck.parentId) {
+                    return;
+                }
+                
+                try {
+                    await db.collection('decks').doc(draggedDeckId).update({
+                        parentId: null,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    draggedDeck.parentId = null;
+                    await displayDecks();
+                } catch (error) {
+                    console.error('デッキ昇格エラー:', error);
+                    alert('デッキの昇格に失敗しました');
+                }
+            }
         }
 
         async function saveDeck() {
@@ -7895,7 +7933,7 @@
                 useCustomSettings: useCustomSettings,
                 icon: icon,
                 color: color,
-                order: editingDeckId ? (decks.find(d => d.id === editingDeckId)?.order || 0) : 0,
+                order: currentEditingDeckId ? (decks.find(d => d.id === currentEditingDeckId)?.order || 0) : 0,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
