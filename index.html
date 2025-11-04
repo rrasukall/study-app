@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.00.5</title>
+    <title>MyAnkiApp v12.00.6</title>
     <style>
         * {
             margin: 0;
@@ -1233,7 +1233,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.5</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.6</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7367,7 +7367,36 @@
             // v12.00.2: ドラッグ&ドロップイベントリスナーを追加
             setupDragAndDrop();
             
-            // v12.00.4: 空白エリアへのドロップでトップレベル昇格
+    
+        // v12.00.6: デッキの階層深さを計算
+        function getDeckDepth(deckId) {
+            let depth = 0;
+            let current = decks.find(d => d.id === deckId);
+            while (current && current.parentId) {
+                depth++;
+                current = decks.find(d => d.id === current.parentId);
+                if (depth > 10) break; // 無限ループ防止
+            }
+            return depth;
+        }
+        
+        // v12.00.6: デッキツリーの最大深さを計算（そのデッキを根とした場合）
+        function getMaxTreeDepth(deckId) {
+            const children = decks.filter(d => d.parentId === deckId);
+            if (children.length === 0) {
+                return 0;
+            }
+            let maxChildDepth = 0;
+            for (const child of children) {
+                const childDepth = getMaxTreeDepth(child.id);
+                if (childDepth > maxChildDepth) {
+                    maxChildDepth = childDepth;
+                }
+            }
+            return maxChildDepth + 1;
+        }
+
+        // v12.00.4: 空白エリアへのドロップでトップレベル昇格
             deckList.addEventListener('dragover', handleEmptyAreaDragOver);
             deckList.addEventListener('drop', handleEmptyAreaDrop);
         }
@@ -7843,6 +7872,16 @@
                     return;
                 }
                 
+                // v12.00.6: 階層深さチェック（3階層まで）
+                const targetDepth = getDeckDepth(targetDeckId);
+                const draggedTreeDepth = getMaxTreeDepth(draggedDeckId);
+                const resultDepth = targetDepth + 1 + draggedTreeDepth;
+                
+                if (resultDepth > 2) {
+                    alert(`デッキは3階層（親→子→孫）までです。\n\n移動先の階層: ${targetDepth + 1}\n移動するデッキのツリー深さ: ${draggedTreeDepth}\n結果の最大階層: ${resultDepth + 1}階層目`);
+                    return;
+                }
+                
                 try {
                     await db.collection('decks').doc(draggedDeckId).update({
                         parentId: targetDeckId,
@@ -7871,6 +7910,35 @@
             return false;
         }
 
+
+
+        // v12.00.6: デッキの階層深さを計算
+        function getDeckDepth(deckId) {
+            let depth = 0;
+            let current = decks.find(d => d.id === deckId);
+            while (current && current.parentId) {
+                depth++;
+                current = decks.find(d => d.id === current.parentId);
+                if (depth > 10) break; // 無限ループ防止
+            }
+            return depth;
+        }
+        
+        // v12.00.6: デッキツリーの最大深さを計算（そのデッキを根とした場合）
+        function getMaxTreeDepth(deckId) {
+            const children = decks.filter(d => d.parentId === deckId);
+            if (children.length === 0) {
+                return 0;
+            }
+            let maxChildDepth = 0;
+            for (const child of children) {
+                const childDepth = getMaxTreeDepth(child.id);
+                if (childDepth > maxChildDepth) {
+                    maxChildDepth = childDepth;
+                }
+            }
+            return maxChildDepth + 1;
+        }
 
         // v12.00.4: 空白エリアへのドロップでトップレベル昇格
         function handleEmptyAreaDragOver(e) {
