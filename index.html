@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.03.3</title>
+    <title>MyAnkiApp v12.03.4</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1488,7 +1488,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2450,21 +2450,73 @@
                 loadCustomColors();
             }
         }
+
+        // v12.03.4: 明るさに応じて白か黒を返す
+        function getContrastColor(hexOrRgba) {
+            let r, g, b;
+            
+            // #ffffff形式
+            if (hexOrRgba.startsWith('#')) {
+                const hex = hexOrRgba.replace('#', '');
+                r = parseInt(hex.substr(0, 2), 16);
+                g = parseInt(hex.substr(2, 2), 16);
+                b = parseInt(hex.substr(4, 2), 16);
+            }
+            // rgba形式
+            else if (hexOrRgba.startsWith('rgba') || hexOrRgba.startsWith('rgb')) {
+                const matches = hexOrRgba.match(/\d+/g);
+                if (matches && matches.length >= 3) {
+                    r = parseInt(matches[0]);
+                    g = parseInt(matches[1]);
+                    b = parseInt(matches[2]);
+                } else {
+                    return '#000000'; // デフォルト
+                }
+            }
+            // transparent
+            else if (hexOrRgba === 'transparent') {
+                return '#000000';
+            }
+            else {
+                return '#000000'; // デフォルト
+            }
+            
+            // 明るさを計算（0-255）
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            
+            // 明るさが128以上なら黒、それ以下なら白
+            return brightness > 128 ? '#000000' : '#ffffff';
+        }
+
         // v12.03.2: CSS変数を更新
+        // v12.03.4: 背景色プレビュー追加
         function updateColorVar(varName, value) {
             document.documentElement.style.setProperty(varName, value);
             
             // テキスト入力も更新
             const textId = 'text_' + varName.replace('--', '').replace(/-/g, '_');
             const textInput = document.getElementById(textId);
-            if (textInput && !varName.includes('marker')) {
+            if (textInput) {
                 textInput.value = value;
+                // 背景色をプレビュー
+                textInput.style.backgroundColor = value;
+                // 文字色を自動調整
+                textInput.style.color = getContrastColor(value);
             }
         }
         
         // v12.03.2: テキストからカラーを更新
+        // v12.03.4: 背景色プレビュー追加
         function updateColorFromText(varName, value) {
             document.documentElement.style.setProperty(varName, value);
+            
+            // テキスト入力欄の背景色を更新
+            const textId = 'text_' + varName.replace('--', '').replace(/-/g, '_');
+            const textInput = document.getElementById(textId);
+            if (textInput) {
+                textInput.style.backgroundColor = value;
+                textInput.style.color = getContrastColor(value);
+            }
             
             // カラーピッカーも更新（#形式の場合のみ）
             if (value.startsWith('#')) {
@@ -2510,9 +2562,14 @@
         }
         
         // v12.03.2: カスタムカラーを読み込み
+        // v12.03.4: 背景色プレビュー追加
         function loadCustomColors() {
             const savedColors = localStorage.getItem('customColors');
-            if (!savedColors) return;
+            if (!savedColors) {
+                // 保存がない場合、デフォルト値で初期化
+                initializeDefaultColors();
+                return;
+            }
             
             try {
                 const customColors = JSON.parse(savedColors);
@@ -2531,6 +2588,9 @@
                     }
                     if (textInput) {
                         textInput.value = customColors[varName];
+                        // 背景色プレビュー
+                        textInput.style.backgroundColor = customColors[varName];
+                        textInput.style.color = getContrastColor(customColors[varName]);
                     }
                 });
             } catch (error) {
@@ -2538,15 +2598,136 @@
             }
         }
         
+        // v12.03.4: デフォルト色で初期化
+        function initializeDefaultColors() {
+            const defaultColors = {
+                '--bg-main': '#f5f7fa',
+                '--bg-section': '#ffffff',
+                '--bg-item': '#ffffff',
+                '--bg-modal': '#ffffff',
+                '--bg-header-start': '#667eea',
+                '--bg-header-end': '#764ba2',
+                '--bg-input': '#ffffff',
+                '--text-main': '#333333',
+                '--text-sub': '#666666',
+                '--text-link': '#667eea',
+                '--text-placeholder': '#999999',
+                '--border-color': '#dddddd',
+                '--divider-color': '#e0e0e0',
+                '--btn-primary-bg': '#667eea',
+                '--btn-primary-text': '#ffffff',
+                '--btn-secondary-bg': '#95a5a6',
+                '--btn-secondary-text': '#ffffff',
+                '--btn-danger-bg': '#e74c3c',
+                '--btn-danger-text': '#ffffff',
+                '--btn-hover-bg': '#5568d3',
+                '--btn-disabled-bg': '#cccccc',
+                '--btn-disabled-text': '#999999',
+                '--tab-bg-inactive': 'transparent',
+                '--tab-bg-active': 'rgba(255, 255, 255, 0.2)',
+                '--tab-text': 'rgba(255, 255, 255, 0.8)',
+                '--card-study-bg-start': '#f093fb',
+                '--card-study-bg-end': '#f5576c',
+                '--card-study-stat-bg': '#f8f9fa',
+                '--color-success': '#27ae60',
+                '--color-error': '#e74c3c',
+                '--color-warning': '#f39c12',
+                '--color-info': '#3498db',
+                '--shadow-color': 'rgba(0, 0, 0, 0.1)',
+                '--hover-bg': '#f8f9fa',
+                '--selected-bg': '#e3f2fd',
+                '--scrollbar-color': '#cccccc',
+                '--icon-color': '#666666',
+                '--marker-yellow': 'rgba(255, 255, 0, 0.4)',
+                '--marker-red': 'rgba(255, 0, 0, 0.3)',
+                '--marker-green': 'rgba(0, 255, 0, 0.3)',
+                '--marker-blue': 'rgba(0, 150, 255, 0.3)'
+            };
+            
+            Object.keys(defaultColors).forEach(varName => {
+                const textId = 'text_' + varName.replace('--', '').replace(/-/g, '_');
+                const textInput = document.getElementById(textId);
+                
+                if (textInput) {
+                    textInput.style.backgroundColor = defaultColors[varName];
+                    textInput.style.color = getContrastColor(defaultColors[varName]);
+                }
+            });
+        }
+        
         // v12.03.2: カスタムカラーをリセット
+        // v12.03.4: デフォルト値を明示的に適用
         function resetCustomColors() {
-            if (!confirm('カスタムカラーをデフォルトに戻しますか？')) return;
+            if (!confirm('カスタムカラーをライトモードのデフォルト値に戻しますか？')) return;
             
             localStorage.removeItem('customColors');
             
-            // ライトモードのデフォルト値を適用
-            changeTheme('light');
-            changeTheme('custom');
+            // ライトモードのデフォルト値
+            const defaultColors = {
+                '--bg-main': '#f5f7fa',
+                '--bg-section': '#ffffff',
+                '--bg-item': '#ffffff',
+                '--bg-modal': '#ffffff',
+                '--bg-header-start': '#667eea',
+                '--bg-header-end': '#764ba2',
+                '--bg-input': '#ffffff',
+                '--text-main': '#333333',
+                '--text-sub': '#666666',
+                '--text-link': '#667eea',
+                '--text-placeholder': '#999999',
+                '--border-color': '#dddddd',
+                '--divider-color': '#e0e0e0',
+                '--btn-primary-bg': '#667eea',
+                '--btn-primary-text': '#ffffff',
+                '--btn-secondary-bg': '#95a5a6',
+                '--btn-secondary-text': '#ffffff',
+                '--btn-danger-bg': '#e74c3c',
+                '--btn-danger-text': '#ffffff',
+                '--btn-hover-bg': '#5568d3',
+                '--btn-disabled-bg': '#cccccc',
+                '--btn-disabled-text': '#999999',
+                '--tab-bg-inactive': 'transparent',
+                '--tab-bg-active': 'rgba(255, 255, 255, 0.2)',
+                '--tab-text': 'rgba(255, 255, 255, 0.8)',
+                '--card-study-bg-start': '#f093fb',
+                '--card-study-bg-end': '#f5576c',
+                '--card-study-stat-bg': '#f8f9fa',
+                '--color-success': '#27ae60',
+                '--color-error': '#e74c3c',
+                '--color-warning': '#f39c12',
+                '--color-info': '#3498db',
+                '--shadow-color': 'rgba(0, 0, 0, 0.1)',
+                '--hover-bg': '#f8f9fa',
+                '--selected-bg': '#e3f2fd',
+                '--scrollbar-color': '#cccccc',
+                '--icon-color': '#666666',
+                '--marker-yellow': 'rgba(255, 255, 0, 0.4)',
+                '--marker-red': 'rgba(255, 0, 0, 0.3)',
+                '--marker-green': 'rgba(0, 255, 0, 0.3)',
+                '--marker-blue': 'rgba(0, 150, 255, 0.3)'
+            };
+            
+            // CSS変数を適用
+            Object.keys(defaultColors).forEach(varName => {
+                document.documentElement.style.setProperty(varName, defaultColors[varName]);
+                
+                // UIにも反映
+                const colorId = 'color_' + varName.replace('--', '').replace(/-/g, '_');
+                const textId = 'text_' + varName.replace('--', '').replace(/-/g, '_');
+                
+                const colorInput = document.getElementById(colorId);
+                const textInput = document.getElementById(textId);
+                
+                if (colorInput && defaultColors[varName].startsWith('#')) {
+                    colorInput.value = defaultColors[varName];
+                }
+                if (textInput) {
+                    textInput.value = defaultColors[varName];
+                    // 背景色プレビュー
+                    textInput.style.backgroundColor = defaultColors[varName];
+                    textInput.style.color = getContrastColor(defaultColors[varName]);
+                }
+            });
             
             alert('カスタムカラーをリセットしました');
         }
