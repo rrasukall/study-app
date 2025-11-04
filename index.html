@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.4</title>
+    <title>MyAnkiApp v12.01.5</title>
     <style>
         * {
             margin: 0;
@@ -1275,7 +1275,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.5</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2196,7 +2196,9 @@
             cardsLoaded = true;
             updateSyncStatus('synced');
             displayCard();
-            displayCardList();
+            
+            // v12.01.5: ページネーション対応の表示関数を使用
+            displayCardListWithPagination();
             
             // v6.01.2: フィルター状態を維持
             if (currentDeckFilter) {
@@ -4534,53 +4536,52 @@
             
             // v10.00: 選択状態を更新
             updateSelectedCards();
-            
-            // v12.01.2: インライン編集のイベントリスナーは不要（ondblclick属性で直接呼び出し）
         }
-
-        // v10.01: カードフィルター（タグ検索、カードタイプ、学習状態対応）
-        function filterCards() {
+        
+        // v12.01.5: フィルター＋ページネーション対応のカード一覧表示
+        function displayCardListWithPagination() {
+            const listEl = document.getElementById('cardList');
+            
+            // フィルター条件を取得
             const searchText = document.getElementById('searchInput').value.toLowerCase();
             const deckFilter = document.getElementById('deckFilter').value;
             const cardTypeFilter = document.getElementById('cardTypeFilter').value;
             const cardStateFilter = document.getElementById('cardStateFilter').value;
             
-            // v6.00.1: デッキフィルター状態を保存
-            currentDeckFilter = deckFilter;
-            
-            const items = document.querySelectorAll('.card-item');
-            items.forEach((item, index) => {
-                const card = cards[index];
-                let matchesSearch = false;
-                
-                // v10.01: タグも検索対象に含める
-                const tags = card.tags || [];
-                const tagsText = tags.join(' ').toLowerCase();
-                
-                if (card.type === 'typing') {
-                    const answer = card.answer || (card.answers && card.answers.join(' ')) || '';
-                    matchesSearch = card.question.toLowerCase().includes(searchText) ||
-                                  answer.toLowerCase().includes(searchText) ||
-                                  tagsText.includes(searchText);
-                } else if (card.type === 'cloze') {
-                    matchesSearch = card.text.toLowerCase().includes(searchText) ||
-                                  tagsText.includes(searchText);
-                } else {
-                    matchesSearch = card.question.toLowerCase().includes(searchText) || 
-                                  card.answer.toLowerCase().includes(searchText) ||
-                                  tagsText.includes(searchText);
+            // フィルター処理
+            let filteredCards = cards.filter(card => {
+                // 検索テキスト
+                let matchesSearch = true;
+                if (searchText) {
+                    const tags = card.tags || [];
+                    const tagsText = tags.join(' ').toLowerCase();
+                    
+                    if (card.type === 'typing') {
+                        const answer = card.answer || (card.answers && card.answers.join(' ')) || '';
+                        matchesSearch = card.question.toLowerCase().includes(searchText) ||
+                                      answer.toLowerCase().includes(searchText) ||
+                                      tagsText.includes(searchText);
+                    } else if (card.type === 'cloze') {
+                        matchesSearch = card.text.toLowerCase().includes(searchText) ||
+                                      tagsText.includes(searchText);
+                    } else {
+                        matchesSearch = card.question.toLowerCase().includes(searchText) || 
+                                      card.answer.toLowerCase().includes(searchText) ||
+                                      tagsText.includes(searchText);
+                    }
                 }
                 
+                // デッキフィルター
                 const matchesDeck = !deckFilter || card.deckId === deckFilter;
                 
-                // v10.01: カードタイプフィルター
+                // カードタイプフィルター
                 let matchesType = true;
                 if (cardTypeFilter) {
                     matchesType = card.type === cardTypeFilter || 
                                  (cardTypeFilter === 'basic' && (card.type === 'basic' || card.type === 'basic-reversed'));
                 }
                 
-                // v10.01: 学習状態フィルター
+                // 学習状態フィルター
                 let matchesState = true;
                 if (cardStateFilter) {
                     const state = card.state || 'new';
@@ -4593,25 +4594,184 @@
                     }
                 }
                 
-                if (matchesSearch && matchesDeck && matchesType && matchesState) {
-                    item.style.display = 'block';
+                return matchesSearch && matchesDeck && matchesType && matchesState;
+            });
+            
+            if (filteredCards.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <h2>カードがありません</h2>
+                        <p>条件に一致するカードが見つかりませんでした</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // ページネーション処理
+            totalFilteredCards = filteredCards.length;
+            const totalPages = Math.ceil(totalFilteredCards / cardsPerPage);
+            
+            // ページ番号が範囲外の場合は修正
+            if (currentCardPage > totalPages) {
+                currentCardPage = totalPages;
+            }
+            if (currentCardPage < 1) {
+                currentCardPage = 1;
+            }
+            
+            // 現在のページのカードを取得
+            const startIndex = (currentCardPage - 1) * cardsPerPage;
+            const endIndex = Math.min(startIndex + cardsPerPage, totalFilteredCards);
+            const paginatedCards = filteredCards.slice(startIndex, endIndex);
+            
+            // カード一覧を生成
+            let html = '';
+            paginatedCards.forEach(card => {
+                const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
+                const statsHtml = generateCardStats(card);
+                
+                if (card.type === 'typing') {
+                    const answer = card.answer || (card.answers && card.answers.join(', ')) || '';
+                    const tags = card.tags || [];
+                    const tagsHtml = tags.length > 0 ? `<div style="margin-top: 8px;"><span style="color: #667eea; font-size: 12px;">🏷️ ${tags.join(' ')}</span></div>` : '';
+                    
+                    html += `
+                        <div class="card-item" draggable="true" data-card-id="${card.id}" 
+                             ondragstart="handleDragStart(event)" 
+                             ondragend="handleDragEnd(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)">
+                            <div class="card-item-header">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="drag-handle">☰</span>
+                                    <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span class="card-item-title">タイピング: ${card.question}</span>
+                                </div>
+                                <div>
+                                    <span class="card-item-category">${deckName}</span>
+                                    <span class="card-item-typing-badge">⌨️ タイピング</span>
+                                </div>
+                            </div>
+                            <div class="card-item-content">
+                                正解: ${answer}
+                                ${card.caseSensitive ? ' <span style="color: #e67e22;">(大文字小文字・全角半角区別)</span>' : ''}
+                                ${tagsHtml}
+                            </div>
+                            <div class="card-item-actions">
+                                <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn" onclick="duplicateCard('${card.id}')" style="background: #3498db; color: white;">複製</button>
+                                <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                                <span class="card-stats">${statsHtml}</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (card.type === 'cloze') {
+                    const clozeRegex = /\{\{c\d+::([^}]+)\}\}/g;
+                    const displayText = card.text.replace(clozeRegex, (match, answer) => {
+                        return `<span class="cloze-blank">[${answer}]</span>`;
+                    });
+                    
+                    const tags = card.tags || [];
+                    const tagsHtml = tags.length > 0 ? `<div style="margin-top: 8px;"><span style="color: #667eea; font-size: 12px;">🏷️ ${tags.join(' ')}</span></div>` : '';
+                    
+                    html += `
+                        <div class="card-item" draggable="true" data-card-id="${card.id}"
+                             ondragstart="handleDragStart(event)" 
+                             ondragend="handleDragEnd(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)">
+                            <div class="card-item-header">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="drag-handle">☰</span>
+                                    <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span class="card-item-title">穴埋め: ${card.text.substring(0, 50)}${card.text.length > 50 ? '...' : ''}</span>
+                                </div>
+                                <div>
+                                    <span class="card-item-category">${deckName}</span>
+                                    <span class="card-item-cloze-badge">📝 穴埋め</span>
+                                </div>
+                            </div>
+                            <div class="card-item-content">
+                                ${displayText}
+                                ${tagsHtml}
+                            </div>
+                            <div class="card-item-actions">
+                                <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn" onclick="duplicateCard('${card.id}')" style="background: #3498db; color: white;">複製</button>
+                                <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                                <span class="card-stats">${statsHtml}</span>
+                            </div>
+                        </div>
+                    `;
                 } else {
-                    item.style.display = 'none';
-                    // v10.00.1: 非表示になったカードのチェックを外す
-                    const checkbox = item.querySelector('.card-checkbox');
-                    if (checkbox && checkbox.checked) {
-                        checkbox.checked = false;
-                    }
+                    const tags = card.tags || [];
+                    const tagsHtml = tags.length > 0 ? `<div style="margin-top: 8px;"><span style="color: #667eea; font-size: 12px;">🏷️ ${tags.join(' ')}</span></div>` : '';
+                    
+                    html += `
+                        <div class="card-item" draggable="true" data-card-id="${card.id}"
+                             ondragstart="handleDragStart(event)" 
+                             ondragend="handleDragEnd(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)">
+                            <div class="card-item-header">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="drag-handle">☰</span>
+                                    <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <span class="card-item-title">問題: ${card.question}</span>
+                                </div>
+                                <div>
+                                    <span class="card-item-category">${deckName}</span>
+                                    ${card.enableReverse ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="card-item-content">
+                                答え: ${card.answer}
+                                ${tagsHtml}
+                            </div>
+                            <div class="card-item-actions">
+                                <button class="btn" onclick="editCard('${card.id}')">編集</button>
+                                <button class="btn" onclick="duplicateCard('${card.id}')" style="background: #3498db; color: white;">複製</button>
+                                <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                                <span class="card-stats">${statsHtml}</span>
+                            </div>
+                        </div>
+                    `;
                 }
             });
+            
+            // ページネーション用HTML
+            const paginationHtml = renderPagination(filteredCards);
+            
+            listEl.innerHTML = html + paginationHtml;
+            
+            // 選択状態を更新
+            updateSelectedCards();
+            
+            // ページ変更時はトップにスクロール
+            if (listEl.parentElement) {
+                listEl.parentElement.scrollTop = 0;
+            }
+        }
+
+        // v10.01: カードフィルター（タグ検索、カードタイプ、学習状態対応）
+        function filterCards() {
+            // v12.01.5: ページネーション対応
+            const deckFilter = document.getElementById('deckFilter').value;
+            currentDeckFilter = deckFilter;
+            
+            // ページをリセット
+            currentCardPage = 1;
+            
+            // 新しい表示関数を呼び出し
+            displayCardListWithPagination();
             
             // v6.00.1: プレビュー表示を更新
             currentIndex = 0;
             showingQuestion = true;
             displayCard();
-            
-            // v10.00: 選択状態を更新
-            updateSelectedCards();
         }
 
         // v6.00.1: フィルター適用済みカードを取得
@@ -7691,7 +7851,7 @@
             const totalPages = Math.ceil(totalFilteredCards / cardsPerPage);
             if (page < 1 || page > totalPages) return;
             currentCardPage = page;
-            viewDeckCards(currentDeckFilter);
+            displayCardListWithPagination();
         }
         
         function getPaginatedCards(filteredCards) {
