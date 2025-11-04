@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.7</title>
+    <title>MyAnkiApp v14.00.8</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.7</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.8</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2964,7 +2964,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.7',
+                    appVersion: 'v14.00.8',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3055,7 +3055,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.7',
+                    appVersion: 'v14.00.8',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -10393,15 +10393,54 @@
                 closeMarkerPreviewModal();
                 closeMarkerSearchModal();
                 
-                // 警告メッセージ
-                alert('マーカー情報を適用しました。\n\n' +
+                // 適用成功メッセージと元データ削除確認
+                alert('✅ マーカー情報を適用しました。\n\n' +
                     '⚠️ PDFの内容が変更されている場合、\n' +
                     'マーカー位置がずれる可能性があります。\n' +
                     '適用後、各マーカーの位置を確認してください。');
                 
+                // 元のマーカーデータ削除確認
+                confirmDeleteOldMarkerData(selectedMarkerData);
+                
             } catch (error) {
                 console.error('適用エラー:', error);
                 alert('マーカー情報の適用中にエラーが発生しました');
+            }
+        }
+        
+        // 元のマーカーデータ削除確認
+        function confirmDeleteOldMarkerData(oldMarkerData) {
+            if (!oldMarkerData) return;
+            
+            const message = `元のマーカーデータを削除しますか？\n\n` +
+                `・ファイル名: ${oldMarkerData.fileName}\n` +
+                `・マーカー数: ${oldMarkerData.markerCount}個\n` +
+                `・最終更新: ${oldMarkerData.lastUpdated ? new Date(oldMarkerData.lastUpdated).toLocaleString('ja-JP') : '不明'}\n\n` +
+                `削除しない場合、後でFirestoreから手動削除できます。`;
+            
+            if (confirm(message)) {
+                deleteOldMarkerData(oldMarkerData.pdfHash);
+            }
+        }
+        
+        // 元のマーカーデータを削除
+        async function deleteOldMarkerData(oldPdfHash) {
+            if (!oldPdfHash) return;
+            
+            try {
+                // Firestoreから削除
+                await db.collection('pdfMarkers').doc(oldPdfHash).delete();
+                
+                // ローカルのmarkers変数からも削除
+                if (markers[oldPdfHash]) {
+                    delete markers[oldPdfHash];
+                }
+                
+                alert('元のマーカーデータを削除しました。');
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                alert('マーカーデータの削除中にエラーが発生しました');
             }
         }
         
