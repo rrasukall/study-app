@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.7</title>
+    <title>MyAnkiApp v12.03.0</title>
     <style>
         * {
             margin: 0;
@@ -1271,11 +1271,117 @@
             font-size: 14px;
         }
 
+
+        /* v12.03: ダークモード */
+        body.dark-mode {
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .container {
+            background: #1a1a1a;
+        }
+        
+        body.dark-mode .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        body.dark-mode .tab {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        body.dark-mode .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        body.dark-mode .tab.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        body.dark-mode .section {
+            background: #2a2a2a;
+        }
+        
+        body.dark-mode .card-creator,
+        body.dark-mode .deck-container,
+        body.dark-mode .deck-item {
+            background: #2a2a2a;
+            border-color: #444;
+        }
+        
+        body.dark-mode input,
+        body.dark-mode textarea,
+        body.dark-mode select {
+            background: #333;
+            color: #e0e0e0;
+            border-color: #555;
+        }
+        
+        body.dark-mode .btn {
+            background: #4a5568;
+            color: white;
+        }
+        
+        body.dark-mode .btn:hover {
+            background: #5a6678;
+        }
+        
+        body.dark-mode .btn-secondary {
+            background: #555;
+        }
+        
+        body.dark-mode .btn-secondary:hover {
+            background: #666;
+        }
+        
+        body.dark-mode .card-item {
+            background: #2a2a2a;
+            border-color: #444;
+        }
+        
+        body.dark-mode .card-item:hover {
+            background: #333;
+        }
+        
+        body.dark-mode .modal-content {
+            background: #2a2a2a;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .empty-state {
+            color: #999;
+        }
+        
+        body.dark-mode label,
+        body.dark-mode small {
+            color: #bbb;
+        }
+        
+        /* v12.03: フォントサイズクラス */
+        body.font-small {
+            font-size: 12px;
+        }
+        
+        body.font-medium {
+            font-size: 14px; /* デフォルト */
+        }
+        
+        body.font-large {
+            font-size: 16px;
+        }
+        
+        body.font-xlarge {
+            font-size: 18px;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.7</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.0</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1742,6 +1848,55 @@
                 <div style="display: flex; gap: 10px; margin-top: 30px;">
                     <button class="btn" onclick="saveGlobalSettings()">設定を保存</button>
                     <button class="btn btn-secondary" onclick="resetToDefaultSettings()">デフォルトに戻す</button>
+                </div>
+                
+                <!-- v12.03: 表示設定 -->
+                <hr style="margin: 50px 0; border: none; border-top: 2px solid #e0e0e0;">
+                
+                <h2 style="margin-bottom: 30px;">表示設定</h2>
+                
+                <div class="input-group">
+                    <label>テーマ</label>
+                    <div style="display: flex; gap: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="theme" value="light" id="themeLight" onchange="changeTheme('light')">
+                            <span>☀️ ライトモード</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="theme" value="dark" id="themeDark" onchange="changeTheme('dark')">
+                            <span>🌙 ダークモード</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>フォントサイズ</label>
+                    <div style="display: flex; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="fontSize" value="small" id="fontSmall" onchange="changeFontSize('small')">
+                            <span>小</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="fontSize" value="medium" id="fontMedium" onchange="changeFontSize('medium')">
+                            <span>中</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="fontSize" value="large" id="fontLarge" onchange="changeFontSize('large')">
+                            <span>大</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="fontSize" value="xlarge" id="fontXLarge" onchange="changeFontSize('xlarge')">
+                            <span>特大</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>
+                        <input type="checkbox" id="pdfDarkMode" onchange="togglePDFDarkMode()">
+                        PDFダークモード（PDF表示を反転）
+                    </label>
+                    <small style="color: #666;">※PDFの背景を暗くします（実験的機能）</small>
                 </div>
             </div>
         </div>
