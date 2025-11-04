@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.03.0</title>
+    <title>MyAnkiApp v12.03.1</title>
     <style>
         * {
             margin: 0;
@@ -1381,7 +1381,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2034,6 +2034,91 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        
+        // v12.03: テーマとフォントサイズ管理
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        let currentFontSize = localStorage.getItem('fontSize') || 'medium';
+        let pdfDarkModeEnabled = localStorage.getItem('pdfDarkMode') === 'true';
+        
+        // v12.03: テーマ適用
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            currentTheme = theme;
+            localStorage.setItem('theme', theme);
+            
+            // ラジオボタンを更新
+            const lightRadio = document.getElementById('themeLight');
+            const darkRadio = document.getElementById('themeDark');
+            if (lightRadio && darkRadio) {
+                lightRadio.checked = (theme === 'light');
+                darkRadio.checked = (theme === 'dark');
+            }
+        }
+        
+        // v12.03: テーマ変更
+        function changeTheme(theme) {
+            applyTheme(theme);
+        }
+        
+        // v12.03: フォントサイズ適用
+        function applyFontSize(size) {
+            document.body.classList.remove('font-small', 'font-medium', 'font-large', 'font-xlarge');
+            document.body.classList.add('font-' + size);
+            currentFontSize = size;
+            localStorage.setItem('fontSize', size);
+            
+            // ラジオボタンを更新
+            const smallRadio = document.getElementById('fontSmall');
+            const mediumRadio = document.getElementById('fontMedium');
+            const largeRadio = document.getElementById('fontLarge');
+            const xlargeRadio = document.getElementById('fontXLarge');
+            if (smallRadio && mediumRadio && largeRadio && xlargeRadio) {
+                smallRadio.checked = (size === 'small');
+                mediumRadio.checked = (size === 'medium');
+                largeRadio.checked = (size === 'large');
+                xlargeRadio.checked = (size === 'xlarge');
+            }
+        }
+        
+        // v12.03: フォントサイズ変更
+        function changeFontSize(size) {
+            applyFontSize(size);
+        }
+        
+        // v12.03: PDFダークモード切替
+        function togglePDFDarkMode() {
+            const checkbox = document.getElementById('pdfDarkMode');
+            if (!checkbox) return;
+            
+            pdfDarkModeEnabled = checkbox.checked;
+            localStorage.setItem('pdfDarkMode', pdfDarkModeEnabled);
+            
+            // PDFキャンバスに反転フィルターを適用
+            const canvas = document.getElementById('pdfCanvas');
+            if (canvas) {
+                if (pdfDarkModeEnabled) {
+                    canvas.style.filter = 'invert(1) hue-rotate(180deg)';
+                } else {
+                    canvas.style.filter = 'none';
+                }
+            }
+        }
+        
+        // v12.03: 初期化時に設定を適用
+        document.addEventListener('DOMContentLoaded', function() {
+            applyTheme(currentTheme);
+            applyFontSize(currentFontSize);
+            
+            // PDFダークモードのチェックボックスを設定
+            const pdfDarkModeCheckbox = document.getElementById('pdfDarkMode');
+            if (pdfDarkModeCheckbox) {
+                pdfDarkModeCheckbox.checked = pdfDarkModeEnabled;
+            }
+        });
         
         let cards = [];
         let currentIndex = 0;
