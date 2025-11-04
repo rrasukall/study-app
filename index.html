@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.9</title>
+    <title>MyAnkiApp v14.00.10</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.9</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.10</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2964,7 +2964,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.9',
+                    appVersion: 'v14.00.10',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3055,7 +3055,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.9',
+                    appVersion: 'v14.00.10',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -10426,16 +10426,16 @@
                     appliedMarkerCount += newMarkers[pageNum].length;
                 });
                 
-                // 適用成功メッセージ
+                // モーダルを閉じる（マーカーが見える状態にする）
+                closeMarkerPreviewModal();
+                closeMarkerSearchModal();
+                
+                // 適用成功メッセージ（モーダルが閉じた後に表示されるので、マーカーが見える）
                 alert(`✅ マーカー情報を適用しました。\n\n` +
                     `適用されたマーカー数: ${appliedMarkerCount}個\n\n` +
                     `⚠️ PDFの内容が変更されている場合、\n` +
                     `マーカー位置がずれる可能性があります。\n` +
                     `適用後、各マーカーの位置を確認してください。`);
-                
-                // モーダルを閉じる（マーカーが見える状態になる）
-                closeMarkerPreviewModal();
-                closeMarkerSearchModal();
                 
                 // 元のマーカーデータ削除確認
                 confirmDeleteOldMarkerData(selectedMarkerData);
