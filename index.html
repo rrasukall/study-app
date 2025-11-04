@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.0</title>
+    <title>MyAnkiApp v12.01.1</title>
     <style>
         * {
             margin: 0;
@@ -1289,7 +1289,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2152,8 +2152,8 @@
         // v12.00: デッキ折りたたみ状態管理
         let collapsedDecks = JSON.parse(localStorage.getItem('collapsedDecks') || '{}');
         
-        // v12.01: ページネーション
-        let currentPage = 1;
+        // v12.01: ページネーション（カードリスト用）
+        let currentCardPage = 1;
         let cardsPerPage = 50;
         let totalFilteredCards = 0;
         
@@ -7707,11 +7707,11 @@
             let html = '<div class="pagination">';
             
             // 前へボタン
-            html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← 前へ</button>`;
+            html += `<button onclick="changePage(${currentCardPage - 1})" ${currentCardPage === 1 ? 'disabled' : ''}>← 前へ</button>`;
             
             // ページ番号
             const maxButtons = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let startPage = Math.max(1, currentCardPage - Math.floor(maxButtons / 2));
             let endPage = Math.min(totalPages, startPage + maxButtons - 1);
             
             if (endPage - startPage < maxButtons - 1) {
@@ -7724,7 +7724,7 @@
             }
             
             for (let i = startPage; i <= endPage; i++) {
-                html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'current-page' : ''}">${i}</button>`;
+                html += `<button onclick="changePage(${i})" class="${i === currentCardPage ? 'current-page' : ''}">${i}</button>`;
             }
             
             if (endPage < totalPages) {
@@ -7733,11 +7733,11 @@
             }
             
             // 次へボタン
-            html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>次へ →</button>`;
+            html += `<button onclick="changePage(${currentCardPage + 1})" ${currentCardPage === totalPages ? 'disabled' : ''}>次へ →</button>`;
             
             // 情報表示
-            const start = (currentPage - 1) * cardsPerPage + 1;
-            const end = Math.min(currentPage * cardsPerPage, totalFilteredCards);
+            const start = (currentCardPage - 1) * cardsPerPage + 1;
+            const end = Math.min(currentCardPage * cardsPerPage, totalFilteredCards);
             html += `<span class="pagination-info">${start}-${end} / ${totalFilteredCards}枚</span>`;
             
             html += '</div>';
@@ -7747,12 +7747,12 @@
         function changePage(page) {
             const totalPages = Math.ceil(totalFilteredCards / cardsPerPage);
             if (page < 1 || page > totalPages) return;
-            currentPage = page;
+            currentCardPage = page;
             viewDeckCards(currentDeckFilter);
         }
         
         function getPaginatedCards(filteredCards) {
-            const start = (currentPage - 1) * cardsPerPage;
+            const start = (currentCardPage - 1) * cardsPerPage;
             const end = start + cardsPerPage;
             return filteredCards.slice(start, end);
         }
