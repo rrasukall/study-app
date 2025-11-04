@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.01</title>
+    <title>MyAnkiApp v10.02</title>
     <style>
         * {
             margin: 0;
@@ -380,6 +380,19 @@
             border-radius: 10px;
             margin-bottom: 15px;
             border-left: 5px solid #667eea;
+            cursor: move; /* v10.02: ドラッグ可能を示す */
+            transition: all 0.2s;
+        }
+        
+        /* v10.02: ドラッグ&ドロップスタイル */
+        .card-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+        
+        .card-item.drag-over {
+            border-top: 3px solid #667eea;
+            margin-top: 20px;
         }
         
         .card-item-header {
@@ -389,6 +402,15 @@
             margin-bottom: 10px;
             flex-wrap: wrap;
             gap: 10px;
+        }
+        
+        /* v10.02: ドラッグハンドル */
+        .drag-handle {
+            font-size: 20px;
+            color: #999;
+            cursor: move;
+            user-select: none;
+            margin-right: 5px;
         }
         
         .card-item-title {
@@ -1133,7 +1155,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.01</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.02</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1514,6 +1536,21 @@
                             <option value="new">新規（未学習）</option>
                             <option value="learning">学習中</option>
                             <option value="review">復習（マスター済み）</option>
+                        </select>
+                    </div>
+                    <!-- v10.02: ソート機能 -->
+                    <div class="filter-group" style="margin-top: 10px;">
+                        <select id="sortBy" onchange="sortCards()">
+                            <option value="manual">手動順序</option>
+                            <option value="createdDate">作成日順</option>
+                            <option value="lastStudied">最終学習日順</option>
+                            <option value="accuracy">正答率順</option>
+                            <option value="cardType">カードタイプ順</option>
+                            <option value="tags">タグ順</option>
+                        </select>
+                        <select id="sortOrder" onchange="sortCards()">
+                            <option value="asc">昇順</option>
+                            <option value="desc">降順</option>
                         </select>
                     </div>
                     <div id="cardList"></div>
@@ -2005,14 +2042,29 @@
             console.error('Error fetching decks:', error);
         });
 
-        db.collection('flashcards').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+        // v10.02: order順で読み込み（存在しない場合はcreatedAt順）
+        db.collection('flashcards').onSnapshot((snapshot) => {
             cards = [];
             snapshot.forEach((doc) => {
+                const data = doc.data();
                 cards.push({
                     id: doc.id,
-                    ...doc.data()
+                    ...data,
+                    // v10.02: orderフィールドがない場合は末尾に配置
+                    order: data.order !== undefined ? data.order : 999999
                 });
             });
+            
+            // v10.02: order順でソート（orderが同じ場合はcreatedAt順）
+            cards.sort((a, b) => {
+                if (a.order !== b.order) {
+                    return a.order - b.order;
+                }
+                const dateA = a.createdAt?.toMillis() || 0;
+                const dateB = b.createdAt?.toMillis() || 0;
+                return dateB - dateA;
+            });
+            
             cardsLoaded = true;
             updateSyncStatus('synced');
             displayCard();
@@ -3402,6 +3454,7 @@
                         answer: answer,
                         enableReverse: enableReverse,
                         tags: tags, // v10.01: タグ追加
+                        order: cards.length, // v10.02: 順序番号
                         state: 'new',
                         easeFactor: getStudySettings(deckId).startingEase,
                         interval: 0,
@@ -3464,6 +3517,7 @@
                         text: text,
                         clozes: clozes,
                         tags: tags, // v10.01: タグ追加
+                        order: cards.length, // v10.02: 順序番号
                         state: 'new',
                         easeFactor: getStudySettings(deckId).startingEase,
                         interval: 0,
@@ -3510,6 +3564,7 @@
                         answer: answer,
                         caseSensitive: caseSensitive,
                         tags: tags, // v10.01: タグ追加
+                        order: cards.length, // v10.02: 順序番号
                         state: 'new',
                         easeFactor: getStudySettings(deckId).startingEase,
                         interval: 0,
@@ -3914,9 +3969,15 @@
                     const tagsHtml = tags.length > 0 ? `<div style="margin-top: 8px;"><span style="color: #667eea; font-size: 12px;">🏷️ ${tags.join(' ')}</span></div>` : '';
                     
                     html += `
-                        <div class="card-item">
+                        <div class="card-item" draggable="true" data-card-id="${card.id}" 
+                             ondragstart="handleDragStart(event)" 
+                             ondragend="handleDragEnd(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)">
                             <div class="card-item-header">
                                 <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="drag-handle">☰</span>
                                     <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
                                     <span class="card-item-title">タイピング: ${card.question}</span>
                                 </div>
@@ -3947,9 +4008,15 @@
                     const tagsHtml = tags.length > 0 ? `<div style="margin-top: 8px;"><span style="color: #667eea; font-size: 12px;">🏷️ ${tags.join(' ')}</span></div>` : '';
                     
                     html += `
-                        <div class="card-item">
+                        <div class="card-item" draggable="true" data-card-id="${card.id}"
+                             ondragstart="handleDragStart(event)" 
+                             ondragend="handleDragEnd(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)">
                             <div class="card-item-header">
                                 <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="drag-handle">☰</span>
                                     <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
                                     <span class="card-item-title">穴埋め: ${card.text.substring(0, 50)}${card.text.length > 50 ? '...' : ''}</span>
                                 </div>
@@ -3974,9 +4041,15 @@
                     const tagsHtml = tags.length > 0 ? `<div style="margin-top: 8px;"><span style="color: #667eea; font-size: 12px;">🏷️ ${tags.join(' ')}</span></div>` : '';
                     
                     html += `
-                        <div class="card-item">
+                        <div class="card-item" draggable="true" data-card-id="${card.id}"
+                             ondragstart="handleDragStart(event)" 
+                             ondragend="handleDragEnd(event)"
+                             ondragover="handleDragOver(event)"
+                             ondrop="handleDrop(event)"
+                             ondragleave="handleDragLeave(event)">
                             <div class="card-item-header">
                                 <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="drag-handle">☰</span>
                                     <input type="checkbox" class="card-checkbox" data-card-id="${card.id}" onchange="updateSelectedCards()" style="width: 20px; height: 20px; cursor: pointer;">
                                     <span class="card-item-title">問題: ${card.question}</span>
                                 </div>
@@ -4086,6 +4159,170 @@
                 return cards;
             }
             return cards.filter(card => card.deckId === currentDeckFilter);
+        }
+
+        // v10.02: ドラッグ&ドロップ機能
+        let draggedCardId = null;
+        
+        function handleDragStart(event) {
+            draggedCardId = event.target.dataset.cardId;
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragEnd(event) {
+            event.target.classList.remove('dragging');
+            document.querySelectorAll('.card-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+        
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            
+            const target = event.target.closest('.card-item');
+            if (target && target.dataset.cardId !== draggedCardId) {
+                target.classList.add('drag-over');
+            }
+        }
+        
+        function handleDragLeave(event) {
+            const target = event.target.closest('.card-item');
+            if (target) {
+                target.classList.remove('drag-over');
+            }
+        }
+        
+        async function handleDrop(event) {
+            event.preventDefault();
+            
+            const targetCardId = event.target.closest('.card-item').dataset.cardId;
+            
+            if (draggedCardId === targetCardId) {
+                return;
+            }
+            
+            // カードの順序を入れ替え
+            const draggedIndex = cards.findIndex(c => c.id === draggedCardId);
+            const targetIndex = cards.findIndex(c => c.id === targetCardId);
+            
+            if (draggedIndex === -1 || targetIndex === -1) {
+                return;
+            }
+            
+            // 配列内で入れ替え
+            const draggedCard = cards[draggedIndex];
+            cards.splice(draggedIndex, 1);
+            cards.splice(targetIndex, 0, draggedCard);
+            
+            // Firestoreのorder値を更新
+            updateSyncStatus('syncing');
+            try {
+                const batch = [];
+                for (let i = 0; i < cards.length; i++) {
+                    if (incrementWriteCounter()) {
+                        batch.push(
+                            db.collection('flashcards').doc(cards[i].id).update({
+                                order: i
+                            })
+                        );
+                    }
+                    
+                    if (batch.length >= 10) {
+                        await Promise.all(batch);
+                        batch.length = 0;
+                    }
+                }
+                
+                if (batch.length > 0) {
+                    await Promise.all(batch);
+                }
+                
+                // UIを再描画
+                displayCardList();
+                updateSyncStatus('synced');
+            } catch (error) {
+                console.error('順序更新エラー:', error);
+                updateSyncStatus('error');
+            }
+        }
+        
+        // v10.02: カードソート機能
+        function sortCards() {
+            const sortBy = document.getElementById('sortBy').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+            
+            // ソート前のcardsをコピー
+            let sortedCards = [...cards];
+            
+            switch (sortBy) {
+                case 'manual':
+                    sortedCards.sort((a, b) => {
+                        const orderA = a.order !== undefined ? a.order : 999999;
+                        const orderB = b.order !== undefined ? b.order : 999999;
+                        return sortOrder === 'asc' ? orderA - orderB : orderB - orderA;
+                    });
+                    break;
+                    
+                case 'createdDate':
+                    sortedCards.sort((a, b) => {
+                        const dateA = a.createdAt?.toMillis() || 0;
+                        const dateB = b.createdAt?.toMillis() || 0;
+                        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                    });
+                    break;
+                    
+                case 'lastStudied':
+                    sortedCards.sort((a, b) => {
+                        const dateA = a.lastReviewed || 0;
+                        const dateB = b.lastReviewed || 0;
+                        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                    });
+                    break;
+                    
+                case 'accuracy':
+                    sortedCards.sort((a, b) => {
+                        // 正答率計算（仮）: repetitions / (repetitions + lapses)
+                        const repsA = a.repetitions || 0;
+                        const lapsesA = a.lapses || 0;
+                        const accuracyA = (repsA + lapsesA) > 0 ? repsA / (repsA + lapsesA) : 0;
+                        
+                        const repsB = b.repetitions || 0;
+                        const lapsesB = b.lapses || 0;
+                        const accuracyB = (repsB + lapsesB) > 0 ? repsB / (repsB + lapsesB) : 0;
+                        
+                        return sortOrder === 'asc' ? accuracyA - accuracyB : accuracyB - accuracyA;
+                    });
+                    break;
+                    
+                case 'cardType':
+                    sortedCards.sort((a, b) => {
+                        const typeOrder = { 'basic': 0, 'basic-reversed': 0, 'cloze': 1, 'typing': 2 };
+                        const orderA = typeOrder[a.type] || 99;
+                        const orderB = typeOrder[b.type] || 99;
+                        return sortOrder === 'asc' ? orderA - orderB : orderB - orderA;
+                    });
+                    break;
+                    
+                case 'tags':
+                    sortedCards.sort((a, b) => {
+                        const tagsA = (a.tags || []).join(' ').toLowerCase();
+                        const tagsB = (b.tags || []).join(' ').toLowerCase();
+                        if (sortOrder === 'asc') {
+                            return tagsA.localeCompare(tagsB);
+                        } else {
+                            return tagsB.localeCompare(tagsA);
+                        }
+                    });
+                    break;
+            }
+            
+            // ソート結果をcardsに反映
+            cards = sortedCards;
+            
+            // UIを再描画
+            displayCardList();
         }
 
         // v10.00: 選択されたカードIDを管理
@@ -4319,7 +4556,7 @@
             
             // エクスポートデータを作成
             const exportData = {
-                version: 'v10.01',
+                version: 'v10.02',
                 exportDate: new Date().toISOString(),
                 cardCount: selectedCards.length,
                 description: 'MyAnkiApp完全バックアップ（学習データ含む）',
@@ -4336,6 +4573,7 @@
                         deckId: card.deckId,
                         category: card.category,
                         tags: card.tags || [], // v10.01: タグ追加
+                        order: card.order, // v10.02: 順序番号
                         // 学習データ
                         ease: card.ease,
                         interval: card.interval,
