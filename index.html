@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00</title>
+    <title>MyAnkiApp v14.00.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2267,13 +2267,87 @@
                 <h2 style="margin-bottom: 30px;">データ管理</h2>
                 
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="margin-bottom: 15px;">完全バックアップ</h3>
-                    <p style="margin-bottom: 15px; color: #666; line-height: 1.6;">
-                        すべてのデッキ、カード、学習記録、PDFマーカー、設定を含む完全なバックアップをエクスポートします。<br>
-                        定期的なバックアップを推奨します。
-                    </p>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="btn" onclick="exportCompleteBackup()">📦 完全バックアップをエクスポート</button>
+                    <h3 style="margin-bottom: 15px;">データエクスポート</h3>
+                    
+                    <!-- v14.00.1: エクスポート方式選択 -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
+                            <input type="radio" name="exportType" value="complete" id="exportTypeComplete" checked onchange="toggleExportOptions()">
+                            <span><strong>完全バックアップ（推奨）</strong> - すべてのデータを含む</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="exportType" value="custom" id="exportTypeCustom" onchange="toggleExportOptions()">
+                            <span><strong>カスタムエクスポート</strong> - 項目を選択してエクスポート</span>
+                        </label>
+                    </div>
+                    
+                    <!-- v14.00.1: カスタムエクスポート選択項目 -->
+                    <div id="customExportOptions" style="display: none; margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #ddd;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- データ項目 -->
+                            <div>
+                                <h4 style="margin-bottom: 15px; color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 5px;">データ（5項目）</h4>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_decks" checked onchange="checkDependencies()">
+                                        <span>デッキ構造</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_flashcards" checked onchange="checkDependencies()">
+                                        <span>カードデータ</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_studySessions" checked onchange="checkDependencies()">
+                                        <span>学習セッション記録</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_pdfMarkers" checked onchange="checkDependencies()">
+                                        <span>PDFマーカー情報</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_pdfMetadata" checked onchange="checkDependencies()">
+                                        <span>PDFメタデータ対応表</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- 設定項目 -->
+                            <div>
+                                <h4 style="margin-bottom: 15px; color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 5px;">設定（5項目）</h4>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_theme" checked onchange="checkDependencies()">
+                                        <span>テーマ設定</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_fontSize" checked onchange="checkDependencies()">
+                                        <span>フォント設定</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_globalStudySettings" checked onchange="checkDependencies()">
+                                        <span>グローバル学習設定</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_deckStudySettings" checked onchange="checkDependencies()">
+                                        <span>デッキ別学習設定</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="checkbox" id="export_uiSettings" checked onchange="checkDependencies()">
+                                        <span>UI状態設定</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 依存関係警告表示エリア -->
+                        <div id="dependencyWarning" style="display: none; margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                            <strong>⚠️ 依存関係の警告:</strong>
+                            <ul id="dependencyWarningList" style="margin: 8px 0 0 20px; color: #856404;"></ul>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px;">
+                        <button class="btn" onclick="executeExport()">📦 エクスポート実行</button>
                         <span id="exportStatus" style="color: #27ae60; display: none;">✓ エクスポート完了</span>
                     </div>
                 </div>
@@ -2751,6 +2825,74 @@
             alert('カスタムカラーをリセットしました');
         }
 
+        // v14.00.1: エクスポートオプションの表示切替
+        function toggleExportOptions() {
+            const exportTypeComplete = document.getElementById('exportTypeComplete');
+            const customExportOptions = document.getElementById('customExportOptions');
+            
+            if (exportTypeComplete && exportTypeComplete.checked) {
+                customExportOptions.style.display = 'none';
+            } else {
+                customExportOptions.style.display = 'block';
+                checkDependencies();
+            }
+        }
+        
+        // v14.00.1: 依存関係チェック
+        function checkDependencies() {
+            const decks = document.getElementById('export_decks').checked;
+            const flashcards = document.getElementById('export_flashcards').checked;
+            const studySessions = document.getElementById('export_studySessions').checked;
+            const pdfMarkers = document.getElementById('export_pdfMarkers').checked;
+            const pdfMetadata = document.getElementById('export_pdfMetadata').checked;
+            const deckStudySettings = document.getElementById('export_deckStudySettings').checked;
+            
+            const warnings = [];
+            
+            // カードデータはデッキ構造に依存
+            if (flashcards && !decks) {
+                warnings.push('カードデータを選択していますが、デッキ構造も含めることを推奨します（カードはデッキに所属します）');
+            }
+            
+            // 学習セッション記録はデッキ構造に依存
+            if (studySessions && !decks) {
+                warnings.push('学習セッション記録を選択していますが、デッキ構造も含めることを推奨します（セッションはデッキに紐付きます）');
+            }
+            
+            // デッキ別学習設定はデッキ構造に依存
+            if (deckStudySettings && !decks) {
+                warnings.push('デッキ別学習設定を選択していますが、デッキ構造も含めることを推奨します（設定はデッキごとに保存されます）');
+            }
+            
+            // PDFメタデータはPDFマーカー情報と連動
+            if (pdfMetadata && !pdfMarkers) {
+                warnings.push('PDFメタデータ対応表を選択していますが、PDFマーカー情報も含めることを推奨します（メタデータとマーカーは連動します）');
+            }
+            
+            const warningDiv = document.getElementById('dependencyWarning');
+            const warningList = document.getElementById('dependencyWarningList');
+            
+            if (warnings.length > 0) {
+                warningList.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+                warningDiv.style.display = 'block';
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        }
+        
+        // v14.00.1: エクスポート実行（完全 or カスタム）
+        async function executeExport() {
+            const exportTypeComplete = document.getElementById('exportTypeComplete');
+            
+            if (exportTypeComplete && exportTypeComplete.checked) {
+                // 完全バックアップ
+                await exportCompleteBackup();
+            } else {
+                // カスタムエクスポート
+                await exportCustomBackup();
+            }
+        }
+        
         // v14.00: 完全バックアップのエクスポート
         async function exportCompleteBackup() {
             try {
@@ -2821,7 +2963,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00',
+                    appVersion: 'v14.00.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -2879,6 +3021,167 @@
                     statusEl.style.color = '#e74c3c';
                 }
                 alert('バックアップのエクスポートに失敗しました。\nエラー: ' + error.message);
+            }
+        }
+        
+        // v14.00.1: カスタムエクスポート
+        async function exportCustomBackup() {
+            try {
+                // エクスポート開始メッセージ
+                const statusEl = document.getElementById('exportStatus');
+                if (statusEl) {
+                    statusEl.textContent = '⏳ エクスポート中...';
+                    statusEl.style.color = '#f39c12';
+                    statusEl.style.display = 'inline';
+                }
+                
+                // 選択項目を取得
+                const exportOptions = {
+                    decks: document.getElementById('export_decks').checked,
+                    flashcards: document.getElementById('export_flashcards').checked,
+                    studySessions: document.getElementById('export_studySessions').checked,
+                    pdfMarkers: document.getElementById('export_pdfMarkers').checked,
+                    pdfMetadata: document.getElementById('export_pdfMetadata').checked,
+                    theme: document.getElementById('export_theme').checked,
+                    fontSize: document.getElementById('export_fontSize').checked,
+                    globalStudySettings: document.getElementById('export_globalStudySettings').checked,
+                    deckStudySettings: document.getElementById('export_deckStudySettings').checked,
+                    uiSettings: document.getElementById('export_uiSettings').checked
+                };
+                
+                // バックアップデータ構造を作成
+                const backup = {
+                    version: '1.0',
+                    userId: null,
+                    exportDate: new Date().toISOString(),
+                    appVersion: 'v14.00.1',
+                    exportType: 'custom',
+                    exportOptions: exportOptions,
+                    data: {},
+                    settings: {}
+                };
+                
+                // データ項目のエクスポート
+                if (exportOptions.decks) {
+                    const decksSnapshot = await db.collection('decks').orderBy('order').get();
+                    const decks = [];
+                    decksSnapshot.forEach(doc => {
+                        decks.push({ id: doc.id, ...doc.data() });
+                    });
+                    backup.data.decks = decks;
+                }
+                
+                if (exportOptions.flashcards) {
+                    const flashcardsSnapshot = await db.collection('flashcards').get();
+                    const flashcards = [];
+                    flashcardsSnapshot.forEach(doc => {
+                        flashcards.push({ id: doc.id, ...doc.data() });
+                    });
+                    backup.data.flashcards = flashcards;
+                }
+                
+                if (exportOptions.studySessions) {
+                    const studySessionsSnapshot = await db.collection('studySessions').get();
+                    const studySessions = [];
+                    studySessionsSnapshot.forEach(doc => {
+                        studySessions.push({ id: doc.id, ...doc.data() });
+                    });
+                    backup.data.studySessions = studySessions;
+                }
+                
+                if (exportOptions.pdfMarkers) {
+                    const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+                    const pdfMarkers = [];
+                    pdfMarkersSnapshot.forEach(doc => {
+                        pdfMarkers.push({ pdfHash: doc.id, ...doc.data() });
+                    });
+                    backup.data.pdfMarkers = pdfMarkers;
+                }
+                
+                if (exportOptions.pdfMetadata) {
+                    const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+                    const pdfMetadata = [];
+                    pdfMarkersSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.fileName) {
+                            pdfMetadata.push({
+                                pdfHash: doc.id,
+                                fileName: data.fileName,
+                                totalPages: data.totalPages || 0,
+                                fileSize: data.fileSize || 0
+                            });
+                        }
+                    });
+                    backup.data.pdfMetadata = pdfMetadata;
+                }
+                
+                // 設定項目のエクスポート
+                if (exportOptions.theme) {
+                    backup.settings.theme = localStorage.getItem('theme') || 'light';
+                    backup.settings.customColors = localStorage.getItem('customColors') || null;
+                }
+                
+                if (exportOptions.fontSize) {
+                    backup.settings.fontSize = localStorage.getItem('fontSize') || 'medium';
+                }
+                
+                if (exportOptions.globalStudySettings) {
+                    backup.settings.globalStudySettings = localStorage.getItem('globalStudySettings') || null;
+                }
+                
+                if (exportOptions.deckStudySettings) {
+                    backup.settings.deckStudySettings = localStorage.getItem('deckStudySettings') || null;
+                }
+                
+                if (exportOptions.uiSettings) {
+                    backup.settings.collapsedDecks = localStorage.getItem('collapsedDecks') || '{}';
+                    backup.settings.cardsPerPage = localStorage.getItem('cardsPerPage') || '50';
+                    backup.settings.lastSelectedDeckId = localStorage.getItem('lastSelectedDeckId') || null;
+                    backup.settings.instantDeleteMode = localStorage.getItem('instantDeleteMode') || 'false';
+                }
+                
+                // JSONファイルとしてダウンロード
+                const jsonStr = JSON.stringify(backup, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                // ファイル名: MyAnkiApp_Custom_YYYYMMDD_HHMMSS.json
+                const now = new Date();
+                const dateStr = now.getFullYear() + 
+                    String(now.getMonth() + 1).padStart(2, '0') + 
+                    String(now.getDate()).padStart(2, '0') + '_' +
+                    String(now.getHours()).padStart(2, '0') + 
+                    String(now.getMinutes()).padStart(2, '0') + 
+                    String(now.getSeconds()).padStart(2, '0');
+                const filename = `MyAnkiApp_Custom_${dateStr}.json`;
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // 完了メッセージ
+                if (statusEl) {
+                    statusEl.textContent = '✓ エクスポート完了';
+                    statusEl.style.color = '#27ae60';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
+                }
+                
+                console.log('カスタムバックアップ完了:', exportOptions);
+                
+            } catch (error) {
+                console.error('カスタムバックアップエラー:', error);
+                const statusEl = document.getElementById('exportStatus');
+                if (statusEl) {
+                    statusEl.textContent = '✗ エクスポート失敗';
+                    statusEl.style.color = '#e74c3c';
+                }
+                alert('カスタムバックアップのエクスポートに失敗しました。\nエラー: ' + error.message);
             }
         }
         
