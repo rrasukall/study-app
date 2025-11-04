@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.03.4</title>
+    <title>MyAnkiApp v12.00.0</title>
     <style>
         * {
             margin: 0;
@@ -1186,11 +1186,26 @@
             color: #721c24;
             border-left: 4px solid #e74c3c;
         }
+        
+        /* v12.00: アイコンと色選択ボタンのスタイル */
+        .icon-btn:hover, .color-picker-btn:hover {
+            transform: scale(1.1);
+            transition: transform 0.2s;
+        }
+        
+        .icon-btn:active, .color-picker-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .icon-btn, .color-picker-btn {
+            transition: all 0.2s;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.03.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.00.0</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7332,11 +7347,15 @@
             
             const depthClass = level === 0 ? '' : (level === 1 ? 'child-deck' : 'grandchild-deck');
             
+            // v12.00: アイコンと色のスタイル準備
+            const iconDisplay = deck.icon ? deck.icon + ' ' : '';
+            const colorStyle = deck.color ? `background: ${deck.color}20; border-left: 4px solid ${deck.color};` : '';
+            
             let html = `
                 <div class="deck-item ${depthClass}">
-                    <div class="deck-header">
-                        <div style="cursor: pointer;" onclick="viewDeckCards('${deck.id}')">
-                            <div class="deck-name">${deck.name}</div>
+                    <div class="deck-header" style="${colorStyle}">
+                        <div style="cursor: pointer; display: flex; align-items: center;" onclick="viewDeckCards('${deck.id}')">
+                            <div class="deck-name">${iconDisplay}${deck.name}</div>
                             <div class="deck-count">${cardCount}枚 ${dueCount > 0 ? `<span style="color: #e74c3c; font-weight: bold;">(${dueCount}枚学習)</span>` : ''}</div>
                         </div>
                         <div class="deck-actions">
@@ -7445,6 +7464,16 @@
             document.getElementById('deckUseCustomSettings').checked = false;
             document.getElementById('deckCustomSettingsPanel').style.display = 'none';
             
+            // v12.00: アイコンと色のリセット
+            selectedIcon = null;
+            selectedColor = null;
+            document.getElementById('selectedDeckIcon').value = '';
+            document.getElementById('selectedDeckColor').value = '';
+            document.querySelectorAll('.icon-btn').forEach(btn => btn.style.border = '2px solid #ddd');
+            document.getElementById('icon-none').style.border = '3px solid #667eea';
+            document.querySelectorAll('.color-picker-btn').forEach(btn => btn.style.border = '2px solid #ddd');
+            document.querySelectorAll('.color-picker-btn')[0].style.border = '3px solid #667eea';
+            
             document.getElementById('deckModal').style.display = 'block';
         }
         
@@ -7500,6 +7529,36 @@
                 document.getElementById('deckIntervalModifier').value = globalStudySettings.intervalModifier;
                 document.getElementById('deckMaximumInterval').value = globalStudySettings.maximumInterval;
                 loadDeckSettingsUI();
+            }
+            
+            // v12.00: アイコンと色の読み込み
+            selectedIcon = deck.icon || null;
+            selectedColor = deck.color || null;
+            document.getElementById('selectedDeckIcon').value = selectedIcon || '';
+            document.getElementById('selectedDeckColor').value = selectedColor || '';
+            
+            // アイコンボタンの選択状態を更新
+            document.querySelectorAll('.icon-btn').forEach(btn => btn.style.border = '2px solid #ddd');
+            if (selectedIcon) {
+                document.querySelectorAll('.icon-btn').forEach(btn => {
+                    if (btn.onclick && btn.onclick.toString().includes(selectedIcon)) {
+                        btn.style.border = '3px solid #667eea';
+                    }
+                });
+            } else {
+                document.getElementById('icon-none').style.border = '3px solid #667eea';
+            }
+            
+            // 色ボタンの選択状態を更新
+            document.querySelectorAll('.color-picker-btn').forEach(btn => btn.style.border = '2px solid #ddd');
+            if (selectedColor) {
+                document.querySelectorAll('.color-picker-btn').forEach(btn => {
+                    if (btn.onclick && btn.onclick.toString().includes(selectedColor)) {
+                        btn.style.border = '3px solid #667eea';
+                    }
+                });
+            } else {
+                document.querySelectorAll('.color-picker-btn')[0].style.border = '3px solid #667eea';
             }
             
             document.getElementById('deckModal').style.display = 'block';
@@ -7579,6 +7638,40 @@
             return path.join(' > ');
         }
         
+        // v12.00: アイコン選択関数
+        let selectedIcon = null;
+        let selectedColor = null;
+        
+        function selectDeckIcon(icon) {
+            selectedIcon = icon;
+            document.getElementById('selectedDeckIcon').value = icon || '';
+            
+            // 全てのアイコンボタンのアクティブクラスを削除
+            document.querySelectorAll('.icon-btn').forEach(btn => {
+                btn.style.border = '2px solid #ddd';
+            });
+            
+            // 選択されたアイコンボタンをハイライト
+            if (icon === null) {
+                document.getElementById('icon-none').style.border = '3px solid #667eea';
+            } else {
+                event.target.style.border = '3px solid #667eea';
+            }
+        }
+        
+        function selectDeckColor(color) {
+            selectedColor = color;
+            document.getElementById('selectedDeckColor').value = color || '';
+            
+            // 全ての色ボタンのアクティブクラスを削除
+            document.querySelectorAll('.color-picker-btn').forEach(btn => {
+                btn.style.border = '2px solid #ddd';
+            });
+            
+            // 選択された色ボタンをハイライト
+            event.target.style.border = '3px solid #667eea';
+        }
+        
         async function saveDeck() {
             const name = document.getElementById('deckName').value.trim();
             if (!name) {
@@ -7590,10 +7683,17 @@
             
             // v8.02.4: デッキ個別設定の取得
             const useCustomSettings = document.getElementById('deckUseCustomSettings').checked;
+            
+            // v12.00: アイコンと色の取得
+            const icon = document.getElementById('selectedDeckIcon').value || null;
+            const color = document.getElementById('selectedDeckColor').value || null;
+            
             let deckData = {
                 name: name,
                 parentId: parentId,
                 useCustomSettings: useCustomSettings,
+                icon: icon,
+                color: color,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
@@ -7869,6 +7969,80 @@
                     <select id="parentDeckId">
                         <option value="">なし（トップレベル）</option>
                     </select>
+                </div>
+                
+                <!-- v12.00: アイコン選択 -->
+                <div class="input-group">
+                    <label>アイコン</label>
+                    <div id="deckIconSelector" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon(null)" id="icon-none" style="font-size: 18px; padding: 8px 12px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">なし</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📚')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📚</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📖')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📖</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📝')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📝</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('✏️')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">✏️</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📓')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📓</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📕')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📕</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📗')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📗</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📙')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📙</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🎓')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🎓</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🏫')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🏫</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🎒')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🎒</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🔬')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🔬</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🧪')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🧪</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🧬')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🧬</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🔭')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🔭</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📐')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📐</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🧮')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🧮</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🌍')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🌍</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🗺️')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🗺️</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🏛️')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🏛️</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🎨')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🎨</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🖼️')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🖼️</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🎭')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🎭</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('💻')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">💻</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('⚙️')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">⚙️</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🔧')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🔧</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇯🇵')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇯🇵</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇺🇸')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇺🇸</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇬🇧')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇬🇧</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇫🇷')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇫🇷</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇩🇪')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇩🇪</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇪🇸')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇪🇸</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇨🇳')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇨🇳</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🇰🇷')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🇰🇷</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🗣️')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🗣️</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('💬')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">💬</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📊')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📊</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📈')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📈</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('⭐')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">⭐</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('✨')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">✨</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('💡')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">💡</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📁')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📁</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('📂')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">📂</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🎯')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🎯</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🏆')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🏆</button>
+                        <button type="button" class="icon-btn" onclick="selectDeckIcon('🥇')" style="font-size: 24px; padding: 8px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">🥇</button>
+                    </div>
+                    <input type="hidden" id="selectedDeckIcon" value="">
+                </div>
+                
+                <!-- v12.00: 色選択 -->
+                <div class="input-group">
+                    <label>デッキ色</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor(null)" style="padding: 10px 16px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">なし</button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#e74c3c')" style="padding: 10px 20px; border: 2px solid #ddd; background: #e74c3c; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#e67e22')" style="padding: 10px 20px; border: 2px solid #ddd; background: #e67e22; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#f39c12')" style="padding: 10px 20px; border: 2px solid #ddd; background: #f39c12; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#f1c40f')" style="padding: 10px 20px; border: 2px solid #ddd; background: #f1c40f; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#2ecc71')" style="padding: 10px 20px; border: 2px solid #ddd; background: #2ecc71; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#1abc9c')" style="padding: 10px 20px; border: 2px solid #ddd; background: #1abc9c; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#3498db')" style="padding: 10px 20px; border: 2px solid #ddd; background: #3498db; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#9b59b6')" style="padding: 10px 20px; border: 2px solid #ddd; background: #9b59b6; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#34495e')" style="padding: 10px 20px; border: 2px solid #ddd; background: #34495e; border-radius: 6px; cursor: pointer;"></button>
+                        <button type="button" class="color-picker-btn" onclick="selectDeckColor('#95a5a6')" style="padding: 10px 20px; border: 2px solid #ddd; background: #95a5a6; border-radius: 6px; cursor: pointer;"></button>
+                    </div>
+                    <input type="hidden" id="selectedDeckColor" value="">
                 </div>
             </div>
             
