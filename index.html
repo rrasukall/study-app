@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.1.1</title>
+    <title>MyAnkiApp v14.01</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.1.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2407,6 +2407,7 @@
                         <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
                         <button class="btn btn-danger" id="clearPageMarkersBtn" onclick="clearPageMarkers()">ページ内全削除</button>
                         <button class="btn btn-danger" id="clearAllMarkersBtn" onclick="clearAllMarkers()">PDF内全削除</button>
+                        ｜ <button class="btn" onclick="openMarkerSearch()" style="font-size: 13px; background: #3498db; color: white;">🔍 マーカー情報検索</button>
                     </div>
 
                     <div class="pdf-controls-row">
@@ -2963,7 +2964,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.1.1',
+                    appVersion: 'v14.01',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3054,7 +3055,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.1.1',
+                    appVersion: 'v14.01',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -9852,6 +9853,8 @@
             const deckModal = document.getElementById('deckModal');
             const cardEditModal = document.getElementById('cardEditModal');
             const deckSelectorModal = document.getElementById('deckSelectorModal');
+            const markerSearchModal = document.getElementById('markerSearchModal');
+            const markerPreviewModal = document.getElementById('markerPreviewModal');
             
             if (event.target === deckModal) {
                 closeModal();
@@ -9861,6 +9864,12 @@
             }
             if (event.target === deckSelectorModal) {
                 closeDeckSelectorModal();
+            }
+            if (event.target === markerSearchModal) {
+                closeMarkerSearchModal();
+            }
+            if (event.target === markerPreviewModal) {
+                closeMarkerPreviewModal();
             }
         }
         
@@ -10006,6 +10015,387 @@
         window.addEventListener('load', () => {
             loadDecks();
         });
+        
+        // ============================================
+        // v14.00.2: マーカー情報検索機能
+        // ============================================
+        
+        // グローバル変数：検索結果を保持
+        let searchedMarkerData = [];
+        let selectedMarkerData = null;
+        
+        // マーカー情報検索モーダルを開く
+        function openMarkerSearch() {
+            if (!currentPdfHash) {
+                alert('PDFが読み込まれていません');
+                return;
+            }
+            
+            // 現在のPDF情報を表示
+            const currentInfo = `${currentPdfMetadata.fileName} (${currentPdfMetadata.totalPages}ページ、${(currentPdfMetadata.fileSize / 1024 / 1024).toFixed(2)}MB)`;
+            document.getElementById('currentPdfInfo').textContent = currentInfo;
+            
+            // 検索結果をクリア
+            document.getElementById('searchResultsContainer').style.display = 'none';
+            document.getElementById('noResultsMessage').style.display = 'none';
+            
+            document.getElementById('markerSearchModal').style.display = 'block';
+        }
+        
+        // マーカー情報検索モーダルを閉じる
+        function closeMarkerSearchModal() {
+            document.getElementById('markerSearchModal').style.display = 'none';
+        }
+        
+        // ファイル名の類似度を計算（シンプルな部分一致率）
+        function calculateSimilarity(str1, str2) {
+            if (!str1 || !str2) return 0;
+            
+            const longer = str1.length > str2.length ? str1.toLowerCase() : str2.toLowerCase();
+            const shorter = str1.length > str2.length ? str2.toLowerCase() : str1.toLowerCase();
+            
+            if (longer.length === 0) return 1.0;
+            
+            // 部分一致のカウント
+            let matches = 0;
+            for (let i = 0; i < shorter.length; i++) {
+                if (longer.includes(shorter[i])) {
+                    matches++;
+                }
+            }
+            
+            return matches / longer.length;
+        }
+        
+        // PDFマーカー情報を検索
+        async function searchPdfMarkers() {
+            if (!currentPdfHash) {
+                alert('PDFが読み込まれていません');
+                return;
+            }
+            
+            const searchByFileName = document.getElementById('searchByFileName').checked;
+            const searchByPageCount = document.getElementById('searchByPageCount').checked;
+            const searchByFileSize = document.getElementById('searchByFileSize').checked;
+            
+            try {
+                // すべてのpdfMarkersドキュメントを取得
+                const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+                
+                searchedMarkerData = [];
+                
+                pdfMarkersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const pdfHash = doc.id;
+                    
+                    // 現在のPDFは除外
+                    if (pdfHash === currentPdfHash) return;
+                    
+                    // メタデータがない場合はスキップ
+                    if (!data.fileName || !data.totalPages || !data.fileSize) return;
+                    
+                    let score = 0;
+                    
+                    // ファイル名の一致度
+                    if (searchByFileName) {
+                        const similarity = calculateSimilarity(currentPdfMetadata.fileName, data.fileName);
+                        if (similarity >= 0.8) {
+                            score += 10;
+                        } else if (similarity >= 0.5) {
+                            score += 7;
+                        } else if (similarity >= 0.3) {
+                            score += 3;
+                        }
+                    }
+                    
+                    // 総ページ数の一致
+                    if (searchByPageCount) {
+                        const pageDiff = Math.abs(currentPdfMetadata.totalPages - data.totalPages);
+                        if (pageDiff === 0) {
+                            score += 5;
+                        } else if (pageDiff === 1) {
+                            score += 3;
+                        } else if (pageDiff === 2) {
+                            score += 1;
+                        } else {
+                            // ページ数が大きく異なる場合は候補から除外
+                            return;
+                        }
+                    }
+                    
+                    // ファイルサイズの近似
+                    if (searchByFileSize) {
+                        const sizeDiff = Math.abs(currentPdfMetadata.fileSize - data.fileSize) / currentPdfMetadata.fileSize;
+                        if (sizeDiff <= 0.05) {
+                            score += 3;
+                        } else if (sizeDiff <= 0.10) {
+                            score += 1;
+                        }
+                    }
+                    
+                    // スコアが0より大きい場合のみ追加
+                    if (score > 0) {
+                        // マーカー数をカウント
+                        let markerCount = 0;
+                        if (data.markers) {
+                            Object.keys(data.markers).forEach(page => {
+                                markerCount += data.markers[page].length;
+                            });
+                        }
+                        
+                        searchedMarkerData.push({
+                            pdfHash: pdfHash,
+                            fileName: data.fileName,
+                            totalPages: data.totalPages,
+                            fileSize: data.fileSize,
+                            lastUpdated: data.lastUpdated,
+                            markerCount: markerCount,
+                            markers: data.markers,
+                            score: score
+                        });
+                    }
+                });
+                
+                // スコアの高い順にソート
+                searchedMarkerData.sort((a, b) => b.score - a.score);
+                
+                // 結果を表示
+                displaySearchResults();
+                
+            } catch (error) {
+                console.error('検索エラー:', error);
+                alert('検索中にエラーが発生しました');
+            }
+        }
+        
+        // 検索結果を表示
+        function displaySearchResults() {
+            const resultsContainer = document.getElementById('searchResults');
+            const resultsDiv = document.getElementById('searchResultsContainer');
+            const noResultsDiv = document.getElementById('noResultsMessage');
+            
+            if (searchedMarkerData.length === 0) {
+                resultsDiv.style.display = 'none';
+                noResultsDiv.style.display = 'block';
+                return;
+            }
+            
+            resultsDiv.style.display = 'block';
+            noResultsDiv.style.display = 'none';
+            
+            resultsContainer.innerHTML = '';
+            
+            searchedMarkerData.forEach(data => {
+                const resultItem = document.createElement('div');
+                resultItem.style.cssText = 'border: 2px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: white;';
+                
+                // 星の表示
+                const maxStars = 5;
+                const stars = Math.min(Math.ceil(data.score / 3), maxStars);
+                const starDisplay = '★'.repeat(stars) + '☆'.repeat(maxStars - stars);
+                
+                // 最終更新日時のフォーマット
+                const lastUpdatedDate = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString('ja-JP') : '不明';
+                
+                resultItem.innerHTML = `
+                    <div style="display: flex; align-items: start; gap: 10px; margin-bottom: 10px;">
+                        <div style="font-size: 24px;">📄</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">${data.fileName}</div>
+                            <div style="color: #667eea; margin-bottom: 8px;">一致度: ${starDisplay} (${data.score}点)</div>
+                            <div style="color: #666; font-size: 14px; line-height: 1.6;">
+                                ページ数: ${data.totalPages}ページ<br>
+                                ファイルサイズ: ${(data.fileSize / 1024 / 1024).toFixed(2)}MB<br>
+                                マーカー数: ${data.markerCount}個<br>
+                                最終更新: ${lastUpdatedDate}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn btn-secondary" onclick="openMarkerPreview('${data.pdfHash}')" style="flex: 1;">プレビュー</button>
+                        <button class="btn" onclick="openMarkerPreview('${data.pdfHash}')" style="flex: 1;">この情報を適用</button>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(resultItem);
+            });
+        }
+        
+        // マーカープレビューを開く
+        function openMarkerPreview(pdfHash) {
+            const data = searchedMarkerData.find(d => d.pdfHash === pdfHash);
+            if (!data) {
+                alert('データが見つかりません');
+                return;
+            }
+            
+            selectedMarkerData = data;
+            
+            // PDF情報を表示
+            const lastUpdatedDate = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString('ja-JP') : '不明';
+            document.getElementById('previewPdfInfo').innerHTML = `
+                <strong>ファイル名:</strong> ${data.fileName}<br>
+                <strong>ページ数:</strong> ${data.totalPages}ページ<br>
+                <strong>ファイルサイズ:</strong> ${(data.fileSize / 1024 / 1024).toFixed(2)}MB<br>
+                <strong>最終更新:</strong> ${lastUpdatedDate}
+            `;
+            
+            // マーカー統計を計算
+            const colorCounts = { yellow: 0, red: 0, green: 0, blue: 0 };
+            const pageMarkerCounts = {};
+            let totalMarkers = 0;
+            
+            if (data.markers) {
+                Object.keys(data.markers).forEach(pageNum => {
+                    const markers = data.markers[pageNum];
+                    pageMarkerCounts[pageNum] = markers.length;
+                    totalMarkers += markers.length;
+                    
+                    markers.forEach(marker => {
+                        if (colorCounts[marker.color] !== undefined) {
+                            colorCounts[marker.color]++;
+                        }
+                    });
+                });
+            }
+            
+            // マーカー統計を表示
+            const yellowPercent = totalMarkers > 0 ? ((colorCounts.yellow / totalMarkers) * 100).toFixed(0) : 0;
+            const redPercent = totalMarkers > 0 ? ((colorCounts.red / totalMarkers) * 100).toFixed(0) : 0;
+            const greenPercent = totalMarkers > 0 ? ((colorCounts.green / totalMarkers) * 100).toFixed(0) : 0;
+            const bluePercent = totalMarkers > 0 ? ((colorCounts.blue / totalMarkers) * 100).toFixed(0) : 0;
+            
+            document.getElementById('markerStats').innerHTML = `
+                <div style="font-size: 16px; margin-bottom: 15px;"><strong>総マーカー数:</strong> ${totalMarkers}個</div>
+                <div style="display: flex; flex-direction: column; gap: 8px; padding-left: 20px;">
+                    <div>├ 黄色: ${colorCounts.yellow}個 (${yellowPercent}%)</div>
+                    <div>├ 赤色: ${colorCounts.red}個 (${redPercent}%)</div>
+                    <div>├ 緑色: ${colorCounts.green}個 (${greenPercent}%)</div>
+                    <div>└ 青色: ${colorCounts.blue}個 (${bluePercent}%)</div>
+                </div>
+            `;
+            
+            // ページごとの分布を表示
+            const distributionHTML = [];
+            const sortedPages = Object.keys(pageMarkerCounts).sort((a, b) => parseInt(a) - parseInt(b));
+            
+            if (sortedPages.length > 0) {
+                sortedPages.forEach(pageNum => {
+                    distributionHTML.push(`<div style="padding: 5px 0;">ページ ${pageNum}: ${pageMarkerCounts[pageNum]}個</div>`);
+                });
+            } else {
+                distributionHTML.push('<div style="color: #999;">マーカー情報がありません</div>');
+            }
+            
+            document.getElementById('markerDistribution').innerHTML = distributionHTML.join('');
+            
+            // 学習統計（将来的に実装）
+            document.getElementById('studyStatsSection').style.display = 'none';
+            
+            document.getElementById('markerPreviewModal').style.display = 'block';
+        }
+        
+        // マーカープレビューモーダルを閉じる
+        function closeMarkerPreviewModal() {
+            document.getElementById('markerPreviewModal').style.display = 'none';
+        }
+        
+        // マーカー情報適用の確認
+        async function confirmApplyMarkerData() {
+            if (!selectedMarkerData) {
+                alert('適用するデータが選択されていません');
+                return;
+            }
+            
+            // 現在のマーカー数を確認
+            let currentMarkerCount = 0;
+            if (pdfMarkers[currentPdfHash]) {
+                Object.keys(pdfMarkers[currentPdfHash]).forEach(pageNum => {
+                    currentMarkerCount += pdfMarkers[currentPdfHash][pageNum].length;
+                });
+            }
+            
+            // 確認ダイアログ
+            const message = `以下のマーカー情報を現在のPDFに適用します:\n\n` +
+                `・元のファイル名: ${selectedMarkerData.fileName}\n` +
+                `・マーカー数: ${selectedMarkerData.markerCount}個\n` +
+                `・最終更新: ${selectedMarkerData.lastUpdated ? new Date(selectedMarkerData.lastUpdated).toLocaleString('ja-JP') : '不明'}\n\n` +
+                `注意:\n` +
+                `・現在のPDFのマーカー情報（${currentMarkerCount}個）は失われます\n` +
+                `・適用後は元に戻せません\n` +
+                `・事前にバックアップすることを推奨します\n\n` +
+                `適用しますか？`;
+            
+            if (!confirm(message)) {
+                return;
+            }
+            
+            // ページ数不一致の場合の処理
+            if (selectedMarkerData.totalPages !== currentPdfMetadata.totalPages) {
+                const pageDiffMessage = `ページ数が異なります:\n` +
+                    `旧PDF: ${selectedMarkerData.totalPages}ページ\n` +
+                    `現在のPDF: ${currentPdfMetadata.totalPages}ページ\n\n` +
+                    `現在のPDFに存在するページのマーカーのみ適用します。\n` +
+                    `続行しますか？`;
+                
+                if (!confirm(pageDiffMessage)) {
+                    return;
+                }
+            }
+            
+            // マーカー情報を適用
+            await applyMarkerData();
+        }
+        
+        // マーカー情報を適用
+        async function applyMarkerData() {
+            if (!selectedMarkerData || !currentPdfHash) {
+                return;
+            }
+            
+            try {
+                // 新しいマーカー情報を作成
+                const newMarkers = {};
+                
+                if (selectedMarkerData.markers) {
+                    Object.keys(selectedMarkerData.markers).forEach(pageNum => {
+                        const pageNumber = parseInt(pageNum);
+                        
+                        // 現在のPDFのページ範囲内かチェック
+                        if (pageNumber >= 1 && pageNumber <= currentPdfMetadata.totalPages) {
+                            newMarkers[pageNum] = selectedMarkerData.markers[pageNum];
+                        }
+                    });
+                }
+                
+                // グローバル変数を更新
+                pdfMarkers[currentPdfHash] = newMarkers;
+                
+                // Firestoreに保存
+                await saveMarkersToFirebase();
+                
+                // 現在のページのマーカーを再描画
+                drawMarkers();
+                
+                // モーダルを閉じる
+                closeMarkerPreviewModal();
+                closeMarkerSearchModal();
+                
+                // 警告メッセージ
+                alert('マーカー情報を適用しました。\n\n' +
+                    '⚠️ PDFの内容が変更されている場合、\n' +
+                    'マーカー位置がずれる可能性があります。\n' +
+                    '適用後、各マーカーの位置を確認してください。');
+                
+            } catch (error) {
+                console.error('適用エラー:', error);
+                alert('マーカー情報の適用中にエラーが発生しました');
+            }
+        }
+        
+        // ============================================
+        // v14.00.2: マーカー情報検索機能 ここまで
+        // ============================================
     </script>
     
     <div id="deckModal" class="modal">
@@ -10260,6 +10650,93 @@
             <div style="margin-top: 20px;">
                 <button class="btn" onclick="confirmDeckMove()" id="confirmMoveBtn" disabled>移動する</button>
                 <button class="btn btn-secondary" onclick="closeDeckSelectorModal()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- v14.00.2: マーカー情報検索モーダル -->
+    <div id="markerSearchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeMarkerSearchModal()">&times;</span>
+                <h2>マーカー情報検索</h2>
+            </div>
+            
+            <!-- 現在のPDF情報 -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 10px; color: #667eea;">現在のPDF:</div>
+                <div id="currentPdfInfo" style="color: #666;"></div>
+            </div>
+            
+            <!-- 検索オプション -->
+            <div style="margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 10px;">検索条件:</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="searchByFileName" checked>
+                        <span>ファイル名で検索</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="searchByPageCount" checked>
+                        <span>総ページ数で絞り込み</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="searchByFileSize" checked>
+                        <span>ファイルサイズで絞り込み</span>
+                    </label>
+                </div>
+            </div>
+            
+            <button class="btn" onclick="searchPdfMarkers()" style="width: 100%; margin-bottom: 20px;">検索</button>
+            
+            <!-- 検索結果 -->
+            <div id="searchResultsContainer" style="display: none;">
+                <div style="font-weight: bold; margin-bottom: 15px; color: #667eea;">候補が見つかりました（一致度の高い順）</div>
+                <div id="searchResults" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            
+            <div id="noResultsMessage" style="display: none; text-align: center; padding: 40px; color: #999;">
+                一致する候補が見つかりませんでした
+            </div>
+            
+            <button class="btn btn-secondary" onclick="closeMarkerSearchModal()" style="width: 100%; margin-top: 20px;">閉じる</button>
+        </div>
+    </div>
+    
+    <!-- v14.00.2: マーカープレビューモーダル -->
+    <div id="markerPreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <span class="close" onclick="closeMarkerPreviewModal()">&times;</span>
+                <h2>マーカー情報プレビュー</h2>
+            </div>
+            
+            <!-- PDF情報 -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div id="previewPdfInfo" style="color: #666;"></div>
+            </div>
+            
+            <!-- マーカー統計 -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">マーカー統計</h3>
+                <div id="markerStats" style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px;"></div>
+            </div>
+            
+            <!-- ページごとの分布 -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">ページごとのマーカー分布</h3>
+                <div id="markerDistribution" style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            
+            <!-- 学習統計 -->
+            <div id="studyStatsSection" style="display: none; margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">学習統計</h3>
+                <div id="studyStats" style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px;"></div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="confirmApplyMarkerData()" style="flex: 1;">この情報を適用</button>
+                <button class="btn btn-secondary" onclick="closeMarkerPreviewModal()" style="flex: 1;">閉じる</button>
             </div>
         </div>
     </div>
