@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.02.1</title>
+    <title>MyAnkiApp v10.02.2</title>
     <style>
         * {
             margin: 0;
@@ -1166,7 +1166,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.02.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.02.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1555,7 +1555,7 @@
                             <option value="manual">手動順序</option>
                             <option value="createdDate">作成日順</option>
                             <option value="lastStudied">最終学習日順</option>
-                            <option value="accuracy">正答率順</option>
+                            <option value="studyCount">学習回数順</option>
                             <option value="cardType">カードタイプ順</option>
                             <option value="tags">タグ順</option>
                         </select>
@@ -3989,13 +3989,20 @@
                     stats.push(`📖 未学習`);
                 }
                 
-                // 正答率と学習回数
+                // v10.02.2: 学習回数（タイピング式は正答率も表示）
                 const reps = card.repetitions || 0;
                 const lapses = card.lapses || 0;
                 const total = reps + lapses;
+                
                 if (total > 0) {
-                    const accuracy = Math.round((reps / total) * 100);
-                    stats.push(`✅ ${accuracy}% (${reps}回)`);
+                    if (card.type === 'typing') {
+                        // タイピング式：学習回数と正答率
+                        const accuracy = Math.round((reps / total) * 100);
+                        stats.push(`🔄 学習${total}回（正答率${accuracy}%：正解${reps}/総数${total}）`);
+                    } else {
+                        // 基本・穴埋め：学習回数のみ
+                        stats.push(`🔄 学習${total}回`);
+                    }
                 }
                 
                 return stats.join(' ');
@@ -4328,18 +4335,11 @@
                     });
                     break;
                     
-                case 'accuracy':
+                case 'studyCount':
                     sortedCards.sort((a, b) => {
-                        // 正答率計算（仮）: repetitions / (repetitions + lapses)
                         const repsA = a.repetitions || 0;
-                        const lapsesA = a.lapses || 0;
-                        const accuracyA = (repsA + lapsesA) > 0 ? repsA / (repsA + lapsesA) : 0;
-                        
                         const repsB = b.repetitions || 0;
-                        const lapsesB = b.lapses || 0;
-                        const accuracyB = (repsB + lapsesB) > 0 ? repsB / (repsB + lapsesB) : 0;
-                        
-                        return sortOrder === 'asc' ? accuracyA - accuracyB : accuracyB - accuracyA;
+                        return sortOrder === 'asc' ? repsA - repsB : repsB - repsA;
                     });
                     break;
                     
