@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.5</title>
+    <title>MyAnkiApp v12.01.6</title>
     <style>
         * {
             margin: 0;
@@ -1275,7 +1275,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.5</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.6</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1671,6 +1671,16 @@
                         <select id="sortOrder" onchange="sortCards()">
                             <option value="asc">昇順</option>
                             <option value="desc">降順</option>
+                        </select>
+                    </div>
+                    <!-- v12.01.6: 表示件数選択 -->
+                    <div class="filter-group" style="margin-top: 10px;">
+                        <label for="cardsPerPageSelect" style="margin-right: 10px;">表示件数:</label>
+                        <select id="cardsPerPageSelect" onchange="changeCardsPerPage()">
+                            <option value="50">50件</option>
+                            <option value="100">100件</option>
+                            <option value="200">200件</option>
+                            <option value="999999">全件</option>
                         </select>
                     </div>
                     <div id="cardList"></div>
@@ -2139,8 +2149,9 @@
         let collapsedDecks = JSON.parse(localStorage.getItem('collapsedDecks') || '{}');
         
         // v12.01: ページネーション（カードリスト用）
+        // v12.01.6: 表示件数をlocalStorageから読み込み
         let currentCardPage = 1;
-        let cardsPerPage = 50;
+        let cardsPerPage = parseInt(localStorage.getItem('cardsPerPage') || '50');
         let totalFilteredCards = 0;
         
         let pdfDB = null;
@@ -4336,22 +4347,9 @@
         }
 
         // v6.00: カード一覧表示（デッキ名表示）
-        function displayCardList() {
-            const listEl = document.getElementById('cardList');
-            
-            if (cards.length === 0) {
-                listEl.innerHTML = `
-                    <div class="empty-state">
-                        <h2>カードがありません</h2>
-                        <p>「カード作成」タブから新しいカードを作成してください</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            // v10.02.1: 統計情報を生成する関数
-            // v12.01.2: 次回復習予定日と難易度係数を追加
-            function generateCardStats(card) {
+        // v10.02.1: 統計情報を生成する関数（グローバル化）
+        // v12.01.2: 次回復習予定日と難易度係数を追加
+        function generateCardStats(card) {
                 let stats = [];
                 
                 // 作成日
@@ -4410,6 +4408,43 @@
                 }
                 
                 return stats.join(' ');
+        }
+        
+
+        // v12.01.6: 表示件数変更
+        function changeCardsPerPage() {
+            const select = document.getElementById('cardsPerPageSelect');
+            cardsPerPage = parseInt(select.value);
+            
+            // localStorageに保存
+            localStorage.setItem('cardsPerPage', cardsPerPage);
+            
+            // 1ページ目に戻る
+            currentCardPage = 1;
+            
+            // 再表示
+            displayCardListWithPagination();
+        }
+        
+        // v12.01.6: 初期化時に表示件数セレクターの値を設定
+        window.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('cardsPerPageSelect');
+            if (select) {
+                select.value = cardsPerPage.toString();
+            }
+        });
+
+        function displayCardList() {
+            const listEl = document.getElementById('cardList');
+            
+            if (cards.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <h2>カードがありません</h2>
+                        <p>「カード作成」タブから新しいカードを作成してください</p>
+                    </div>
+                `;
+                return;
             }
             
             let html = '';
