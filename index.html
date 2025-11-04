@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.3</title>
+    <title>MyAnkiApp v12.01.4</title>
     <style>
         * {
             margin: 0;
@@ -1275,7 +1275,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -5085,6 +5085,7 @@
 
         // v12.01: カード複製機能
         // v12.01.3: コレクション名とカードタイプ判定を修正
+        // v12.01.4: loadCards削除、Firestoreの自動更新に任せる
         async function duplicateCard(cardId) {
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
@@ -5129,15 +5130,8 @@
                     }
                 }
                 
+                // Firestoreに追加（onSnapshotリスナーが自動的にUIを更新）
                 await db.collection('flashcards').add(newCard);
-                await loadCards();
-                
-                // フィルターが適用されている場合は再フィルター
-                if (currentDeckFilter) {
-                    filterCards();
-                } else {
-                    displayCardList();
-                }
                 
                 alert('カードを複製しました');
                 
