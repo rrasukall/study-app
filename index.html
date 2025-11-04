@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.01.2</title>
+    <title>MyAnkiApp v12.01.3</title>
     <style>
         * {
             margin: 0;
@@ -1230,21 +1230,7 @@
         }
 
 
-        /* v12.01: インライン編集スタイル */
-        .inline-edit-input {
-            width: 100%;
-            padding: 8px;
-            border: 2px solid #667eea;
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-        }
-        
-        .inline-edit-mode {
-            background: #f0f4ff !important;
-        }
-        
-        /* v12.01: ページネーション */
+/* v12.01: ページネーション */
         .pagination {
             display: flex;
             justify-content: center;
@@ -1289,7 +1275,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.01.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -4454,8 +4440,7 @@
                                 </div>
                             </div>
                             <div class="card-item-content">
-                                <div><strong>問題:</strong> <span class="inline-editable" data-field="question" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${card.question}</span></div>
-                                <div><strong>正解:</strong> <span class="inline-editable" data-field="answer" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${answer}</span></div>
+                                正解: ${answer}
                                 ${card.caseSensitive ? ' <span style="color: #e67e22;">(大文字小文字・全角半角区別)</span>' : ''}
                                 ${tagsHtml}
                             </div>
@@ -4531,8 +4516,7 @@
                                 </div>
                             </div>
                             <div class="card-item-content">
-                                <div><strong>問題:</strong> <span class="inline-editable" data-field="question" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${card.question}</span></div>
-                                <div><strong>答え:</strong> <span class="inline-editable" data-field="answer" data-card-id="${card.id}" ondblclick="startInlineEdit(event)">${card.answer}</span></div>
+                                答え: ${card.answer}
                                 ${tagsHtml}
                             </div>
                             <div class="card-item-actions">
@@ -5097,126 +5081,69 @@
         }
 
 
-        // v12.01: インライン編集機能
-        let inlineEditingElement = null;
-        
-        function setupInlineEdit() {
-            document.querySelectorAll('.inline-editable').forEach(element => {
-                element.addEventListener('dblclick', startInlineEdit);
-            });
-        }
-        
-        function startInlineEdit(e) {
-            if (inlineEditingElement) return; // 既に編集中
-            
-            const element = e.target;
-            const cardId = element.dataset.cardId;
-            const field = element.dataset.field;
-            const currentValue = element.textContent;
-            
-            inlineEditingElement = element;
-            element.classList.add('inline-edit-mode');
-            
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'inline-edit-input';
-            input.value = currentValue;
-            
-            element.textContent = '';
-            element.appendChild(input);
-            input.focus();
-            input.select();
-            
-            input.addEventListener('blur', () => saveInlineEdit(cardId, field, input.value, element, currentValue));
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    input.blur();
-                } else if (e.key === 'Escape') {
-                    cancelInlineEdit(element, currentValue);
-                }
-            });
-        }
-        
-        async function saveInlineEdit(cardId, field, newValue, element, oldValue) {
-            if (!inlineEditingElement) return;
-            
-            newValue = newValue.trim();
-            
-            if (newValue === oldValue || !newValue) {
-                cancelInlineEdit(element, oldValue);
-                return;
-            }
-            
-            try {
-                await db.collection('cards').doc(cardId).update({
-                    [field]: newValue,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                element.classList.remove('inline-edit-mode');
-                element.textContent = newValue;
-                
-                // カード配列も更新
-                const card = cards.find(c => c.id === cardId);
-                if (card) {
-                    card[field] = newValue;
-                }
-                
-            } catch (error) {
-                console.error('インライン編集エラー:', error);
-                alert('保存に失敗しました');
-                cancelInlineEdit(element, oldValue);
-            }
-            
-            inlineEditingElement = null;
-        }
-        
-        function cancelInlineEdit(element, oldValue) {
-            element.classList.remove('inline-edit-mode');
-            element.textContent = oldValue;
-            inlineEditingElement = null;
-        }
 
 
         // v12.01: カード複製機能
+        // v12.01.3: コレクション名とカードタイプ判定を修正
         async function duplicateCard(cardId) {
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
             
-            if (!confirm(`「${card.question}」を複製しますか？`)) {
+            // カードタイプに応じた確認メッセージ
+            let confirmMsg = '';
+            if (card.type === 'typing') {
+                confirmMsg = `「${card.question}」を複製しますか？`;
+            } else if (card.type === 'cloze') {
+                confirmMsg = `穴埋めカード「${card.text.substring(0, 30)}...」を複製しますか？`;
+            } else {
+                confirmMsg = `「${card.question}」を複製しますか？`;
+            }
+            
+            if (!confirm(confirmMsg)) {
                 return;
             }
             
             try {
                 const newCard = {
-                    question: card.question + ' (コピー)',
-                    answer: card.answer,
-                    cardType: card.cardType || 'basic',
+                    type: card.type || 'basic',
                     deckId: card.deckId,
+                    category: card.category || '',
                     tags: card.tags || [],
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // カードタイプ別の追加データをコピー
-                if (card.cardType === 'basic_reverse') {
-                    newCard.enableReverse = card.enableReverse;
-                }
-                if (card.cardType === 'cloze') {
-                    newCard.clozeText = card.clozeText;
-                }
-                if (card.cardType === 'typing') {
-                    newCard.typingAnswer = card.typingAnswer;
-                    newCard.caseSensitive = card.caseSensitive;
-                    newCard.alternativeAnswers = card.alternativeAnswers;
+                // カードタイプ別のデータをコピー
+                if (card.type === 'typing') {
+                    newCard.question = card.question + ' (コピー)';
+                    newCard.answer = card.answer;
+                    newCard.answers = card.answers || [];
+                    newCard.caseSensitive = card.caseSensitive || false;
+                } else if (card.type === 'cloze') {
+                    newCard.text = card.text + ' (コピー)';
+                } else {
+                    // basic または basic-reversed
+                    newCard.question = card.question + ' (コピー)';
+                    newCard.answer = card.answer;
+                    if (card.type === 'basic-reversed') {
+                        newCard.enableReverse = card.enableReverse;
+                    }
                 }
                 
-                await db.collection('cards').add(newCard);
+                await db.collection('flashcards').add(newCard);
                 await loadCards();
-                viewDeckCards(currentDeckFilter);
+                
+                // フィルターが適用されている場合は再フィルター
+                if (currentDeckFilter) {
+                    filterCards();
+                } else {
+                    displayCardList();
+                }
+                
+                alert('カードを複製しました');
                 
             } catch (error) {
                 console.error('カード複製エラー:', error);
-                alert('カードの複製に失敗しました');
+                alert('カードの複製に失敗しました: ' + error.message);
             }
         }
 
