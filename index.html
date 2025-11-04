@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.1</title>
+    <title>MyAnkiApp v14.00.1.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.1.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2271,11 +2271,11 @@
                     
                     <!-- v14.00.1: エクスポート方式選択 -->
                     <div style="margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px; white-space: nowrap;">
                             <input type="radio" name="exportType" value="complete" id="exportTypeComplete" checked onchange="toggleExportOptions()">
                             <span><strong>完全バックアップ（推奨）</strong> - すべてのデータを含む</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="radio" name="exportType" value="custom" id="exportTypeCustom" onchange="toggleExportOptions()">
                             <span><strong>カスタムエクスポート</strong> - 項目を選択してエクスポート</span>
                         </label>
@@ -2283,28 +2283,28 @@
                     
                     <!-- v14.00.1: カスタムエクスポート選択項目 -->
                     <div id="customExportOptions" style="display: none; margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #ddd;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div style="display: grid; grid-template-columns: auto auto; gap: 20px;">
                             <!-- データ項目 -->
                             <div>
                                 <h4 style="margin-bottom: 15px; color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 5px;">データ（5項目）</h4>
                                 <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_decks" checked onchange="checkDependencies()">
                                         <span>デッキ構造</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_flashcards" checked onchange="checkDependencies()">
                                         <span>カードデータ</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_studySessions" checked onchange="checkDependencies()">
                                         <span>学習セッション記録</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_pdfMarkers" checked onchange="checkDependencies()">
                                         <span>PDFマーカー情報</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_pdfMetadata" checked onchange="checkDependencies()">
                                         <span>PDFメタデータ対応表</span>
                                     </label>
@@ -2315,23 +2315,23 @@
                             <div>
                                 <h4 style="margin-bottom: 15px; color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 5px;">設定（5項目）</h4>
                                 <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_theme" checked onchange="checkDependencies()">
                                         <span>テーマ設定</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_fontSize" checked onchange="checkDependencies()">
                                         <span>フォント設定</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_globalStudySettings" checked onchange="checkDependencies()">
                                         <span>グローバル学習設定</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_deckStudySettings" checked onchange="checkDependencies()">
                                         <span>デッキ別学習設定</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                         <input type="checkbox" id="export_uiSettings" checked onchange="checkDependencies()">
                                         <span>UI状態設定</span>
                                     </label>
@@ -2963,7 +2963,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.1',
+                    appVersion: 'v14.00.1.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3054,7 +3054,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.1',
+                    appVersion: 'v14.00.1.1',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
