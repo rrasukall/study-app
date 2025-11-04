@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.03.2</title>
+    <title>MyAnkiApp v10.03.3</title>
     <style>
         * {
             margin: 0;
@@ -1190,7 +1190,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.03.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.03.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3149,7 +3149,14 @@
                     return;
                 }
                 
-                const correctAnswer = card.answer;
+                // v10.03.3: answerフィールドのチェック
+                const correctAnswer = card.answer || '';
+                if (!correctAnswer) {
+                    console.error('Card answer is undefined or empty');
+                    alert('エラー: カードの正解データが設定されていません');
+                    return;
+                }
+                
                 const caseSensitive = card.caseSensitive || false;
                 
                 console.log('Correct answer:', correctAnswer);
@@ -3162,6 +3169,7 @@
                 } else {
                     // 大文字小文字・全角半角を正規化
                     const normalize = (str) => {
+                        if (!str) return '';
                         return str.replace(/[A-Z]/g, c => c.toLowerCase())
                                   .replace(/[Ａ-Ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0).toLowerCase())
                                   .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
@@ -3176,6 +3184,9 @@
                 }
                 
                 console.log('Is correct:', isCorrect);
+                
+                // v10.03.3: 判定結果をセッションに保存（正答率計算用）
+                studySession.lastTypingResult = isCorrect;
                 
                 // 結果表示
                 input.disabled = true;
@@ -3198,11 +3209,54 @@
                     `;
                 }
                 
-                // コントロールを更新
+                // v10.03.3: 4つのボタンを表示（ユーザーが評価を選択）
+                const card = studySession.cards[studySession.currentCardIndex];
+                const settings = getStudySettings(card.deckId);
+                
+                // 次回復習時間を計算（プレビュー用）
+                let timeAgain = '1分';
+                let timeHard = '10分';
+                let timeGood = '10分';
+                let timeEasy = '4日';
+                
+                if (card.state === 'new' || card.state === 'learning') {
+                    timeAgain = `${settings.learningSteps[0]}分`;
+                    timeHard = card.learningStep < settings.learningSteps.length ? 
+                              `${settings.learningSteps[card.learningStep]}分` : `${settings.graduatingInterval}日`;
+                    timeGood = card.learningStep + 1 < settings.learningSteps.length ?
+                              `${settings.learningSteps[card.learningStep + 1]}分` : `${settings.graduatingInterval}日`;
+                    timeEasy = `${settings.easyInterval}日`;
+                } else {
+                    timeAgain = `${settings.learningSteps[0]}分`;
+                    timeHard = `${Math.round(card.interval * 1.2)}日`;
+                    timeGood = `${Math.round(card.interval * card.easeFactor)}日`;
+                    timeEasy = `${Math.round(card.interval * card.easeFactor * settings.easyBonus)}日`;
+                }
+                
                 const controls = document.getElementById('studyControls');
                 controls.innerHTML = `
-                    <div style="text-align: center;">
-                        <button class="btn" onclick="rateTypingCard(${isCorrect})">次へ</button>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <div style="margin-bottom: 15px; color: rgba(255,255,255,0.8);">
+                            学習の難易度を評価してください
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            <button class="btn" onclick="rateTypingCardWithJudgment('again')" style="min-width: 100px; background: #e74c3c;">
+                                <div>もう一度</div>
+                                <div style="font-size: 12px; margin-top: 5px;">${timeAgain}</div>
+                            </button>
+                            <button class="btn" onclick="rateTypingCardWithJudgment('hard')" style="min-width: 100px; background: #e67e22;">
+                                <div>難しい</div>
+                                <div style="font-size: 12px; margin-top: 5px;">${timeHard}</div>
+                            </button>
+                            <button class="btn" onclick="rateTypingCardWithJudgment('good')" style="min-width: 100px; background: #2ecc71;">
+                                <div>普通</div>
+                                <div style="font-size: 12px; margin-top: 5px;">${timeGood}</div>
+                            </button>
+                            <button class="btn" onclick="rateTypingCardWithJudgment('easy')" style="min-width: 100px; background: #3498db;">
+                                <div>簡単</div>
+                                <div style="font-size: 12px; margin-top: 5px;">${timeEasy}</div>
+                            </button>
+                        </div>
                     </div>
                 `;
             } catch (error) {
@@ -3211,14 +3265,18 @@
             }
         }
         
-        // v10.03: タイピング式カードの評価（自動）
-        async function rateTypingCard(isCorrect) {
+        // v10.03.3: タイピング式カードの評価（判定結果とユーザー評価を分離）
+        async function rateTypingCardWithJudgment(userRating) {
             const card = studySession.cards[studySession.currentCardIndex];
             
-            // 正解なら「簡単」、不正解なら「もう一度」として処理
-            const quality = isCorrect ? 'easy' : 'again';
+            // 判定結果を取得（正答率計算用）
+            const wasCorrect = studySession.lastTypingResult || false;
             
-            await rateCard(quality);
+            // 正答率の記録：正解ならrepetitions++、不正解ならlapses++
+            // これはrateCard関数内で処理される
+            
+            // ユーザーが選択した評価で学習間隔を決定
+            await rateCard(userRating);
         }
         
         // v8.00: 答えを表示
@@ -3230,6 +3288,26 @@
         // v8.00: カードを評価
         async function rateCard(rating) {
             const card = studySession.cards[studySession.currentCardIndex];
+            
+            // v10.03.3: タイピング式カードの正答率記録（専用フィールド）
+            if (card.type === 'typing' && studySession.lastTypingResult !== undefined) {
+                // 判定結果に基づいて正答率を記録（SM-2とは独立）
+                if (!card.typingCorrectCount) card.typingCorrectCount = 0;
+                if (!card.typingTotalCount) card.typingTotalCount = 0;
+                
+                card.typingTotalCount++;
+                if (studySession.lastTypingResult) {
+                    card.typingCorrectCount++;
+                    console.log('タイピング判定: 正解');
+                } else {
+                    console.log('タイピング判定: 不正解');
+                }
+                
+                console.log(`タイピング正答率: ${card.typingCorrectCount}/${card.typingTotalCount} = ${Math.round(card.typingCorrectCount/card.typingTotalCount*100)}%`);
+                
+                // 判定結果をクリア
+                studySession.lastTypingResult = undefined;
+            }
             
             // v8.02.3: 評価カウントを記録
             if (rating === 'again') studySession.sessionRatings.again++;
@@ -3273,17 +3351,26 @@
             // Firestoreに保存
             try {
                 // v8.02.3: カード情報の保存
+                // v10.03.3: タイピング式カードの正答率フィールドを追加
+                const updateData = {
+                    state: card.state,
+                    easeFactor: card.easeFactor,
+                    interval: card.interval,
+                    learningStep: card.learningStep,
+                    repetitions: card.repetitions,
+                    nextReview: card.nextReview,
+                    lastReviewed: card.lastReviewed,
+                    lapses: card.lapses
+                };
+                
+                // タイピング式カードの場合、正答率フィールドも保存
+                if (card.type === 'typing') {
+                    updateData.typingCorrectCount = card.typingCorrectCount || 0;
+                    updateData.typingTotalCount = card.typingTotalCount || 0;
+                }
+                
                 if (incrementWriteCounter()) {
-                    await db.collection('flashcards').doc(card.id).update({
-                        state: card.state,
-                        easeFactor: card.easeFactor,
-                        interval: card.interval,
-                        learningStep: card.learningStep,
-                        repetitions: card.repetitions,
-                        nextReview: card.nextReview,
-                        lastReviewed: card.lastReviewed,
-                        lapses: card.lapses
-                    });
+                    await db.collection('flashcards').doc(card.id).update(updateData);
                 }
                 
                 // v8.02.3: セッション情報の保存（カードごと）
@@ -4187,16 +4274,25 @@
                     stats.push(`📖 未学習`);
                 }
                 
-                // v10.02.2: 学習回数（タイピング式は正答率も表示）
+                // v10.03.3: 学習回数（タイピング式は正答率も表示）
                 const reps = card.repetitions || 0;
                 const lapses = card.lapses || 0;
                 const total = reps + lapses;
                 
                 if (total > 0) {
                     if (card.type === 'typing') {
-                        // タイピング式：学習回数と正答率
-                        const accuracy = Math.round((reps / total) * 100);
-                        stats.push(`🔄 学習${total}回（正答率${accuracy}%：正解${reps}/総数${total}）`);
+                        // v10.03.3: タイピング式は専用フィールドから正答率を計算
+                        const typingTotal = card.typingTotalCount || 0;
+                        const typingCorrect = card.typingCorrectCount || 0;
+                        
+                        if (typingTotal > 0) {
+                            const accuracy = Math.round((typingCorrect / typingTotal) * 100);
+                            stats.push(`🔄 学習${typingTotal}回（正答率${accuracy}%：正解${typingCorrect}/総数${typingTotal}）`);
+                        } else {
+                            // 旧データの場合はrepetitions/lapsesを使用
+                            const accuracy = Math.round((reps / total) * 100);
+                            stats.push(`🔄 学習${total}回（正答率${accuracy}%：正解${reps}/総数${total}）`);
+                        }
                     } else {
                         // 基本・穴埋め：学習回数のみ
                         stats.push(`🔄 学習${total}回`);
