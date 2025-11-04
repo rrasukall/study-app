@@ -3111,65 +3111,104 @@
         
         // v10.03: タイピング式カードの解答チェック機能
         function checkTypingAnswer() {
-            const input = document.getElementById('studyTypingInput');
-            const result = document.getElementById('studyTypingResult');
+            console.log('checkTypingAnswer called');
             
-            if (!input || !result) return;
-            
-            const userAnswer = input.value.trim();
-            if (!userAnswer) {
-                alert('答えを入力してください');
-                return;
-            }
-            
-            const card = studySession.cards[studySession.currentCardIndex];
-            const correctAnswer = card.answer;
-            const caseSensitive = card.caseSensitive || false;
-            
-            // 正誤判定
-            let isCorrect = false;
-            if (caseSensitive) {
-                isCorrect = userAnswer === correctAnswer;
-            } else {
-                // 大文字小文字・全角半角を正規化
-                const normalize = (str) => {
-                    return str.replace(/[A-Z]/g, c => c.toLowerCase())
-                              .replace(/[Ａ-Ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0).toLowerCase())
-                              .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-                              .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-                              .replace(/\s+/g, '');
-                };
-                isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-            }
-            
-            // 結果表示
-            input.disabled = true;
-            if (isCorrect) {
-                input.className = 'typing-input correct';
-                result.innerHTML = `
-                    <div style="color: #2ecc71; font-size: 18px; font-weight: bold;">
-                        ✅ 正解！
+            try {
+                const input = document.getElementById('studyTypingInput');
+                const result = document.getElementById('studyTypingResult');
+                
+                console.log('Input element:', input);
+                console.log('Result element:', result);
+                
+                if (!input || !result) {
+                    console.error('Input or result element not found');
+                    alert('エラー: 入力フィールドが見つかりません');
+                    return;
+                }
+                
+                const userAnswer = input.value.trim();
+                console.log('User answer:', userAnswer);
+                
+                if (!userAnswer) {
+                    alert('答えを入力してください');
+                    return;
+                }
+                
+                if (!studySession || !studySession.cards) {
+                    console.error('studySession not initialized');
+                    alert('エラー: 学習セッションが初期化されていません');
+                    return;
+                }
+                
+                const card = studySession.cards[studySession.currentCardIndex];
+                console.log('Current card:', card);
+                
+                if (!card) {
+                    console.error('Card not found');
+                    alert('エラー: カードが見つかりません');
+                    return;
+                }
+                
+                const correctAnswer = card.answer;
+                const caseSensitive = card.caseSensitive || false;
+                
+                console.log('Correct answer:', correctAnswer);
+                console.log('Case sensitive:', caseSensitive);
+                
+                // 正誤判定
+                let isCorrect = false;
+                if (caseSensitive) {
+                    isCorrect = userAnswer === correctAnswer;
+                } else {
+                    // 大文字小文字・全角半角を正規化
+                    const normalize = (str) => {
+                        return str.replace(/[A-Z]/g, c => c.toLowerCase())
+                                  .replace(/[Ａ-Ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0).toLowerCase())
+                                  .replace(/[ａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                                  .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                                  .replace(/\s+/g, '');
+                    };
+                    const normalizedUser = normalize(userAnswer);
+                    const normalizedCorrect = normalize(correctAnswer);
+                    console.log('Normalized user:', normalizedUser);
+                    console.log('Normalized correct:', normalizedCorrect);
+                    isCorrect = normalizedUser === normalizedCorrect;
+                }
+                
+                console.log('Is correct:', isCorrect);
+                
+                // 結果表示
+                input.disabled = true;
+                if (isCorrect) {
+                    input.className = 'typing-input correct';
+                    result.innerHTML = `
+                        <div style="color: #2ecc71; font-size: 18px; font-weight: bold;">
+                            ✅ 正解！
+                        </div>
+                    `;
+                } else {
+                    input.className = 'typing-input incorrect';
+                    result.innerHTML = `
+                        <div style="color: #e74c3c; font-size: 18px; font-weight: bold; margin-bottom: 10px;">
+                            ❌ 不正解
+                        </div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9);">
+                            <strong>正解:</strong> ${correctAnswer}
+                        </div>
+                    `;
+                }
+                
+                // コントロールを更新
+                const controls = document.getElementById('studyControls');
+                controls.innerHTML = `
+                    <div style="text-align: center;">
+                        <button class="btn" onclick="rateTypingCard(${isCorrect})">次へ</button>
                     </div>
                 `;
-            } else {
-                input.className = 'typing-input incorrect';
-                result.innerHTML = `
-                    <div style="color: #e74c3c; font-size: 18px; font-weight: bold; margin-bottom: 10px;">
-                        ❌ 不正解
-                    </div>
-                    <div style="font-size: 16px; color: rgba(255,255,255,0.9);">
-                        <strong>正解:</strong> ${correctAnswer}
-                    </div>
-                `;
+            } catch (error) {
+                console.error('checkTypingAnswer error:', error);
+                alert('エラーが発生しました: ' + error.message);
             }
-            
-            // コントロールを更新
-            const controls = document.getElementById('studyControls');
-            controls.innerHTML = `
-                <div style="text-align: center;">
-                    <button class="btn" onclick="rateTypingCard(${isCorrect})">次へ</button>
-                </div>
-            `;
         }
         
         // v10.03: タイピング式カードの評価（自動）
