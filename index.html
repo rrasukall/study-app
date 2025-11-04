@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v10.02</title>
+    <title>MyAnkiApp v10.02.1</title>
     <style>
         * {
             margin: 0;
@@ -574,6 +574,17 @@
         }
         
         .card-item-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        /* v10.02.1: カード統計情報 */
+        .card-stats {
+            font-size: 11px;
+            color: #666;
+            margin-left: 15px;
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
@@ -1155,7 +1166,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.02</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v10.02.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3958,9 +3969,42 @@
                 return;
             }
             
+            // v10.02.1: 統計情報を生成する関数
+            function generateCardStats(card) {
+                let stats = [];
+                
+                // 作成日
+                if (card.createdAt) {
+                    const date = card.createdAt.toDate();
+                    const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+                    stats.push(`📅 ${dateStr}`);
+                }
+                
+                // 最終学習日
+                if (card.lastReviewed) {
+                    const date = new Date(card.lastReviewed);
+                    const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+                    stats.push(`📖 ${dateStr}`);
+                } else {
+                    stats.push(`📖 未学習`);
+                }
+                
+                // 正答率と学習回数
+                const reps = card.repetitions || 0;
+                const lapses = card.lapses || 0;
+                const total = reps + lapses;
+                if (total > 0) {
+                    const accuracy = Math.round((reps / total) * 100);
+                    stats.push(`✅ ${accuracy}% (${reps}回)`);
+                }
+                
+                return stats.join(' ');
+            }
+            
             let html = '';
             cards.forEach(card => {
                 const deckName = card.deckId ? getDeckNameById(card.deckId) : (card.category || '');
+                const statsHtml = generateCardStats(card);
                 
                 if (card.type === 'typing') {
                     const answer = card.answer || (card.answers && card.answers.join(', ')) || '';
@@ -3994,6 +4038,7 @@
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
                                 <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                                <span class="card-stats">${statsHtml}</span>
                             </div>
                         </div>
                     `;
@@ -4032,6 +4077,7 @@
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
                                 <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                                <span class="card-stats">${statsHtml}</span>
                             </div>
                         </div>
                     `;
@@ -4065,6 +4111,7 @@
                             <div class="card-item-actions">
                                 <button class="btn" onclick="editCard('${card.id}')">編集</button>
                                 <button class="btn btn-danger" onclick="deleteCard('${card.id}')">削除</button>
+                                <span class="card-stats">${statsHtml}</span>
                             </div>
                         </div>
                     `;
