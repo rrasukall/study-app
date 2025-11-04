@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v12.03.6</title>
+    <title>MyAnkiApp v12.03.7</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
             /* 1. 背景色 */
-            --bg-main: #f5f7fa;
+            --bg-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --bg-section: #ffffff;
             --bg-item: #ffffff;
             --bg-modal: #ffffff;
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.6</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v12.03.7</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2010,7 +2010,7 @@
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <label style="min-width: 140px; font-size: 13px;">メイン背景:</label>
                                     <input type="color" id="color_bg_main" onchange="updateColorVar('--bg-main', this.value)">
-                                    <input type="text" id="text_bg_main" value="#f5f7fa" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-main', this.value)">
+                                    <input type="text" id="text_bg_main" value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" style="width: 100px; font-size: 12px;" onchange="updateColorFromText('--bg-main', this.value)">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <label style="min-width: 140px; font-size: 13px;">セクション背景:</label>
@@ -2596,7 +2596,7 @@
         // v12.03.4: デフォルト色で初期化
         function initializeDefaultColors() {
             const defaultColors = {
-                '--bg-main': '#f5f7fa',
+                '--bg-main': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 '--bg-section': '#ffffff',
                 '--bg-item': '#ffffff',
                 '--bg-modal': '#ffffff',
@@ -2659,7 +2659,7 @@
             
             // ライトモードのデフォルト値
             const defaultColors = {
-                '--bg-main': '#f5f7fa',
+                '--bg-main': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 '--bg-section': '#ffffff',
                 '--bg-item': '#ffffff',
                 '--bg-modal': '#ffffff',
