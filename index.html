@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.6.1</title>
+    <title>MyAnkiApp v14.02.6.2</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.6.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.6.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -5007,7 +5007,7 @@
             }
         }
         
-        // v14.02.6.1: 孤立カードを編集
+        // v14.02.6.2: 孤立カードを編集（修正版）
         async function editOrphanCard(index) {
             const card = orphanCardsData[index];
             if (!card) {
@@ -5015,9 +5015,50 @@
                 return;
             }
             
-            // 既存のカード編集機能を利用
-            await loadCardForEdit(card.id);
-            openCardEditModal();
+            try {
+                // カード編集モーダルに値を設定
+                document.getElementById('editDeckId').value = card.deckId || '';
+                
+                // タグを読み込む
+                const tags = card.tags || [];
+                document.getElementById('editCardTags').value = tags.join(' ');
+                
+                // 全入力エリアを非表示
+                document.getElementById('editBasicInputs').style.display = 'none';
+                document.getElementById('editClozeInputs').style.display = 'none';
+                document.getElementById('editTypingInputs').style.display = 'none';
+                
+                // カードタイプに応じて表示
+                if (card.type === 'typing') {
+                    document.getElementById('editCardType').value = 'typing';
+                    document.getElementById('editTypingInputs').style.display = 'block';
+                    document.getElementById('editTypingQuestion').value = card.question;
+                    const answer = card.answer || (card.answers && card.answers[0]) || '';
+                    document.getElementById('editTypingAnswer').value = answer;
+                    document.getElementById('editTypingCaseSensitive').checked = card.caseSensitive || false;
+                } else if (card.type === 'cloze') {
+                    document.getElementById('editCardType').value = 'cloze';
+                    document.getElementById('editClozeInputs').style.display = 'block';
+                    document.getElementById('editClozeText').value = card.text;
+                    updateEditClozePreview();
+                } else {
+                    document.getElementById('editCardType').value = 'basic';
+                    document.getElementById('editBasicInputs').style.display = 'block';
+                    document.getElementById('editQuestion').value = card.question;
+                    document.getElementById('editAnswer').value = card.answer;
+                    document.getElementById('editEnableReverse').checked = card.enableReverse || false;
+                }
+                
+                // 編集中のカードIDを設定
+                editingCardId = card.id;
+                
+                // モーダルを開く
+                document.getElementById('cardEditModal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('編集エラー:', error);
+                showToast('❌ カード編集の準備中にエラーが発生しました', 5000, 'error');
+            }
         }
         
         // v14.02.6.1: 孤立カードを個別削除
@@ -5343,7 +5384,7 @@
             }
         }
         
-        // v14.02.6.1: 重複カードを編集
+        // v14.02.6.2: 重複カードを編集（修正版）
         async function editDuplicateCard(groupIndex, cardIndex) {
             const group = duplicateCardsData[groupIndex];
             const card = group[cardIndex];
@@ -5352,9 +5393,50 @@
                 return;
             }
             
-            // 既存のカード編集機能を利用
-            await loadCardForEdit(card.id);
-            openCardEditModal();
+            try {
+                // カード編集モーダルに値を設定
+                document.getElementById('editDeckId').value = card.deckId || '';
+                
+                // タグを読み込む
+                const tags = card.tags || [];
+                document.getElementById('editCardTags').value = tags.join(' ');
+                
+                // 全入力エリアを非表示
+                document.getElementById('editBasicInputs').style.display = 'none';
+                document.getElementById('editClozeInputs').style.display = 'none';
+                document.getElementById('editTypingInputs').style.display = 'none';
+                
+                // カードタイプに応じて表示
+                if (card.type === 'typing') {
+                    document.getElementById('editCardType').value = 'typing';
+                    document.getElementById('editTypingInputs').style.display = 'block';
+                    document.getElementById('editTypingQuestion').value = card.question;
+                    const answer = card.answer || (card.answers && card.answers[0]) || '';
+                    document.getElementById('editTypingAnswer').value = answer;
+                    document.getElementById('editTypingCaseSensitive').checked = card.caseSensitive || false;
+                } else if (card.type === 'cloze') {
+                    document.getElementById('editCardType').value = 'cloze';
+                    document.getElementById('editClozeInputs').style.display = 'block';
+                    document.getElementById('editClozeText').value = card.text;
+                    updateEditClozePreview();
+                } else {
+                    document.getElementById('editCardType').value = 'basic';
+                    document.getElementById('editBasicInputs').style.display = 'block';
+                    document.getElementById('editQuestion').value = card.question;
+                    document.getElementById('editAnswer').value = card.answer;
+                    document.getElementById('editEnableReverse').checked = card.enableReverse || false;
+                }
+                
+                // 編集中のカードIDを設定
+                editingCardId = card.id;
+                
+                // モーダルを開く
+                document.getElementById('cardEditModal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('編集エラー:', error);
+                showToast('❌ カード編集の準備中にエラーが発生しました', 5000, 'error');
+            }
         }
         
         // v14.02.6.1: 重複カードを個別削除
