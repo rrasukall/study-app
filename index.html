@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.6</title>
+    <title>MyAnkiApp v14.02.6.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.6</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.6.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1864,12 +1864,13 @@
                                 <span style="font-size: 20px; font-weight: bold; color: #e74c3c;" id="orphanCardsCount">0件</span>
                             </div>
                             <p style="font-size: 13px; color: #856404; margin-bottom: 10px;">
-                                デッキが存在しないカードが見つかりました。これらのカードは学習に使用できません。
+                                デッキが存在しないカードが見つかりました。デッキに移動するか、編集、または削除できます。
                             </p>
-                            <div id="orphanCardsList" style="max-height: 150px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px;">
+                            <div id="orphanCardsList" style="max-height: 400px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                                <!-- JavaScriptで動的に生成 -->
                             </div>
-                            <button class="btn btn-danger" onclick="deleteOrphanCards()" style="width: 100%;">
-                                🗑️ 孤立カードを削除
+                            <button class="btn btn-danger" onclick="deleteAllOrphanCards()" style="width: 100%;">
+                                🗑️ すべての孤立カードを削除
                             </button>
                         </div>
                         
@@ -4817,19 +4818,64 @@
                 document.getElementById('orphanCardsCount').textContent = `${orphanCardsData.length}件`;
                 
                 const listDiv = document.getElementById('orphanCardsList');
-                listDiv.innerHTML = orphanCardsData.slice(0, 10).map(card => {
-                    const question = card.type === 'basic' ? card.question : 
-                                   card.type === 'cloze' ? card.text : 
-                                   card.question;
-                    return `<div style="padding: 5px; border-bottom: 1px solid #f0f0f0;">
-                        ${question.substring(0, 60)}${question.length > 60 ? '...' : ''}
-                        <span style="color: #999; font-size: 11px;"> (ID: ${card.id.substring(0, 8)}...)</span>
-                    </div>`;
-                }).join('');
-                
-                if (orphanCardsData.length > 10) {
-                    listDiv.innerHTML += `<div style="padding: 5px; color: #999; font-size: 12px;">他 ${orphanCardsData.length - 10}件...</div>`;
-                }
+                listDiv.innerHTML = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f0f0f0; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 8px; text-align: left; width: 40%;">問題</th>
+                                <th style="padding: 8px; text-align: left; width: 30%;">答え</th>
+                                <th style="padding: 8px; text-align: center; width: 15%;">タイプ</th>
+                                <th style="padding: 8px; text-align: center; width: 15%;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${orphanCardsData.map((card, index) => {
+                                const question = card.type === 'basic' ? card.question : 
+                                               card.type === 'cloze' ? card.text : 
+                                               card.question;
+                                const answer = card.type === 'basic' ? card.answer : 
+                                             card.type === 'typing' ? card.answer : 
+                                             '(穴埋め)';
+                                const typeLabel = card.type === 'basic' ? '基本' : 
+                                                card.type === 'cloze' ? '穴埋め' : 
+                                                'タイピング';
+                                
+                                return `<tr style="border-bottom: 1px solid #f0f0f0;" 
+                                           onmouseover="this.style.background='#f8f9fa'" 
+                                           onmouseout="this.style.background='white'">
+                                    <td style="padding: 8px;" title="${question}">
+                                        ${question.substring(0, 40)}${question.length > 40 ? '...' : ''}
+                                    </td>
+                                    <td style="padding: 8px;" title="${answer}">
+                                        ${answer.substring(0, 30)}${answer.length > 30 ? '...' : ''}
+                                    </td>
+                                    <td style="padding: 8px; text-align: center;">
+                                        <span style="background: #e3f2fd; padding: 3px 8px; border-radius: 3px; font-size: 11px;">
+                                            ${typeLabel}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 8px; text-align: center;">
+                                        <button onclick="moveOrphanCardToDeck(${index})" 
+                                                style="background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-right: 3px;"
+                                                title="デッキに移動">
+                                            📁
+                                        </button>
+                                        <button onclick="editOrphanCard(${index})" 
+                                                style="background: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-right: 3px;"
+                                                title="編集">
+                                            ✏️
+                                        </button>
+                                        <button onclick="deleteOrphanCard(${index})" 
+                                                style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;"
+                                                title="削除">
+                                            🗑️
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
             } else {
                 orphanCardsSection.style.display = 'none';
             }
@@ -4899,8 +4945,113 @@
             }
         }
         
-        // v14.02.6: 孤立カードを削除
-        async function deleteOrphanCards() {
+        // v14.02.6.1: 孤立カードをデッキに移動
+        async function moveOrphanCardToDeck(index) {
+            const card = orphanCardsData[index];
+            if (!card) {
+                showToast('カードが見つかりません', 3000, 'error');
+                return;
+            }
+            
+            // デッキ選択用の簡易モーダルを表示
+            const decksSnapshot = await db.collection('decks').orderBy('name').get();
+            const decks = decksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            if (decks.length === 0) {
+                showToast('移動先のデッキがありません。先にデッキを作成してください。', 5000, 'error');
+                return;
+            }
+            
+            const modalHtml = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%;" onclick="event.stopPropagation()">
+                        <h3 style="margin-bottom: 20px;">移動先デッキを選択</h3>
+                        <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                            ${decks.map(deck => `
+                                <div style="padding: 12px; margin-bottom: 8px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                                     onclick="moveCardToDeckConfirm('${card.id}', '${deck.id}', '${deck.name.replace(/'/g, "\\'")}', this.closest('div[style*=\\'position: fixed\\']'))"
+                                     onmouseover="this.style.background='#f0f0f0'; this.style.borderColor='#667eea'"
+                                     onmouseout="this.style.background='white'; this.style.borderColor='#ddd'">
+                                    <div style="font-weight: bold;">${deck.name}</div>
+                                    <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                        カード数: ${deck.cardCount || 0}枚
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button class="btn btn-secondary" onclick="this.closest('div[style*=\\'position: fixed\\']').remove()" style="width: 100%;">キャンセル</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        // v14.02.6.1: カードをデッキに移動確認
+        async function moveCardToDeckConfirm(cardId, deckId, deckName, modalElement) {
+            try {
+                await db.collection('flashcards').doc(cardId).update({
+                    deckId: deckId
+                });
+                
+                showToast(`✅ カードを「${deckName}」に移動しました`, 5000, 'success');
+                
+                modalElement.remove();
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+            } catch (error) {
+                console.error('移動エラー:', error);
+                showToast('❌ 移動中にエラーが発生しました', 5000, 'error');
+            }
+        }
+        
+        // v14.02.6.1: 孤立カードを編集
+        async function editOrphanCard(index) {
+            const card = orphanCardsData[index];
+            if (!card) {
+                showToast('カードが見つかりません', 3000, 'error');
+                return;
+            }
+            
+            // 既存のカード編集機能を利用
+            await loadCardForEdit(card.id);
+            openCardEditModal();
+        }
+        
+        // v14.02.6.1: 孤立カードを個別削除
+        async function deleteOrphanCard(index) {
+            const card = orphanCardsData[index];
+            if (!card) {
+                showToast('カードが見つかりません', 3000, 'error');
+                return;
+            }
+            
+            const question = card.type === 'basic' ? card.question : 
+                           card.type === 'cloze' ? card.text : 
+                           card.question;
+            
+            if (!confirm(`このカードを削除します。\n\n問題: ${question.substring(0, 50)}${question.length > 50 ? '...' : ''}\n\nこの操作は取り消せません。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                await db.collection('flashcards').doc(card.id).delete();
+                
+                showToast('✅ カードを削除しました', 3000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 5000, 'error');
+            }
+        }
+        
+        // v14.02.6.1: すべての孤立カードを削除（元のdeleteOrphanCards）
+        async function deleteAllOrphanCards() {
             if (orphanCardsData.length === 0) {
                 showToast('削除対象がありません', 3000, 'info');
                 return;
@@ -5013,12 +5164,19 @@
             }
         }
         
-        // v14.02.6: 重複カードの詳細を表示（モーダルで）
-        function showDuplicateCardsDetail() {
+        // v14.02.6.1: 重複カードの詳細を表示（モーダルで）- 改善版
+        async function showDuplicateCardsDetail() {
             if (duplicateCardsData.length === 0) {
                 showToast('重複カードがありません', 3000, 'info');
                 return;
             }
+            
+            // デッキ情報を取得
+            const decksSnapshot = await db.collection('decks').get();
+            const decksMap = {};
+            decksSnapshot.docs.forEach(doc => {
+                decksMap[doc.id] = doc.data().name;
+            });
             
             let html = '<div style="max-height: 500px; overflow-y: auto;">';
             
@@ -5030,19 +5188,95 @@
                 const answer = firstCard.type === 'basic' ? firstCard.answer : 
                              firstCard.type === 'typing' ? firstCard.answer : '';
                 
+                // 最も学習が進んでいるカードを判定（easeとintervalで）
+                let bestCardIndex = 0;
+                let bestScore = 0;
+                group.forEach((card, index) => {
+                    const score = (card.ease || 2500) * (card.interval || 1);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestCardIndex = index;
+                    }
+                });
+                
                 html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">グループ ${groupIndex + 1}（${group.length}枚の重複）</div>
-                    <div style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                        <div style="font-size: 13px; color: #666; margin-bottom: 5px;">問題:</div>
-                        <div style="font-size: 14px;">${question.substring(0, 100)}${question.length > 100 ? '...' : ''}</div>
-                        ${answer ? `<div style="font-size: 13px; color: #666; margin-top: 10px; margin-bottom: 5px;">答え:</div>
-                        <div style="font-size: 14px;">${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}</div>` : ''}
+                    <div style="font-weight: bold; color: #667eea; margin-bottom: 10px; font-size: 16px;">
+                        グループ ${groupIndex + 1}（${group.length}枚の重複）
                     </div>
-                    <div style="font-size: 12px; color: #999;">
-                        このグループの重複カードを削除すると、最も新しい1枚だけが残ります。
+                    
+                    <!-- 問題・答えのプレビュー -->
+                    <div style="background: white; padding: 12px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                        <div style="font-size: 13px; color: #666; margin-bottom: 5px; font-weight: bold;">問題:</div>
+                        <div style="font-size: 14px; margin-bottom: 10px;">${question}</div>
+                        ${answer ? `<div style="font-size: 13px; color: #666; margin-bottom: 5px; font-weight: bold;">答え:</div>
+                        <div style="font-size: 14px;">${answer}</div>` : ''}
                     </div>
-                    <button class="btn btn-danger" onclick="deleteDuplicateGroup(${groupIndex})" style="margin-top: 10px; width: 100%;">
-                        このグループの重複を削除（${group.length - 1}枚削除）
+                    
+                    <!-- 各カードの詳細 -->
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: bold; color: #333; margin-bottom: 10px; font-size: 14px;">各カードの詳細:</div>
+                        ${group.map((card, cardIndex) => {
+                            const deckName = decksMap[card.deckId] || '不明なデッキ';
+                            const ease = card.ease || 2500;
+                            const interval = card.interval || 1;
+                            const lapses = card.lapses || 0;
+                            const reviews = card.reviews || 0;
+                            const isBest = cardIndex === bestCardIndex;
+                            
+                            return `<div style="background: ${isBest ? '#e8f5e9' : 'white'}; padding: 12px; border-radius: 5px; margin-bottom: 8px; border: 2px solid ${isBest ? '#4caf50' : '#ddd'}; position: relative;">
+                                ${isBest ? '<div style="position: absolute; top: 8px; right: 8px; background: #4caf50; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">推奨</div>' : ''}
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <div style="font-size: 12px; color: #666;">デッキ</div>
+                                        <div style="font-size: 13px; font-weight: bold; color: #333;">${deckName}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: #666;">復習回数</div>
+                                        <div style="font-size: 13px; font-weight: bold; color: #333;">${reviews}回</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: #666;">難易度係数</div>
+                                        <div style="font-size: 13px; font-weight: bold; color: #333;">${(ease / 1000).toFixed(2)}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: #666;">復習間隔</div>
+                                        <div style="font-size: 13px; font-weight: bold; color: #333;">${interval}日</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: #666;">忘却回数</div>
+                                        <div style="font-size: 13px; font-weight: bold; color: #333;">${lapses}回</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: #666;">ID</div>
+                                        <div style="font-size: 11px; color: #999;">${card.id.substring(0, 12)}...</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 5px;">
+                                    <button onclick="keepThisCard(${groupIndex}, ${cardIndex})" 
+                                            style="flex: 1; background: #4caf50; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;">
+                                        ✓ このカードを残す
+                                    </button>
+                                    <button onclick="editDuplicateCard(${groupIndex}, ${cardIndex})" 
+                                            style="background: #f39c12; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;"
+                                            title="編集">
+                                        ✏️
+                                    </button>
+                                    <button onclick="deleteSingleDuplicateCard(${groupIndex}, ${cardIndex})" 
+                                            style="background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;"
+                                            title="削除">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    
+                    <div style="font-size: 12px; color: #666; background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                        💡 ヒント: 「推奨」マークは学習が最も進んでいるカードです。
+                    </div>
+                    
+                    <button class="btn btn-danger" onclick="deleteDuplicateGroup(${groupIndex})" style="width: 100%;">
+                        このグループの重複を削除（推奨カード以外の${group.length - 1}枚を削除）
                     </button>
                 </div>`;
             });
@@ -5054,8 +5288,8 @@
             
             // 簡易モーダル表示
             const modalHtml = `
-                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 90%; overflow-y: auto;" onclick="event.stopPropagation()">
+                <div id="duplicateCardsModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 900px; width: 90%; max-height: 90%; overflow-y: auto;" onclick="event.stopPropagation()">
                         <h2 style="margin-bottom: 20px;">重複カードの詳細</h2>
                         ${html}
                         <button class="btn btn-secondary" onclick="this.closest('div[style*=\\'position: fixed\\']').remove()" style="margin-top: 20px; width: 100%;">閉じる</button>
@@ -5066,7 +5300,101 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
         
-        // v14.02.6: 特定グループの重複を削除
+        // v14.02.6.1: このカードを残す（他を削除）
+        async function keepThisCard(groupIndex, cardIndex) {
+            const group = duplicateCardsData[groupIndex];
+            if (!group || group.length <= 1) {
+                showToast('削除対象がありません', 3000, 'info');
+                return;
+            }
+            
+            const keepCard = group[cardIndex];
+            const cardsToDelete = group.filter((_, index) => index !== cardIndex);
+            
+            if (!confirm(`選択したカード以外の${cardsToDelete.length}枚を削除します。\n\nこの操作は取り消せません。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                showToast('削除中...', 1000, 'info');
+                
+                const batch = db.batch();
+                cardsToDelete.forEach(card => {
+                    const cardRef = db.collection('flashcards').doc(card.id);
+                    batch.delete(cardRef);
+                });
+                
+                await batch.commit();
+                
+                showToast(`✅ ${cardsToDelete.length}枚の重複カードを削除しました`, 5000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+                // モーダルを閉じる
+                document.getElementById('duplicateCardsModal')?.remove();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 5000, 'error');
+            }
+        }
+        
+        // v14.02.6.1: 重複カードを編集
+        async function editDuplicateCard(groupIndex, cardIndex) {
+            const group = duplicateCardsData[groupIndex];
+            const card = group[cardIndex];
+            if (!card) {
+                showToast('カードが見つかりません', 3000, 'error');
+                return;
+            }
+            
+            // 既存のカード編集機能を利用
+            await loadCardForEdit(card.id);
+            openCardEditModal();
+        }
+        
+        // v14.02.6.1: 重複カードを個別削除
+        async function deleteSingleDuplicateCard(groupIndex, cardIndex) {
+            const group = duplicateCardsData[groupIndex];
+            const card = group[cardIndex];
+            if (!card) {
+                showToast('カードが見つかりません', 3000, 'error');
+                return;
+            }
+            
+            if (group.length <= 2) {
+                showToast('⚠️ このグループには2枚しかありません。1枚削除すると重複ではなくなります。', 5000, 'warning');
+            }
+            
+            if (!confirm('このカードを削除します。\n\nこの操作は取り消せません。続けますか？')) {
+                return;
+            }
+            
+            try {
+                await db.collection('flashcards').doc(card.id).delete();
+                
+                showToast('✅ カードを削除しました', 3000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+                // モーダルを閉じる
+                document.getElementById('duplicateCardsModal')?.remove();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 5000, 'error');
+            }
+        }
+        
+        // v14.02.6.1: 特定グループの重複を削除（推奨カードを残す）
         async function deleteDuplicateGroup(groupIndex) {
             const group = duplicateCardsData[groupIndex];
             if (!group || group.length <= 1) {
@@ -5074,14 +5402,25 @@
                 return;
             }
             
-            if (!confirm(`${group.length - 1}枚の重複カードを削除します。\n\n最も新しい1枚だけが残ります。続けますか？`)) {
+            // 最も学習が進んでいるカードを判定（easeとintervalで）
+            let bestCardIndex = 0;
+            let bestScore = 0;
+            group.forEach((card, index) => {
+                const score = (card.ease || 2500) * (card.interval || 1);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCardIndex = index;
+                }
+            });
+            
+            const keepCard = group[bestCardIndex];
+            const cardsToDelete = group.filter((_, index) => index !== bestCardIndex);
+            
+            if (!confirm(`${cardsToDelete.length}枚の重複カードを削除します。\n\n最も学習が進んでいる1枚（ease: ${((keepCard.ease || 2500) / 1000).toFixed(2)}, interval: ${keepCard.interval || 1}日）を残します。\n\nこの操作は取り消せません。続けますか？`)) {
                 return;
             }
             
             try {
-                // 最も新しいカード（最後のカード）を残し、それ以外を削除
-                const cardsToDelete = group.slice(0, -1);
-                
                 const batch = db.batch();
                 cardsToDelete.forEach(card => {
                     const cardRef = db.collection('flashcards').doc(card.id);
@@ -5099,7 +5438,7 @@
                 await calculateStorageUsage();
                 
                 // モーダルを閉じる
-                document.querySelector('div[style*="position: fixed"]')?.remove();
+                document.getElementById('duplicateCardsModal')?.remove();
                 
             } catch (error) {
                 console.error('削除エラー:', error);
@@ -5107,7 +5446,7 @@
             }
         }
         
-        // v14.02.6: すべての重複を削除
+        // v14.02.6.1: すべての重複を削除（各グループで推奨カードを残す）
         async function deleteAllDuplicates() {
             if (duplicateCardsData.length === 0) {
                 showToast('削除対象がありません', 3000, 'info');
@@ -5116,7 +5455,7 @@
             
             const totalToDelete = duplicateCardsData.reduce((sum, group) => sum + group.length - 1, 0);
             
-            if (!confirm(`${totalToDelete}枚の重複カードを削除します。\n\n各グループで最も新しい1枚だけが残ります。続けますか？`)) {
+            if (!confirm(`${totalToDelete}枚の重複カードを削除します。\n\n各グループで最も学習が進んでいる1枚だけが残ります。続けますか？`)) {
                 return;
             }
             
@@ -5130,8 +5469,19 @@
                 let deletedCount = 0;
                 
                 duplicateCardsData.forEach(group => {
-                    // 最も新しいカード（最後のカード）を残し、それ以外を削除
-                    const cardsToDelete = group.slice(0, -1);
+                    // 最も学習が進んでいるカードを判定（easeとintervalで）
+                    let bestCardIndex = 0;
+                    let bestScore = 0;
+                    group.forEach((card, index) => {
+                        const score = (card.ease || 2500) * (card.interval || 1);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestCardIndex = index;
+                        }
+                    });
+                    
+                    // 推奨カード以外を削除
+                    const cardsToDelete = group.filter((_, index) => index !== bestCardIndex);
                     cardsToDelete.forEach(card => {
                         const cardRef = db.collection('flashcards').doc(card.id);
                         batch.delete(cardRef);
@@ -5165,7 +5515,7 @@
                 await calculateStorageUsage();
                 
                 // モーダルを閉じる
-                document.querySelector('div[style*="position: fixed"]')?.remove();
+                document.getElementById('duplicateCardsModal')?.remove();
                 
             } catch (error) {
                 console.error('削除エラー:', error);
