@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.8</title>
+    <title>MyAnkiApp v14.02.8.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3454,7 +3454,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.8',
+                    appVersion: 'v14.02.8.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3551,7 +3551,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.8',
+                    appVersion: 'v14.02.8.1',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -4654,7 +4654,7 @@
                     }
                     // 古いタイマー状態（7日以上更新なし）
                     else if (data.isComplete === false && data.updatedAt) {
-                        const updatedAtMs = data.updatedAt.toMillis ? data.updatedAt.toMillis() : data.updatedAt;
+                        const updatedAtMs = safeToMillis(data.updatedAt);
                         if (updatedAtMs < sevenDaysAgo) {
                             oldTimerDocs.push(doc);
                         }
@@ -4775,7 +4775,7 @@
                     }
                     // 古いタイマー状態（7日以上更新なし）
                     else if (data.isComplete === false && data.updatedAt) {
-                        const updatedAtMs = data.updatedAt.toMillis ? data.updatedAt.toMillis() : data.updatedAt;
+                        const updatedAtMs = safeToMillis(data.updatedAt);
                         if (updatedAtMs < sevenDaysAgo) {
                             oldTimerDocs.push(doc);
                         }
@@ -6087,7 +6087,7 @@
                 version: '1.0',
                 userId: null,
                 exportDate: new Date().toISOString(),
-                appVersion: 'v14.02.8',
+                appVersion: 'v14.02.8.1',
                 data: {
                     decks: decks,
                     flashcards: flashcards,
@@ -6741,9 +6741,15 @@
             if (integrityCheckResults.warnings.length > 0) {
                 detailsHTML += '<div style="margin-bottom: 15px;"><h4 style="color: #f39c12; margin-bottom: 10px;">⚠️ 警告項目</h4>';
                 integrityCheckResults.warnings.forEach((item, index) => {
+                    const editButton = item.type === 'card' && item.id ? 
+                        `<button onclick="editCardFromIntegrity('${item.id}')" style="background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px;">📝 カードを編集</button>` : '';
+                    
                     detailsHTML += `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 5px; font-size: 13px;">
                         <div><strong>${item.type}</strong> - ${item.message}</div>
-                        ${item.fixable ? '<div style="color: #666; font-size: 12px; margin-top: 5px;">（自動修復可能）</div>' : ''}
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            ${item.fixable ? '<div style="color: #666; font-size: 12px;">（自動修復可能）</div>' : ''}
+                            ${editButton}
+                        </div>
                     </div>`;
                 });
                 detailsHTML += '</div>';
@@ -6753,9 +6759,15 @@
             if (integrityCheckResults.errors.length > 0) {
                 detailsHTML += '<div style="margin-bottom: 15px;"><h4 style="color: #e74c3c; margin-bottom: 10px;">❌ エラー項目</h4>';
                 integrityCheckResults.errors.forEach((item, index) => {
+                    const editButton = item.type === 'card' && item.id ? 
+                        `<button onclick="editCardFromIntegrity('${item.id}')" style="background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-top: 5px;">📝 カードを編集</button>` : '';
+                    
                     detailsHTML += `<div style="background: #f8d7da; padding: 10px; border-radius: 5px; margin-bottom: 5px; font-size: 13px;">
                         <div><strong>${item.type}</strong> - ${item.message}</div>
-                        ${item.fixable ? '<div style="color: #666; font-size: 12px; margin-top: 5px;">（自動修復可能）</div>' : '<div style="color: #666; font-size: 12px; margin-top: 5px;">（手動修正が必要）</div>'}
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            ${item.fixable ? '<div style="color: #666; font-size: 12px;">（自動修復可能）</div>' : '<div style="color: #666; font-size: 12px;">（手動修正が必要）</div>'}
+                            ${editButton}
+                        </div>
                     </div>`;
                 });
                 detailsHTML += '</div>';
@@ -6776,9 +6788,83 @@
             resultsDiv.style.display = 'block';
         }
         
-        // v14.02.8: 自動修復を実行
+        // v14.02.8.1: カードを編集（整合性チェックから）
+        async function editCardFromIntegrity(cardId) {
+            try {
+                // カードタブに切り替え
+                switchSection('cards');
+                
+                // カードを取得して編集モーダルを開く
+                const cardDoc = await db.collection('flashcards').doc(cardId).get();
+                if (cardDoc.exists) {
+                    const card = { id: cardDoc.id, ...cardDoc.data() };
+                    openEditModal(card);
+                    showToast('カード編集画面を開きました', 3000, 'info');
+                } else {
+                    showToast('カードが見つかりませんでした', 3000, 'error');
+                }
+            } catch (error) {
+                console.error('カード編集エラー:', error);
+                showToast('カードを開けませんでした', 3000, 'error');
+            }
+        }
+        
+        // v14.02.8.1: 自動修復を実行（プレビュー付き）
         async function autoFixIntegrityIssues() {
-            if (!confirm('検出された問題を自動修復します。\n\nこの操作は取り消せません。続けますか？')) {
+            // 修復可能な項目をカウントして内容を生成
+            let fixableItems = [];
+            
+            // 警告項目の修復可能項目を収集
+            for (const item of integrityCheckResults.warnings) {
+                if (item.fixable) {
+                    let action = '';
+                    switch (item.fix) {
+                        case 'removeParent':
+                            action = '親デッキの参照を削除';
+                            break;
+                        case 'orphanedCard':
+                            action = '孤立カードを削除';
+                            break;
+                        case 'resetCardType':
+                            action = 'カードタイプを"basic"にリセット';
+                            break;
+                        case 'deleteSession':
+                            action = '孤立セッションを削除';
+                            break;
+                        case 'deletePdfMarker':
+                            action = 'マーカー0個のPDF情報を削除';
+                            break;
+                    }
+                    fixableItems.push({ type: item.type, message: item.message, action: action });
+                }
+            }
+            
+            // エラー項目の修復可能項目を収集
+            for (const item of integrityCheckResults.errors) {
+                if (item.fixable) {
+                    fixableItems.push({ type: item.type, message: item.message, action: '自動修復' });
+                }
+            }
+            
+            if (fixableItems.length === 0) {
+                showToast('修復可能な項目はありません', 3000, 'info');
+                return;
+            }
+            
+            // プレビューメッセージを生成
+            let previewMessage = `以下の${fixableItems.length}件の問題を自動修復します：\n\n`;
+            fixableItems.forEach((item, index) => {
+                previewMessage += `${index + 1}. [${item.type}] ${item.message}\n   → ${item.action}\n\n`;
+            });
+            previewMessage += 'この操作は取り消せません。続けますか？';
+            
+            // 1段階目の確認
+            if (!confirm(previewMessage)) {
+                return;
+            }
+            
+            // 2段階目の確認
+            if (!confirm('本当に実行しますか？\n\n削除されたデータは復元できません。\n\n実行前にバックアップを取ることを推奨します。')) {
                 return;
             }
             
@@ -6800,7 +6886,7 @@
                                 break;
                                 
                             case 'orphanedCard':
-                                // 孤立カードを削除（または未分類デッキに移動）
+                                // 孤立カードを削除
                                 const cardRef = db.collection('flashcards').doc(item.id);
                                 batch.delete(cardRef);
                                 fixedCount++;
@@ -7037,13 +7123,19 @@
         }
         
         // v14.02.10: ストレージ使用量推移グラフを更新
+        // v14.02.10: ストレージ使用量推移グラフを更新
         function updateStorageHistoryChart() {
             const chartDiv = document.getElementById('storageHistoryChart');
+            
+            if (!chartDiv) return;
             
             // localStorageから履歴を読み込み
             const historyStr = localStorage.getItem('storageHistory');
             if (!historyStr) {
-                chartDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 30px;">データがありません</div>';
+                chartDiv.innerHTML = `<div style="text-align: center; color: #999; padding: 30px;">
+                    <div style="font-size: 14px; margin-bottom: 10px;">📊 データ収集中</div>
+                    <div style="font-size: 12px;">ストレージ使用量の履歴を記録しています。<br>データが蓄積されると、グラフが表示されます。</div>
+                </div>`;
                 return;
             }
             
@@ -7053,17 +7145,24 @@
             const last7Days = history.slice(-7);
             
             if (last7Days.length === 0) {
-                chartDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 30px;">データがありません</div>';
+                chartDiv.innerHTML = `<div style="text-align: center; color: #999; padding: 30px;">
+                    <div style="font-size: 14px; margin-bottom: 10px;">📊 データ収集中</div>
+                    <div style="font-size: 12px;">ストレージ使用量の履歴を記録しています。<br>データが蓄積されると、グラフが表示されます。</div>
+                </div>`;
                 return;
             }
             
             // 簡易的なバーチャートを生成
-            const maxUsage = Math.max(...last7Days.map(item => item.usage));
+            const maxUsage = Math.max(...last7Days.map(item => item.usage || 0));
+            
+            // maxUsageが0の場合のフォールバック
+            const chartMaxUsage = maxUsage > 0 ? maxUsage : 1;
             
             let chartHTML = '<div style="display: flex; align-items: flex-end; justify-content: space-around; height: 100%;">';
             
             last7Days.forEach(item => {
-                const height = (item.usage / maxUsage) * 80; // 最大80%の高さ
+                const usage = item.usage || 0;
+                const height = Math.max((usage / chartMaxUsage) * 80, 5); // 最小5pxの高さ
                 const date = new Date(item.date);
                 const dayLabel = `${date.getMonth() + 1}/${date.getDate()}`;
                 
@@ -7072,8 +7171,8 @@
                 else if (item.percentage >= 80) barColor = '#f39c12';
                 else if (item.percentage >= 70) barColor = '#3498db';
                 
-                chartHTML += `<div style="flex: 1; text-align: center; position: relative;">
-                    <div style="background: ${barColor}; width: 80%; margin: 0 auto; height: ${height}px; border-radius: 3px 3px 0 0; position: absolute; bottom: 20px; left: 10%;"></div>
+                chartHTML += `<div style="flex: 1; text-align: center; position: relative; min-height: 100px;">
+                    <div style="background: ${barColor}; width: 80%; margin: 0 auto; height: ${height}px; border-radius: 3px 3px 0 0; position: absolute; bottom: 20px; left: 10%;" title="${usage.toFixed(2)} MB (${item.percentage.toFixed(1)}%)"></div>
                     <div style="font-size: 10px; color: #999; position: absolute; bottom: 0; left: 0; right: 0;">${dayLabel}</div>
                 </div>`;
             });
@@ -7081,6 +7180,34 @@
             chartHTML += '</div>';
             
             chartDiv.innerHTML = chartHTML;
+        }
+        
+        // v14.02.8.1: 安全なTimestamp処理関数
+        function safeToMillis(timestamp) {
+            if (!timestamp) return 0;
+            
+            // Firestoreの Timestamp オブジェクトの場合
+            if (timestamp.toMillis && typeof timestamp.toMillis === 'function') {
+                return timestamp.toMillis();
+            }
+            
+            // seconds と nanoseconds を持つオブジェクトの場合
+            if (timestamp.seconds !== undefined) {
+                return timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000;
+            }
+            
+            // 数値の場合（すでにミリ秒）
+            if (typeof timestamp === 'number') {
+                return timestamp;
+            }
+            
+            // Date オブジェクトの場合
+            if (timestamp instanceof Date) {
+                return timestamp.getTime();
+            }
+            
+            // それ以外の場合は0を返す
+            return 0;
         }
         
         let pdfDoc = null;
@@ -7194,8 +7321,8 @@
                 if (a.order !== b.order) {
                     return a.order - b.order;
                 }
-                const dateA = a.createdAt?.toMillis() || 0;
-                const dateB = b.createdAt?.toMillis() || 0;
+                const dateA = safeToMillis(a.createdAt) || 0;
+                const dateB = safeToMillis(b.createdAt) || 0;
                 return dateB - dateA;
             });
             
@@ -10033,8 +10160,8 @@
                     
                 case 'createdDate':
                     sortedCards.sort((a, b) => {
-                        const dateA = a.createdAt?.toMillis() || 0;
-                        const dateB = b.createdAt?.toMillis() || 0;
+                        const dateA = safeToMillis(a.createdAt) || 0;
+                        const dateB = safeToMillis(b.createdAt) || 0;
                         return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
                     });
                     break;
