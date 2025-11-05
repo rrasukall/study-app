@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.11</title>
+    <title>MyAnkiApp v14.02.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.11</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1734,6 +1734,39 @@
                             <div style="font-size: 24px; font-weight: bold; color: #3498db;" id="firestoreUsage">0%</div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- v14.02.1: ストレージ詳細 -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">📊 ストレージ詳細</h3>
+                    
+                    <!-- 総使用量 -->
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div>
+                                <div style="font-size: 14px; color: #666; margin-bottom: 5px;">総データ量（推定）</div>
+                                <div style="font-size: 32px; font-weight: bold; color: #667eea;" id="totalStorageSize">計算中...</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 14px; color: #666; margin-bottom: 5px;">総ドキュメント数</div>
+                                <div style="font-size: 28px; font-weight: bold; color: #3498db;" id="totalDocuments">0件</div>
+                            </div>
+                        </div>
+                        <div style="background: white; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="storageProgress" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">無料枠: 1GB</div>
+                    </div>
+                    
+                    <!-- コレクション別内訳 -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px;">コレクション別内訳</h4>
+                        <div id="storageBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                            <!-- JavaScriptで動的に生成 -->
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="calculateStorageUsage()" style="width: 100%;">🔄 ストレージ使用量を再計算</button>
                 </div>
                 
                 <!-- v8.02.1: デッキごとの統計 -->
@@ -3015,7 +3048,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.11',
+                    appVersion: 'v14.02.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3106,7 +3139,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.11',
+                    appVersion: 'v14.02.1',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3952,6 +3985,116 @@
             if (usageEl) usageEl.textContent = percentage + '%';
         }
         
+        // v14.02.1: ストレージ使用量を計算
+        async function calculateStorageUsage() {
+            try {
+                const collections = {
+                    flashcards: { name: 'カード', icon: '📇', color: '#667eea' },
+                    decks: { name: 'デッキ', icon: '📚', color: '#3498db' },
+                    studySessions: { name: '学習セッション', icon: '📊', color: '#27ae60' },
+                    studySessionHistory: { name: 'セッション履歴', icon: '📝', color: '#95a5a6' },
+                    pdfMarkers: { name: 'PDFマーカー', icon: '📄', color: '#f39c12' }
+                };
+                
+                let totalSize = 0;
+                let totalDocs = 0;
+                const collectionStats = [];
+                
+                // 各コレクションのデータを取得
+                for (const [collectionName, info] of Object.entries(collections)) {
+                    try {
+                        const snapshot = await db.collection(collectionName).get();
+                        const docCount = snapshot.size;
+                        
+                        // データサイズを推定（JSON文字列のバイト数）
+                        let collectionSize = 0;
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const jsonStr = JSON.stringify(data);
+                            collectionSize += new Blob([jsonStr]).size;
+                        });
+                        
+                        totalSize += collectionSize;
+                        totalDocs += docCount;
+                        
+                        collectionStats.push({
+                            name: info.name,
+                            icon: info.icon,
+                            color: info.color,
+                            count: docCount,
+                            size: collectionSize
+                        });
+                    } catch (err) {
+                        console.warn(`${collectionName}の取得エラー:`, err);
+                    }
+                }
+                
+                // 総データ量を表示
+                const totalSizeEl = document.getElementById('totalStorageSize');
+                const totalDocsEl = document.getElementById('totalDocuments');
+                const progressEl = document.getElementById('storageProgress');
+                
+                if (totalSizeEl) {
+                    const sizeMB = (totalSize / 1024 / 1024).toFixed(2);
+                    totalSizeEl.textContent = sizeMB + ' MB';
+                }
+                
+                if (totalDocsEl) {
+                    totalDocsEl.textContent = totalDocs.toLocaleString() + '件';
+                }
+                
+                // プログレスバー（1GB = 1024MB を100%とする）
+                if (progressEl) {
+                    const percentage = Math.min((totalSize / 1024 / 1024 / 1024) * 100, 100);
+                    progressEl.style.width = percentage + '%';
+                    
+                    // 80%以上で色を変更
+                    if (percentage >= 80) {
+                        progressEl.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+                    } else if (percentage >= 50) {
+                        progressEl.style.background = 'linear-gradient(90deg, #f39c12, #e67e22)';
+                    } else {
+                        progressEl.style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
+                    }
+                }
+                
+                // コレクション別内訳を表示
+                const breakdownEl = document.getElementById('storageBreakdown');
+                if (breakdownEl) {
+                    breakdownEl.innerHTML = collectionStats
+                        .sort((a, b) => b.size - a.size)
+                        .map(stat => {
+                            const sizeMB = (stat.size / 1024 / 1024).toFixed(2);
+                            const sizeKB = (stat.size / 1024).toFixed(1);
+                            const displaySize = stat.size > 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
+                            const percentage = totalSize > 0 ? ((stat.size / totalSize) * 100).toFixed(1) : 0;
+                            
+                            return `
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid ${stat.color};">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="font-weight: bold; color: #333;">
+                                            ${stat.icon} ${stat.name}
+                                        </div>
+                                        <div style="font-size: 18px; font-weight: bold; color: ${stat.color};">
+                                            ${displaySize}
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 13px; color: #666;">
+                                        ${stat.count.toLocaleString()}件 (${percentage}%)
+                                    </div>
+                                </div>
+                            `;
+                        })
+                        .join('');
+                }
+                
+            } catch (error) {
+                console.error('ストレージ計算エラー:', error);
+                const totalSizeEl = document.getElementById('totalStorageSize');
+                if (totalSizeEl) totalSizeEl.textContent = 'エラー';
+            }
+        }
+        
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -4290,6 +4433,9 @@
             
             // v8.02.3: Firestore使用状況を更新
             updateFirestoreUsage();
+            
+            // v14.02.1: ストレージ使用量を計算
+            calculateStorageUsage();
             
             console.log('統計表示完了');
         }
