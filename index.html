@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.7.1</title>
+    <title>MyAnkiApp v14.02.8</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.7.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1928,6 +1928,82 @@
                             <p style="font-size: 13px; color: #155724; margin: 0;">
                                 すべてのデータは適切に管理されています。
                             </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- v14.02.8: データ整合性チェック -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-top: 20px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #667eea;">🔍 データ整合性チェック</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        データの不整合や破損をチェックし、自動修復できます。
+                    </p>
+                    
+                    <button class="btn" onclick="runIntegrityCheck()" style="width: 100%; margin-bottom: 20px;">
+                        🔍 整合性チェックを実行
+                    </button>
+                    
+                    <div id="integrityCheckResults" style="display: none;">
+                        <!-- チェック結果の表示 -->
+                        <div id="integrityCheckSummary" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">チェック結果サマリー</h4>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #27ae60;" id="integrityOkCount">0</div>
+                                    <div style="font-size: 13px; color: #666;">正常</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #f39c12;" id="integrityWarningCount">0</div>
+                                    <div style="font-size: 13px; color: #666;">警告</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #e74c3c;" id="integrityErrorCount">0</div>
+                                    <div style="font-size: 13px; color: #666;">エラー</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 詳細結果 -->
+                        <div id="integrityCheckDetails" style="max-height: 400px; overflow-y: auto;">
+                            <!-- JavaScriptで動的に生成 -->
+                        </div>
+                        
+                        <!-- 自動修復ボタン -->
+                        <div id="integrityFixSection" style="display: none; margin-top: 15px;">
+                            <button class="btn" onclick="autoFixIntegrityIssues()" style="width: 100%; background: #f39c12; border-color: #f39c12;">
+                                🔧 自動修復を実行
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- v14.02.10: ストレージアラート -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #667eea;">⚠️ ストレージアラート</h3>
+                    
+                    <!-- アラート状態表示 -->
+                    <div id="storageAlertStatus">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                    
+                    <!-- 削除推奨項目 -->
+                    <div id="storageRecommendations" style="display: none; margin-top: 20px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px;">削除推奨項目</h4>
+                        <div id="storageRecommendationsList">
+                            <!-- JavaScriptで動的に生成 -->
+                        </div>
+                    </div>
+                    
+                    <!-- ストレージ使用量推移グラフ（簡易版） -->
+                    <div style="margin-top: 20px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px;">ストレージ使用量の推移</h4>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            <div id="storageHistoryChart" style="height: 100px; position: relative;">
+                                <!-- 簡易的なバーチャート -->
+                            </div>
+                            <div style="font-size: 12px; color: #999; margin-top: 10px; text-align: center;">
+                                過去7日間の使用量推移
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3378,7 +3454,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.7.1',
+                    appVersion: 'v14.02.8',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3475,7 +3551,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.7.1',
+                    appVersion: 'v14.02.8',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -6011,7 +6087,7 @@
                 version: '1.0',
                 userId: null,
                 exportDate: new Date().toISOString(),
-                appVersion: 'v14.02.7.1',
+                appVersion: 'v14.02.8',
                 data: {
                     decks: decks,
                     flashcards: flashcards,
@@ -6395,6 +6471,616 @@
                 console.error('復元エラー:', error);
                 showToast('❌ 復元に失敗しました', 5000, 'error');
             }
+        }
+        
+        // v14.02.8: データ整合性チェック機能
+        let integrityCheckResults = {
+            ok: [],
+            warnings: [],
+            errors: []
+        };
+        
+        // v14.02.8: 整合性チェックを実行
+        async function runIntegrityCheck() {
+            try {
+                showToast('🔍 データ整合性チェックを実行中...', 2000, 'info');
+                
+                // 結果をリセット
+                integrityCheckResults = {
+                    ok: [],
+                    warnings: [],
+                    errors: []
+                };
+                
+                // 1. デッキの整合性チェック
+                await checkDeckIntegrity();
+                
+                // 2. カードの整合性チェック
+                await checkCardIntegrity();
+                
+                // 3. 学習セッションの整合性チェック
+                await checkSessionIntegrity();
+                
+                // 4. PDFマーカーの整合性チェック
+                await checkPdfMarkerIntegrity();
+                
+                // 5. 孤立データのチェック
+                await checkOrphanedData();
+                
+                // 結果を表示
+                displayIntegrityCheckResults();
+                
+                showToast('✅ 整合性チェックが完了しました', 3000, 'success');
+                
+            } catch (error) {
+                console.error('整合性チェックエラー:', error);
+                showToast('❌ 整合性チェックに失敗しました', 5000, 'error');
+            }
+        }
+        
+        // v14.02.8: デッキの整合性チェック
+        async function checkDeckIntegrity() {
+            const decksSnapshot = await db.collection('decks').get();
+            const deckIds = new Set();
+            const deckMap = new Map();
+            
+            decksSnapshot.forEach(doc => {
+                const deck = { id: doc.id, ...doc.data() };
+                deckIds.add(deck.id);
+                deckMap.set(deck.id, deck);
+                
+                // 必須フィールドのチェック
+                if (!deck.name) {
+                    integrityCheckResults.errors.push({
+                        type: 'deck',
+                        id: deck.id,
+                        message: `デッキ名が未設定です`,
+                        fixable: false
+                    });
+                }
+                
+                // 親デッキの存在チェック
+                if (deck.parentId && !deckIds.has(deck.parentId)) {
+                    // 親デッキを探す前にまだ処理していない可能性があるので、後でチェック
+                }
+            });
+            
+            // 親デッキの整合性チェック
+            deckMap.forEach((deck, deckId) => {
+                if (deck.parentId && !deckMap.has(deck.parentId)) {
+                    integrityCheckResults.warnings.push({
+                        type: 'deck',
+                        id: deckId,
+                        message: `親デッキ（ID: ${deck.parentId}）が存在しません`,
+                        fixable: true,
+                        fix: 'removeParent'
+                    });
+                }
+            });
+            
+            integrityCheckResults.ok.push({
+                type: 'deck',
+                message: `${deckIds.size}個のデッキを確認しました`
+            });
+        }
+        
+        // v14.02.8: カードの整合性チェック
+        async function checkCardIntegrity() {
+            const flashcardsSnapshot = await db.collection('flashcards').get();
+            const decksSnapshot = await db.collection('decks').get();
+            const deckIds = new Set();
+            
+            decksSnapshot.forEach(doc => {
+                deckIds.add(doc.id);
+            });
+            
+            let orphanedCards = 0;
+            let invalidCards = 0;
+            
+            flashcardsSnapshot.forEach(doc => {
+                const card = { id: doc.id, ...doc.data() };
+                
+                // 必須フィールドのチェック
+                if (!card.question || !card.answer) {
+                    integrityCheckResults.errors.push({
+                        type: 'card',
+                        id: card.id,
+                        message: `問題または答えが未設定です`,
+                        fixable: false
+                    });
+                    invalidCards++;
+                }
+                
+                // デッキIDの存在チェック
+                if (card.deckId && !deckIds.has(card.deckId)) {
+                    integrityCheckResults.warnings.push({
+                        type: 'card',
+                        id: card.id,
+                        message: `所属デッキ（ID: ${card.deckId}）が存在しません`,
+                        fixable: true,
+                        fix: 'orphanedCard'
+                    });
+                    orphanedCards++;
+                }
+                
+                // カードタイプのチェック
+                if (card.type && !['basic', 'cloze', 'typing', 'reverse'].includes(card.type)) {
+                    integrityCheckResults.warnings.push({
+                        type: 'card',
+                        id: card.id,
+                        message: `不明なカードタイプ: ${card.type}`,
+                        fixable: true,
+                        fix: 'resetCardType'
+                    });
+                }
+            });
+            
+            if (orphanedCards === 0 && invalidCards === 0) {
+                integrityCheckResults.ok.push({
+                    type: 'card',
+                    message: `${flashcardsSnapshot.size}枚のカードを確認しました（問題なし）`
+                });
+            } else {
+                integrityCheckResults.ok.push({
+                    type: 'card',
+                    message: `${flashcardsSnapshot.size}枚のカードを確認しました（孤立: ${orphanedCards}枚、不正: ${invalidCards}枚）`
+                });
+            }
+        }
+        
+        // v14.02.8: 学習セッションの整合性チェック
+        async function checkSessionIntegrity() {
+            const sessionsSnapshot = await db.collection('studySessions').get();
+            const flashcardsSnapshot = await db.collection('flashcards').get();
+            const cardIds = new Set();
+            
+            flashcardsSnapshot.forEach(doc => {
+                cardIds.add(doc.id);
+            });
+            
+            let orphanedSessions = 0;
+            
+            sessionsSnapshot.forEach(doc => {
+                const session = { id: doc.id, ...doc.data() };
+                
+                // カードIDの存在チェック
+                if (session.cardId && !cardIds.has(session.cardId)) {
+                    integrityCheckResults.warnings.push({
+                        type: 'session',
+                        id: session.id,
+                        message: `対象カード（ID: ${session.cardId}）が存在しません`,
+                        fixable: true,
+                        fix: 'deleteSession'
+                    });
+                    orphanedSessions++;
+                }
+            });
+            
+            if (orphanedSessions === 0) {
+                integrityCheckResults.ok.push({
+                    type: 'session',
+                    message: `${sessionsSnapshot.size}件の学習セッションを確認しました（問題なし）`
+                });
+            } else {
+                integrityCheckResults.ok.push({
+                    type: 'session',
+                    message: `${sessionsSnapshot.size}件の学習セッションを確認しました（孤立: ${orphanedSessions}件）`
+                });
+            }
+        }
+        
+        // v14.02.8: PDFマーカーの整合性チェック
+        async function checkPdfMarkerIntegrity() {
+            const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+            
+            pdfMarkersSnapshot.forEach(doc => {
+                const marker = doc.data();
+                
+                // 必須フィールドのチェック
+                if (!marker.fileName) {
+                    integrityCheckResults.warnings.push({
+                        type: 'pdfMarker',
+                        id: doc.id,
+                        message: `PDFファイル名が未設定です`,
+                        fixable: false
+                    });
+                }
+                
+                if (!marker.markers || marker.markers.length === 0) {
+                    integrityCheckResults.warnings.push({
+                        type: 'pdfMarker',
+                        id: doc.id,
+                        message: `マーカーが0個です（削除推奨）`,
+                        fixable: true,
+                        fix: 'deletePdfMarker'
+                    });
+                }
+            });
+            
+            integrityCheckResults.ok.push({
+                type: 'pdfMarker',
+                message: `${pdfMarkersSnapshot.size}個のPDFマーカー情報を確認しました`
+            });
+        }
+        
+        // v14.02.8: 孤立データのチェック
+        async function checkOrphanedData() {
+            // デッキのないカードをチェック（既に checkCardIntegrity でチェック済み）
+            // カードのない学習セッションをチェック（既に checkSessionIntegrity でチェック済み）
+            
+            integrityCheckResults.ok.push({
+                type: 'orphan',
+                message: '孤立データのチェックが完了しました'
+            });
+        }
+        
+        // v14.02.8: 整合性チェック結果を表示
+        function displayIntegrityCheckResults() {
+            const resultsDiv = document.getElementById('integrityCheckResults');
+            const detailsDiv = document.getElementById('integrityCheckDetails');
+            const fixSection = document.getElementById('integrityFixSection');
+            
+            // サマリーを更新
+            document.getElementById('integrityOkCount').textContent = integrityCheckResults.ok.length;
+            document.getElementById('integrityWarningCount').textContent = integrityCheckResults.warnings.length;
+            document.getElementById('integrityErrorCount').textContent = integrityCheckResults.errors.length;
+            
+            // 詳細を生成
+            let detailsHTML = '';
+            
+            // 正常項目
+            if (integrityCheckResults.ok.length > 0) {
+                detailsHTML += '<div style="margin-bottom: 15px;"><h4 style="color: #27ae60; margin-bottom: 10px;">✅ 正常項目</h4>';
+                integrityCheckResults.ok.forEach(item => {
+                    detailsHTML += `<div style="background: #d4edda; padding: 10px; border-radius: 5px; margin-bottom: 5px; font-size: 13px;">${item.message}</div>`;
+                });
+                detailsHTML += '</div>';
+            }
+            
+            // 警告項目
+            if (integrityCheckResults.warnings.length > 0) {
+                detailsHTML += '<div style="margin-bottom: 15px;"><h4 style="color: #f39c12; margin-bottom: 10px;">⚠️ 警告項目</h4>';
+                integrityCheckResults.warnings.forEach((item, index) => {
+                    detailsHTML += `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 5px; font-size: 13px;">
+                        <div><strong>${item.type}</strong> - ${item.message}</div>
+                        ${item.fixable ? '<div style="color: #666; font-size: 12px; margin-top: 5px;">（自動修復可能）</div>' : ''}
+                    </div>`;
+                });
+                detailsHTML += '</div>';
+            }
+            
+            // エラー項目
+            if (integrityCheckResults.errors.length > 0) {
+                detailsHTML += '<div style="margin-bottom: 15px;"><h4 style="color: #e74c3c; margin-bottom: 10px;">❌ エラー項目</h4>';
+                integrityCheckResults.errors.forEach((item, index) => {
+                    detailsHTML += `<div style="background: #f8d7da; padding: 10px; border-radius: 5px; margin-bottom: 5px; font-size: 13px;">
+                        <div><strong>${item.type}</strong> - ${item.message}</div>
+                        ${item.fixable ? '<div style="color: #666; font-size: 12px; margin-top: 5px;">（自動修復可能）</div>' : '<div style="color: #666; font-size: 12px; margin-top: 5px;">（手動修正が必要）</div>'}
+                    </div>`;
+                });
+                detailsHTML += '</div>';
+            }
+            
+            detailsDiv.innerHTML = detailsHTML;
+            
+            // 修復可能な項目がある場合は修復ボタンを表示
+            const hasFixableIssues = integrityCheckResults.warnings.some(item => item.fixable) || 
+                                    integrityCheckResults.errors.some(item => item.fixable);
+            
+            if (hasFixableIssues) {
+                fixSection.style.display = 'block';
+            } else {
+                fixSection.style.display = 'none';
+            }
+            
+            resultsDiv.style.display = 'block';
+        }
+        
+        // v14.02.8: 自動修復を実行
+        async function autoFixIntegrityIssues() {
+            if (!confirm('検出された問題を自動修復します。\n\nこの操作は取り消せません。続けますか？')) {
+                return;
+            }
+            
+            try {
+                showToast('🔧 自動修復を実行中...', 2000, 'info');
+                
+                let fixedCount = 0;
+                const batch = db.batch();
+                
+                // 警告項目の修復
+                for (const item of integrityCheckResults.warnings) {
+                    if (item.fixable) {
+                        switch (item.fix) {
+                            case 'removeParent':
+                                // 親デッキの参照を削除
+                                const deckRef = db.collection('decks').doc(item.id);
+                                batch.update(deckRef, { parentId: null });
+                                fixedCount++;
+                                break;
+                                
+                            case 'orphanedCard':
+                                // 孤立カードを削除（または未分類デッキに移動）
+                                const cardRef = db.collection('flashcards').doc(item.id);
+                                batch.delete(cardRef);
+                                fixedCount++;
+                                break;
+                                
+                            case 'resetCardType':
+                                // カードタイプをリセット
+                                const cardTypeRef = db.collection('flashcards').doc(item.id);
+                                batch.update(cardTypeRef, { type: 'basic' });
+                                fixedCount++;
+                                break;
+                                
+                            case 'deleteSession':
+                                // 孤立セッションを削除
+                                const sessionRef = db.collection('studySessions').doc(item.id);
+                                batch.delete(sessionRef);
+                                fixedCount++;
+                                break;
+                                
+                            case 'deletePdfMarker':
+                                // マーカーが0個のPDFマーカー情報を削除
+                                const pdfRef = db.collection('pdfMarkers').doc(item.id);
+                                batch.delete(pdfRef);
+                                fixedCount++;
+                                break;
+                        }
+                    }
+                }
+                
+                // エラー項目の修復（修復可能なもののみ）
+                for (const item of integrityCheckResults.errors) {
+                    if (item.fixable) {
+                        // エラー項目の修復ロジック
+                        fixedCount++;
+                    }
+                }
+                
+                if (fixedCount > 0) {
+                    await batch.commit();
+                    showToast(`✅ ${fixedCount}件の問題を修復しました`, 5000, 'success');
+                    
+                    // 再度チェックを実行
+                    setTimeout(() => {
+                        runIntegrityCheck();
+                    }, 2000);
+                } else {
+                    showToast('修復可能な問題はありませんでした', 3000, 'info');
+                }
+                
+            } catch (error) {
+                console.error('自動修復エラー:', error);
+                showToast('❌ 自動修復に失敗しました', 5000, 'error');
+            }
+        }
+        
+        // v14.02.10: ストレージアラート機能
+        let storageHistory = [];
+        
+        // v14.02.10: ストレージ使用量の履歴を記録
+        function recordStorageUsage(storageInfo) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // localStorageから履歴を読み込み
+            const historyStr = localStorage.getItem('storageHistory');
+            if (historyStr) {
+                storageHistory = JSON.parse(historyStr);
+            }
+            
+            // 今日の記録があれば更新、なければ追加
+            const existingIndex = storageHistory.findIndex(item => item.date === today);
+            if (existingIndex >= 0) {
+                storageHistory[existingIndex] = {
+                    date: today,
+                    usage: storageInfo.usedMB,
+                    percentage: storageInfo.usagePercentage
+                };
+            } else {
+                storageHistory.push({
+                    date: today,
+                    usage: storageInfo.usedMB,
+                    percentage: storageInfo.usagePercentage
+                });
+            }
+            
+            // 過去30日分のみ保持
+            if (storageHistory.length > 30) {
+                storageHistory = storageHistory.slice(-30);
+            }
+            
+            // localStorageに保存
+            localStorage.setItem('storageHistory', JSON.stringify(storageHistory));
+        }
+        
+        // v14.02.10: ストレージアラートを更新
+        async function updateStorageAlert() {
+            try {
+                // ストレージ使用量を取得
+                const storageInfo = await calculateStorageUsage();
+                
+                if (!storageInfo) return;
+                
+                // 履歴に記録
+                recordStorageUsage(storageInfo);
+                
+                const alertDiv = document.getElementById('storageAlertStatus');
+                const recommendDiv = document.getElementById('storageRecommendations');
+                const recommendList = document.getElementById('storageRecommendationsList');
+                
+                const percentage = storageInfo.usagePercentage;
+                
+                let alertHTML = '';
+                let alertColor = '';
+                let alertIcon = '';
+                let alertMessage = '';
+                
+                if (percentage >= 90) {
+                    alertColor = '#e74c3c';
+                    alertIcon = '🔴';
+                    alertMessage = '危険：ストレージが90%を超えています！早急にデータを削除してください。';
+                } else if (percentage >= 80) {
+                    alertColor = '#f39c12';
+                    alertIcon = '⚠️';
+                    alertMessage = '警告：ストレージが80%を超えています。データの整理を検討してください。';
+                } else if (percentage >= 70) {
+                    alertColor = '#3498db';
+                    alertIcon = 'ℹ️';
+                    alertMessage = '注意：ストレージが70%を超えています。容量に余裕を持たせることを推奨します。';
+                } else {
+                    alertColor = '#27ae60';
+                    alertIcon = '✅';
+                    alertMessage = '正常：ストレージ使用量は問題ありません。';
+                }
+                
+                alertHTML = `<div style="background: ${alertColor}22; border-left: 4px solid ${alertColor}; padding: 15px; border-radius: 5px;">
+                    <div style="font-weight: bold; color: ${alertColor}; margin-bottom: 5px;">${alertIcon} ${alertMessage}</div>
+                    <div style="font-size: 13px; color: #666;">現在の使用量: ${storageInfo.usedMB} MB / ${storageInfo.totalMB} MB (${percentage.toFixed(1)}%)</div>
+                </div>`;
+                
+                alertDiv.innerHTML = alertHTML;
+                
+                // 削除推奨項目を表示
+                if (percentage >= 70) {
+                    const recommendations = await getStorageRecommendations();
+                    
+                    if (recommendations.length > 0) {
+                        let recommendHTML = '';
+                        recommendations.forEach(rec => {
+                            recommendHTML += `<div style="background: #f8f9fa; padding: 12px; border-radius: 5px; margin-bottom: 8px; border-left: 3px solid #3498db;">
+                                <div style="font-weight: bold; margin-bottom: 5px;">${rec.title}</div>
+                                <div style="font-size: 13px; color: #666; margin-bottom: 8px;">${rec.description}</div>
+                                <div style="font-size: 12px; color: #999;">削減見込み: ${rec.savingsMB} MB</div>
+                            </div>`;
+                        });
+                        recommendList.innerHTML = recommendHTML;
+                        recommendDiv.style.display = 'block';
+                    } else {
+                        recommendDiv.style.display = 'none';
+                    }
+                } else {
+                    recommendDiv.style.display = 'none';
+                }
+                
+                // ストレージ使用量推移グラフを更新
+                updateStorageHistoryChart();
+                
+            } catch (error) {
+                console.error('ストレージアラート更新エラー:', error);
+            }
+        }
+        
+        // v14.02.10: 削除推奨項目を取得
+        async function getStorageRecommendations() {
+            const recommendations = [];
+            
+            // 古い学習セッションをチェック
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+            
+            const oldSessionsSnapshot = await db.collection('studySessions')
+                .where('timestamp', '<', firebase.firestore.Timestamp.fromDate(sixMonthsAgo))
+                .get();
+            
+            if (oldSessionsSnapshot.size > 100) {
+                recommendations.push({
+                    title: '古い学習セッション記録',
+                    description: `6ヶ月以上前の学習記録が${oldSessionsSnapshot.size}件あります`,
+                    savingsMB: (oldSessionsSnapshot.size * 0.001).toFixed(2)
+                });
+            }
+            
+            // 孤立カードをチェック
+            const decksSnapshot = await db.collection('decks').get();
+            const deckIds = new Set();
+            decksSnapshot.forEach(doc => deckIds.add(doc.id));
+            
+            const flashcardsSnapshot = await db.collection('flashcards').get();
+            let orphanedCount = 0;
+            
+            flashcardsSnapshot.forEach(doc => {
+                const card = doc.data();
+                if (card.deckId && !deckIds.has(card.deckId)) {
+                    orphanedCount++;
+                }
+            });
+            
+            if (orphanedCount > 0) {
+                recommendations.push({
+                    title: '孤立カード',
+                    description: `所属デッキが存在しないカードが${orphanedCount}枚あります`,
+                    savingsMB: (orphanedCount * 0.002).toFixed(2)
+                });
+            }
+            
+            // マーカーが0個のPDFマーカー情報
+            const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+            let emptyPdfMarkers = 0;
+            
+            pdfMarkersSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (!data.markers || data.markers.length === 0) {
+                    emptyPdfMarkers++;
+                }
+            });
+            
+            if (emptyPdfMarkers > 0) {
+                recommendations.push({
+                    title: 'マーカーが0個のPDF情報',
+                    description: `マーカーが1つもないPDF情報が${emptyPdfMarkers}件あります`,
+                    savingsMB: (emptyPdfMarkers * 0.001).toFixed(2)
+                });
+            }
+            
+            return recommendations;
+        }
+        
+        // v14.02.10: ストレージ使用量推移グラフを更新
+        function updateStorageHistoryChart() {
+            const chartDiv = document.getElementById('storageHistoryChart');
+            
+            // localStorageから履歴を読み込み
+            const historyStr = localStorage.getItem('storageHistory');
+            if (!historyStr) {
+                chartDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 30px;">データがありません</div>';
+                return;
+            }
+            
+            const history = JSON.parse(historyStr);
+            
+            // 過去7日分のデータを取得
+            const last7Days = history.slice(-7);
+            
+            if (last7Days.length === 0) {
+                chartDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 30px;">データがありません</div>';
+                return;
+            }
+            
+            // 簡易的なバーチャートを生成
+            const maxUsage = Math.max(...last7Days.map(item => item.usage));
+            
+            let chartHTML = '<div style="display: flex; align-items: flex-end; justify-content: space-around; height: 100%;">';
+            
+            last7Days.forEach(item => {
+                const height = (item.usage / maxUsage) * 80; // 最大80%の高さ
+                const date = new Date(item.date);
+                const dayLabel = `${date.getMonth() + 1}/${date.getDate()}`;
+                
+                let barColor = '#27ae60';
+                if (item.percentage >= 90) barColor = '#e74c3c';
+                else if (item.percentage >= 80) barColor = '#f39c12';
+                else if (item.percentage >= 70) barColor = '#3498db';
+                
+                chartHTML += `<div style="flex: 1; text-align: center; position: relative;">
+                    <div style="background: ${barColor}; width: 80%; margin: 0 auto; height: ${height}px; border-radius: 3px 3px 0 0; position: absolute; bottom: 20px; left: 10%;"></div>
+                    <div style="font-size: 10px; color: #999; position: absolute; bottom: 0; left: 0; right: 0;">${dayLabel}</div>
+                </div>`;
+            });
+            
+            chartHTML += '</div>';
+            
+            chartDiv.innerHTML = chartHTML;
         }
         
         let pdfDoc = null;
@@ -6829,6 +7515,13 @@
                 await loadAutoBackupSettings();
             } catch (error) {
                 console.error('自動バックアップ初期化エラー:', error);
+            }
+            
+            // v14.02.10: ストレージアラート初期化
+            try {
+                await updateStorageAlert();
+            } catch (error) {
+                console.error('ストレージアラート初期化エラー:', error);
             }
             
             // v8.02.3: 初期警告チェック
