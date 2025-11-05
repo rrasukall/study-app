@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.14</title>
+    <title>MyAnkiApp v14.00.15</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -809,6 +809,15 @@
             cursor: crosshair;
         }
         
+        /* v14.00.14: previewCanvas用のCSS */
+        #previewCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* クリックイベントを通過させる */
+            z-index: 10; /* markerCanvasの上に表示 */
+        }
+        
         .marker-controls {
             background: #f8f9fa;
             padding: 15px;
@@ -1487,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.14</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.15</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2434,7 +2443,7 @@
                             <canvas id="pdfCanvas"></canvas>
                             <div id="textLayer" class="textLayer"></div>
                             <canvas id="markerCanvas"></canvas>
-                            <canvas id="previewCanvas" style="display: none;"></canvas>
+                            <canvas id="previewCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; display: none;"></canvas>
                         </div>
                         <!-- v14.00.14: プレビューモード警告 -->
                         <div id="previewModeWarning" style="display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 12px 20px; border-radius: 8px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
@@ -2970,7 +2979,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.14',
+                    appVersion: 'v14.00.15',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3061,7 +3070,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.14',
+                    appVersion: 'v14.00.15',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -7357,12 +7366,22 @@
                 if (!previewCanvas) {
                     previewCanvas = document.createElement('canvas');
                     previewCanvas.id = 'previewCanvas';
+                    previewCanvas.style.position = 'absolute';
+                    previewCanvas.style.top = '0';
+                    previewCanvas.style.left = '0';
+                    previewCanvas.style.pointerEvents = 'none';
+                    previewCanvas.style.zIndex = '10';
                     previewCanvas.style.display = 'none';
                     document.getElementById('canvasWrapper').appendChild(previewCanvas);
                 } else {
                     const oldPreviewCanvas = previewCanvas;
                     previewCanvas = document.createElement('canvas');
                     previewCanvas.id = 'previewCanvas';
+                    previewCanvas.style.position = 'absolute';
+                    previewCanvas.style.top = '0';
+                    previewCanvas.style.left = '0';
+                    previewCanvas.style.pointerEvents = 'none';
+                    previewCanvas.style.zIndex = '10';
                     previewCanvas.style.display = previewMode ? 'block' : 'none';
                     oldPreviewCanvas.parentNode.replaceChild(previewCanvas, oldPreviewCanvas);
                 }
