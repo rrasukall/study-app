@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.1.3</title>
+    <title>MyAnkiApp v14.02.2</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.1.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1793,6 +1793,43 @@
                     </div>
                     
                     <button class="btn btn-secondary" onclick="calculateStorageUsage()" style="width: 100%;">🔄 ストレージ使用量を再計算</button>
+                    
+                    <!-- v14.02.2: 古いセッション履歴削除 -->
+                    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f39c12;">
+                        <h4 style="color: #856404; margin-bottom: 15px;">🗑️ 古いセッション履歴の削除</h4>
+                        <p style="font-size: 14px; color: #856404; margin-bottom: 15px;">
+                            古い学習セッション履歴を削除してストレージ容量を節約できます。<br>
+                            ※カードの学習データ（ease、interval等）は削除されません。
+                        </p>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label style="font-size: 14px; color: #856404; font-weight: bold; display: block; margin-bottom: 8px;">削除対象</label>
+                                <select id="deleteSessionPeriod" onchange="previewSessionDeletion()" style="width: 100%; padding: 10px; border: 1px solid #f39c12; border-radius: 5px;">
+                                    <option value="30">30日より前</option>
+                                    <option value="90">90日より前</option>
+                                    <option value="180">180日より前</option>
+                                    <option value="365">1年より前</option>
+                                    <option value="custom">カスタム日付</option>
+                                </select>
+                                
+                                <div id="customDateInput" style="display: none; margin-top: 10px;">
+                                    <input type="date" id="customDeleteDate" onchange="previewSessionDeletion()" style="width: 100%; padding: 10px; border: 1px solid #f39c12; border-radius: 5px;">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label style="font-size: 14px; color: #856404; font-weight: bold; display: block; margin-bottom: 8px;">削除プレビュー</label>
+                                <div style="background: white; padding: 15px; border-radius: 5px; border: 1px solid #f39c12;">
+                                    <div style="font-size: 14px; color: #666; margin-bottom: 5px;">削除対象</div>
+                                    <div style="font-size: 24px; font-weight: bold; color: #e74c3c;" id="deletePreviewCount">計算中...</div>
+                                    <div style="font-size: 12px; color: #999; margin-top: 5px;" id="deletePreviewSize">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-danger" onclick="deleteOldSessions()" style="width: 100%;">🗑️ 古いセッション履歴を削除</button>
+                    </div>
                 </div>
                 
                 <!-- v8.02.1: デッキごとの統計 -->
@@ -3074,7 +3111,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.1.3',
+                    appVersion: 'v14.02.2',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3165,7 +3202,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.1.3',
+                    appVersion: 'v14.02.2',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -4194,6 +4231,190 @@
             }
         }
         
+        // v14.02.2: カスタム日付入力の表示切り替え
+        function toggleCustomDateInput() {
+            const select = document.getElementById('deleteSessionPeriod');
+            const customInput = document.getElementById('customDateInput');
+            
+            if (select && customInput) {
+                customInput.style.display = select.value === 'custom' ? 'block' : 'none';
+            }
+        }
+        
+        // selectのonchangeでカスタム日付の表示を切り替え
+        document.addEventListener('DOMContentLoaded', function() {
+            const select = document.getElementById('deleteSessionPeriod');
+            if (select) {
+                select.addEventListener('change', toggleCustomDateInput);
+            }
+        });
+        
+        // v14.02.2: 削除対象のプレビュー表示
+        async function previewSessionDeletion() {
+            const periodSelect = document.getElementById('deleteSessionPeriod');
+            const customDateInput = document.getElementById('customDeleteDate');
+            const countEl = document.getElementById('deletePreviewCount');
+            const sizeEl = document.getElementById('deletePreviewSize');
+            
+            if (!periodSelect || !countEl || !sizeEl) return;
+            
+            // カスタム日付の表示切り替え
+            toggleCustomDateInput();
+            
+            countEl.textContent = '計算中...';
+            sizeEl.textContent = '-';
+            
+            try {
+                let cutoffDate;
+                const now = Date.now();
+                
+                if (periodSelect.value === 'custom') {
+                    if (!customDateInput || !customDateInput.value) {
+                        countEl.textContent = '日付を選択';
+                        return;
+                    }
+                    cutoffDate = new Date(customDateInput.value).getTime();
+                } else {
+                    const days = parseInt(periodSelect.value);
+                    cutoffDate = now - (days * 24 * 60 * 60 * 1000);
+                }
+                
+                // 削除対象のセッション履歴を取得
+                const snapshot = await db.collection('studySessionHistory')
+                    .where('startTime', '<', cutoffDate)
+                    .get();
+                
+                const count = snapshot.size;
+                
+                // サイズを推定
+                let totalSize = 0;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const jsonStr = JSON.stringify(data);
+                    const baseSize = new Blob([jsonStr]).size;
+                    const overhead = 48;
+                    const indexSize = baseSize * 0.25;
+                    totalSize += baseSize + overhead + indexSize;
+                });
+                
+                countEl.textContent = count.toLocaleString() + '件';
+                
+                const sizeMB = (totalSize / 1024 / 1024).toFixed(2);
+                const sizeKB = (totalSize / 1024).toFixed(1);
+                const displaySize = totalSize > 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
+                sizeEl.textContent = displaySize + ' 削減';
+                
+                if (count === 0) {
+                    countEl.style.color = '#27ae60';
+                    sizeEl.style.color = '#27ae60';
+                } else {
+                    countEl.style.color = '#e74c3c';
+                    sizeEl.style.color = '#666';
+                }
+                
+            } catch (error) {
+                console.error('プレビュー計算エラー:', error);
+                countEl.textContent = 'エラー';
+                sizeEl.textContent = '-';
+            }
+        }
+        
+        // v14.02.2: 古いセッション履歴を削除
+        async function deleteOldSessions() {
+            const periodSelect = document.getElementById('deleteSessionPeriod');
+            const customDateInput = document.getElementById('customDeleteDate');
+            const countEl = document.getElementById('deletePreviewCount');
+            
+            if (!periodSelect || !countEl) return;
+            
+            const previewCount = countEl.textContent;
+            
+            if (previewCount === '0件' || previewCount === '計算中...' || previewCount === 'エラー') {
+                showToast('削除対象がありません', 3000, 'info');
+                return;
+            }
+            
+            // 確認ダイアログ
+            const periodText = periodSelect.value === 'custom' 
+                ? customDateInput.value 
+                : periodSelect.options[periodSelect.selectedIndex].text;
+            
+            if (!confirm(`${periodText}のセッション履歴を削除します。\n\n削除対象: ${previewCount}\n\nこの操作は取り消せません。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                let cutoffDate;
+                const now = Date.now();
+                
+                if (periodSelect.value === 'custom') {
+                    if (!customDateInput || !customDateInput.value) {
+                        showToast('日付を選択してください', 3000, 'warning');
+                        return;
+                    }
+                    cutoffDate = new Date(customDateInput.value).getTime();
+                } else {
+                    const days = parseInt(periodSelect.value);
+                    cutoffDate = now - (days * 24 * 60 * 60 * 1000);
+                }
+                
+                // 削除対象を取得
+                const snapshot = await db.collection('studySessionHistory')
+                    .where('startTime', '<', cutoffDate)
+                    .get();
+                
+                if (snapshot.empty) {
+                    showToast('削除対象がありません', 3000, 'info');
+                    return;
+                }
+                
+                // バッチ削除
+                const batchSize = 500; // Firestoreのバッチ制限
+                let deletedCount = 0;
+                const totalCount = snapshot.size;
+                
+                showToast(`削除中... 0/${totalCount}件`, 1000, 'info');
+                
+                const batches = [];
+                let batch = db.batch();
+                let operationCount = 0;
+                
+                snapshot.docs.forEach((doc) => {
+                    batch.delete(doc.ref);
+                    operationCount++;
+                    
+                    if (operationCount === batchSize) {
+                        batches.push(batch);
+                        batch = db.batch();
+                        operationCount = 0;
+                    }
+                });
+                
+                if (operationCount > 0) {
+                    batches.push(batch);
+                }
+                
+                // バッチを順次実行
+                for (let i = 0; i < batches.length; i++) {
+                    await batches[i].commit();
+                    deletedCount += Math.min(batchSize, totalCount - deletedCount);
+                    showToast(`削除中... ${deletedCount}/${totalCount}件`, 1000, 'info');
+                }
+                
+                showToast(`✅ ${deletedCount}件のセッション履歴を削除しました`, 10000, 'success');
+                
+                // プレビューを更新
+                await previewSessionDeletion();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
         let pdfDoc = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -4535,6 +4756,9 @@
             
             // v14.02.1: ストレージ使用量を計算
             calculateStorageUsage();
+            
+            // v14.02.2: セッション削除プレビューを計算
+            previewSessionDeletion();
             
             console.log('統計表示完了');
         }
