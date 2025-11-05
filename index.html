@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.9</title>
+    <title>MyAnkiApp v14.01.10</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.9</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.10</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3015,7 +3015,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.9',
+                    appVersion: 'v14.01.10',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3106,7 +3106,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.9',
+                    appVersion: 'v14.01.10',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3412,10 +3412,12 @@
                                 continue;
                             }
                             
-                            // 重複チェック
+                            // 重複チェック（v14.01.10: タイピングカードは除外）
                             if (skipDuplicates) {
                                 const isDuplicate = existingCards.some(card => 
-                                    card.question === question && card.answer === answer
+                                    card.type !== 'typing' && 
+                                    card.question === question && 
+                                    card.answer === answer
                                 );
                                 if (isDuplicate) {
                                     skippedCount++;
