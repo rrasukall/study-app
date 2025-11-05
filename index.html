@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.4</title>
+    <title>MyAnkiApp v14.01.5</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.5</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3014,7 +3014,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.4',
+                    appVersion: 'v14.01.5',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3105,7 +3105,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.4',
+                    appVersion: 'v14.01.5',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3403,6 +3403,13 @@
                             
                             const deckData = { ...deck };
                             delete deckData.id;
+                            // Firestoreタイムスタンプの互換性問題を回避
+                            if (deckData.createdAt) {
+                                delete deckData.createdAt;
+                            }
+                            if (!deckData.createdAt) {
+                                deckData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                            }
                             await db.collection('decks').doc(deck.id).set(deckData);
                             stats.decks.imported++;
                         } catch (err) {
@@ -3453,6 +3460,13 @@
                             
                             const cardData = { ...card };
                             delete cardData.id;
+                            // Firestoreタイムスタンプの互換性問題を回避
+                            if (cardData.createdAt) {
+                                delete cardData.createdAt;
+                            }
+                            if (!cardData.createdAt) {
+                                cardData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                            }
                             await db.collection('flashcards').doc(card.id).set(cardData);
                             stats.flashcards.imported++;
                         } catch (err) {
@@ -3468,6 +3482,13 @@
                         try {
                             const sessionData = { ...session };
                             delete sessionData.id;
+                            // Firestoreタイムスタンプの互換性問題を回避
+                            if (sessionData.startTime && typeof sessionData.startTime === 'object' && !sessionData.startTime.toDate) {
+                                delete sessionData.startTime;
+                            }
+                            if (sessionData.endTime && typeof sessionData.endTime === 'object' && !sessionData.endTime.toDate) {
+                                delete sessionData.endTime;
+                            }
                             await db.collection('studySessions').doc(session.id).set(sessionData);
                             stats.studySessions.imported++;
                         } catch (err) {
@@ -3491,6 +3512,20 @@
                             
                             const markerData = { ...pdfMarker };
                             delete markerData.pdfHash;
+                            // Firestoreタイムスタンプの互換性問題を回避
+                            if (markerData.lastStudied && typeof markerData.lastStudied === 'object' && !markerData.lastStudied.toDate) {
+                                delete markerData.lastStudied;
+                            }
+                            // markers配列内の各マーカーのタイムスタンプも処理
+                            if (markerData.markers && Array.isArray(markerData.markers)) {
+                                markerData.markers = markerData.markers.map(marker => {
+                                    const m = { ...marker };
+                                    if (m.createdAt && typeof m.createdAt === 'object' && !m.createdAt.toDate) {
+                                        delete m.createdAt;
+                                    }
+                                    return m;
+                                });
+                            }
                             await db.collection('pdfMarkers').doc(pdfMarker.pdfHash).set(markerData);
                             stats.pdfMarkers.imported++;
                         } catch (err) {
