@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.3</title>
+    <title>MyAnkiApp v14.02.4</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.3</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.4</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1821,9 +1821,12 @@
                             <div>
                                 <label style="font-size: 14px; color: #856404; font-weight: bold; display: block; margin-bottom: 8px;">削除プレビュー</label>
                                 <div style="background: white; padding: 15px; border-radius: 5px; border: 1px solid #f39c12;">
-                                    <div style="font-size: 14px; color: #666; margin-bottom: 5px;">削除対象</div>
+                                    <div style="font-size: 14px; color: #666; margin-bottom: 5px;">削除対象合計</div>
                                     <div style="font-size: 24px; font-weight: bold; color: #e74c3c;" id="deletePreviewCount">計算中...</div>
                                     <div style="font-size: 12px; color: #999; margin-top: 5px;" id="deletePreviewSize">-</div>
+                                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; font-size: 12px; color: #666;">
+                                        <div id="deletePreviewDetails">-</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3121,7 +3124,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.3',
+                    appVersion: 'v14.02.4',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3212,7 +3215,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.3',
+                    appVersion: 'v14.02.4',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -4264,6 +4267,7 @@
             const customDateInput = document.getElementById('customDeleteDate');
             const countEl = document.getElementById('deletePreviewCount');
             const sizeEl = document.getElementById('deletePreviewSize');
+            const detailsEl = document.getElementById('deletePreviewDetails');
             
             if (!periodSelect || !countEl || !sizeEl) return;
             
@@ -4272,6 +4276,7 @@
             
             countEl.textContent = '計算中...';
             sizeEl.textContent = '-';
+            if (detailsEl) detailsEl.textContent = '-';
             
             try {
                 let cutoffDate;
@@ -4288,17 +4293,30 @@
                     cutoffDate = now - (days * 24 * 60 * 60 * 1000);
                 }
                 
-                // 削除対象のセッション履歴を取得
-                // v14.02.3: studySessions コレクションを対象に修正
-                const snapshot = await db.collection('studySessions')
+                // v14.02.4: 完了した古い学習記録を取得
+                const completedSnapshot = await db.collection('studySessions')
+                    .where('isComplete', '==', true)
                     .where('startTime', '<', cutoffDate)
                     .get();
                 
-                const count = snapshot.size;
+                const completedCount = completedSnapshot.size;
+                
+                // v14.02.4: 古いタイマー状態を取得（7日以上更新なし）
+                const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+                const oldTimerSnapshot = await db.collection('studySessions')
+                    .where('isComplete', '==', false)
+                    .where('updatedAt', '<', firebase.firestore.Timestamp.fromMillis(sevenDaysAgo))
+                    .get();
+                
+                const oldTimerCount = oldTimerSnapshot.size;
+                
+                // 合計
+                const totalCount = completedCount + oldTimerCount;
                 
                 // サイズを推定
                 let totalSize = 0;
-                snapshot.forEach(doc => {
+                
+                completedSnapshot.forEach(doc => {
                     const data = doc.data();
                     const jsonStr = JSON.stringify(data);
                     const baseSize = new Blob([jsonStr]).size;
@@ -4307,14 +4325,31 @@
                     totalSize += baseSize + overhead + indexSize;
                 });
                 
-                countEl.textContent = count.toLocaleString() + '件';
+                oldTimerSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const jsonStr = JSON.stringify(data);
+                    const baseSize = new Blob([jsonStr]).size;
+                    const overhead = 48;
+                    const indexSize = baseSize * 0.25;
+                    totalSize += baseSize + overhead + indexSize;
+                });
+                
+                countEl.textContent = totalCount.toLocaleString() + '件';
                 
                 const sizeMB = (totalSize / 1024 / 1024).toFixed(2);
                 const sizeKB = (totalSize / 1024).toFixed(1);
                 const displaySize = totalSize > 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
                 sizeEl.textContent = displaySize + ' 削減';
                 
-                if (count === 0) {
+                // 詳細表示
+                if (detailsEl) {
+                    detailsEl.innerHTML = `
+                        完了した学習記録: ${completedCount.toLocaleString()}件<br>
+                        古いタイマー状態: ${oldTimerCount.toLocaleString()}件
+                    `;
+                }
+                
+                if (totalCount === 0) {
                     countEl.style.color = '#27ae60';
                     sizeEl.style.color = '#27ae60';
                 } else {
@@ -4326,10 +4361,11 @@
                 console.error('プレビュー計算エラー:', error);
                 countEl.textContent = 'エラー';
                 sizeEl.textContent = '-';
+                if (detailsEl) detailsEl.textContent = '-';
             }
         }
         
-        // v14.02.2: 古いセッション履歴を削除
+        // v14.02.4: 古いセッション履歴を削除（完了記録+古いタイマー状態）
         async function deleteOldSessions() {
             const periodSelect = document.getElementById('deleteSessionPeriod');
             const customDateInput = document.getElementById('customDeleteDate');
@@ -4346,10 +4382,10 @@
             
             // 確認ダイアログ
             const periodText = periodSelect.value === 'custom' 
-                ? customDateInput.value 
+                ? customDateInput.value + 'より前'
                 : periodSelect.options[periodSelect.selectedIndex].text;
             
-            if (!confirm(`${periodText}のセッション履歴を削除します。\n\n削除対象: ${previewCount}\n\nこの操作は取り消せません。続けますか？`)) {
+            if (!confirm(`${periodText}のセッション履歴を削除します。\n\n削除対象: ${previewCount}\n（完了した学習記録 + 古いタイマー状態）\n\nこの操作は取り消せません。続けますか？`)) {
                 return;
             }
             
@@ -4368,13 +4404,22 @@
                     cutoffDate = now - (days * 24 * 60 * 60 * 1000);
                 }
                 
-                // 削除対象を取得
-                // v14.02.3: studySessions コレクションを対象に修正
-                const snapshot = await db.collection('studySessions')
+                // v14.02.4: 完了した古い学習記録を取得
+                const completedSnapshot = await db.collection('studySessions')
+                    .where('isComplete', '==', true)
                     .where('startTime', '<', cutoffDate)
                     .get();
                 
-                if (snapshot.empty) {
+                // v14.02.4: 古いタイマー状態を取得（7日以上更新なし）
+                const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+                const oldTimerSnapshot = await db.collection('studySessions')
+                    .where('isComplete', '==', false)
+                    .where('updatedAt', '<', firebase.firestore.Timestamp.fromMillis(sevenDaysAgo))
+                    .get();
+                
+                const totalCount = completedSnapshot.size + oldTimerSnapshot.size;
+                
+                if (totalCount === 0) {
                     showToast('削除対象がありません', 3000, 'info');
                     return;
                 }
@@ -4382,15 +4427,15 @@
                 // バッチ削除
                 const batchSize = 500; // Firestoreのバッチ制限
                 let deletedCount = 0;
-                const totalCount = snapshot.size;
                 
                 showToast(`削除中... 0/${totalCount}件`, 1000, 'info');
                 
+                const allDocs = [...completedSnapshot.docs, ...oldTimerSnapshot.docs];
                 const batches = [];
                 let batch = db.batch();
                 let operationCount = 0;
                 
-                snapshot.docs.forEach((doc) => {
+                allDocs.forEach((doc) => {
                     batch.delete(doc.ref);
                     operationCount++;
                     
@@ -4412,7 +4457,7 @@
                     showToast(`削除中... ${deletedCount}/${totalCount}件`, 1000, 'info');
                 }
                 
-                showToast(`✅ ${deletedCount}件のセッション履歴を削除しました`, 10000, 'success');
+                showToast(`✅ ${deletedCount}件のセッション履歴を削除しました\n（完了記録: ${completedSnapshot.size}件 / タイマー状態: ${oldTimerSnapshot.size}件）`, 10000, 'success');
                 
                 // プレビューを更新
                 await previewSessionDeletion();
