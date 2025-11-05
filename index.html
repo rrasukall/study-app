@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.6</title>
+    <title>MyAnkiApp v14.01.7</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.6</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.7</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2380,7 +2380,8 @@
                             </label>
                             <div style="color: #666; font-size: 13px; margin-top: 8px; margin-left: 5px;">
                                 <strong>CSVフォーマット:</strong> 問題,答え,デッキ名,タグ（スペース区切り）<br>
-                                <strong>例:</strong> "徳川家康が江戸幕府を開いた年は？","1603年","日本史","重要 試験範囲"
+                                <strong>例:</strong> "徳川家康が江戸幕府を開いた年は？","1603年","日本史","重要 試験範囲"<br>
+                                <strong>※</strong> 基本カードのみインポート可能。改行を含むテキストにも対応
                             </div>
                         </div>
                         
@@ -3014,7 +3015,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.6',
+                    appVersion: 'v14.01.7',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3105,7 +3106,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.6',
+                    appVersion: 'v14.01.7',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3238,6 +3239,73 @@
         
         // ========== v14.01: データインポート機能 ==========
         
+        // v14.01.7: RFC 4180準拠のCSVパーサー
+        function parseCSV(text) {
+            const lines = [];
+            let currentField = '';
+            let currentLine = [];
+            let inQuotes = false;
+            
+            // BOMを削除
+            if (text.charCodeAt(0) === 0xFEFF) {
+                text = text.substring(1);
+            }
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (inQuotes) {
+                    if (char === '"') {
+                        if (nextChar === '"') {
+                            // エスケープされたダブルクォート
+                            currentField += '"';
+                            i++; // 次の文字をスキップ
+                        } else {
+                            // クォート終了
+                            inQuotes = false;
+                        }
+                    } else {
+                        currentField += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        // クォート開始
+                        inQuotes = true;
+                    } else if (char === ',') {
+                        // フィールド区切り
+                        currentLine.push(currentField.trim());
+                        currentField = '';
+                    } else if (char === '\n' || char === '\r') {
+                        // 行区切り
+                        if (char === '\r' && nextChar === '\n') {
+                            i++; // CRLFの場合はLFもスキップ
+                        }
+                        if (currentField || currentLine.length > 0) {
+                            currentLine.push(currentField.trim());
+                            if (currentLine.some(field => field)) {
+                                lines.push(currentLine);
+                            }
+                            currentLine = [];
+                            currentField = '';
+                        }
+                    } else {
+                        currentField += char;
+                    }
+                }
+            }
+            
+            // 最後の行を追加
+            if (currentField || currentLine.length > 0) {
+                currentLine.push(currentField.trim());
+                if (currentLine.some(field => field)) {
+                    lines.push(currentLine);
+                }
+            }
+            
+            return lines;
+        }
+        
         // CSVからカードをインポート
         async function importCardsFromCsv(event) {
             const file = event.target.files[0];
@@ -3245,7 +3313,7 @@
             
             try {
                 const text = await file.text();
-                const lines = text.split('\n').filter(line => line.trim());
+                const lines = parseCSV(text);
                 
                 if (lines.length === 0) {
                     alert('CSVファイルが空です。');
@@ -3266,19 +3334,17 @@
                     });
                 }
                 
-                for (const line of lines) {
+                for (const fields of lines) {
                     try {
-                        // CSVパース（簡易版：ダブルクォートで囲まれた値に対応）
-                        const matches = line.match(/("([^"]*)"|[^,]+)/g);
-                        if (!matches || matches.length < 2) {
+                        if (fields.length < 2) {
                             errorCount++;
                             continue;
                         }
                         
-                        const question = matches[0].replace(/^"|"$/g, '').trim();
-                        const answer = matches[1].replace(/^"|"$/g, '').trim();
-                        const deckName = matches.length > 2 ? matches[2].replace(/^"|"$/g, '').trim() : '';
-                        const tags = matches.length > 3 ? matches[3].replace(/^"|"$/g, '').trim() : '';
+                        const question = fields[0];
+                        const answer = fields[1];
+                        const deckName = fields.length > 2 ? fields[2] : '';
+                        const tags = fields.length > 3 ? fields[3] : '';
                         
                         if (!question || !answer) {
                             errorCount++;
@@ -7437,6 +7503,17 @@
 
         // CSV出力（デッキ名対応）
         // v10.01: Anki用CSV出力（タグ形式に変更）
+        // v14.01.7: RFC 4180準拠のCSV出力、改行対応
+        function escapeCSVField(field) {
+            if (field == null) return '';
+            const str = String(field);
+            // ダブルクォート、カンマ、改行を含む場合はクォートで囲む
+            if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+        
         function exportToAnki() {
             // v10.00.1: エクスポート対象を決定
             // 優先順位: 1.選択カード → 2.フィルターされたカード → 3.全カード
@@ -7463,28 +7540,33 @@
                 return;
             }
             
+            // v14.01.7: 基本カードのみ抽出（穴埋め・タイピングは除外）
+            const basicCards = targetCards.filter(card => card.type === 'basic' || !card.type || card.type === 'basic-reversed');
+            const excludedCount = targetCards.length - basicCards.length;
+            
+            if (basicCards.length === 0) {
+                alert('エクスポート可能な基本カードがありません。\n\n※CSV形式では基本カードのみエクスポート可能です。\n穴埋めカード・タイピングカードはJSON形式でエクスポートしてください。');
+                return;
+            }
+            
+            // BOM付きCSV
             let csv = '\ufeff';
-            targetCards.forEach(card => {
-                // v10.01: タグを取得（デッキ名は含めない）
+            
+            basicCards.forEach(card => {
                 const tags = card.tags || [];
                 const tagsStr = tags.join(' ');
+                const deckName = card.deckId ? getDeckNameById(card.deckId) : '';
                 
-                if (card.type === 'typing') {
-                    const question = card.question.replace(/"/g, '""');
-                    const answer = (card.answer || (card.answers && card.answers.join(', ')) || '').replace(/"/g, '""');
-                    csv += `"${question}","${answer}","${tagsStr}"\n`;
-                } else if (card.type === 'cloze') {
-                    const text = card.text.replace(/"/g, '""');
-                    csv += `"${text}","${tagsStr}"\n`;
-                } else {
-                    const question = card.question.replace(/"/g, '""');
-                    const answer = card.answer.replace(/"/g, '""');
-                    
-                    csv += `"${question}","${answer}","${tagsStr}"\n`;
-                    
-                    if (card.enableReverse) {
-                        csv += `"${answer}","${question}","${tagsStr}"\n`;
-                    }
+                const question = escapeCSVField(card.question);
+                const answer = escapeCSVField(card.answer);
+                const deck = escapeCSVField(deckName);
+                const tagField = escapeCSVField(tagsStr);
+                
+                csv += `${question},${answer},${deck},${tagField}\n`;
+                
+                // 逆方向カード
+                if (card.enableReverse) {
+                    csv += `${answer},${question},${deck},${tagField}\n`;
                 }
             });
             
@@ -7500,7 +7582,14 @@
             link.click();
             document.body.removeChild(link);
             
-            alert(`CSVファイルをダウンロードしました！\n\n対象: ${exportInfo}\n\n※Anki互換形式（タグ含む）`);
+            let message = `CSVファイルをダウンロードしました！\n\n対象: ${exportInfo}`;
+            message += `\n出力: 基本カード${basicCards.length}枚`;
+            if (excludedCount > 0) {
+                message += `\n\n※穴埋めカード・タイピングカード${excludedCount}枚は除外されました`;
+                message += `\n（これらのカードはJSON形式でエクスポートしてください）`;
+            }
+            
+            alert(message);
         }
 
         // ========== PDF機能（変更なし） ==========
