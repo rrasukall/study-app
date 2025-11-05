@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.7</title>
+    <title>MyAnkiApp v14.02.7.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.7</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.7.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3378,7 +3378,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.5',
+                    appVersion: 'v14.02.7.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3386,7 +3386,13 @@
                         pdfMarkers: pdfMarkers,
                         pdfMetadata: pdfMetadata
                     },
-                    settings: settings
+                    settings: settings,
+                    stats: {
+                        deckCount: decks.length,
+                        cardCount: flashcards.length,
+                        sessionCount: studySessions.length,
+                        pdfCount: pdfMarkers.length
+                    }
                 };
                 
                 // 4. JSONファイルとしてダウンロード
@@ -3469,7 +3475,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.5',
+                    appVersion: 'v14.02.7.1',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3554,6 +3560,14 @@
                     backup.settings.lastSelectedDeckId = localStorage.getItem('lastSelectedDeckId') || null;
                     backup.settings.instantDeleteMode = localStorage.getItem('instantDeleteMode') || 'false';
                 }
+                
+                // 統計情報を追加
+                backup.stats = {
+                    deckCount: backup.data.decks ? backup.data.decks.length : 0,
+                    cardCount: backup.data.flashcards ? backup.data.flashcards.length : 0,
+                    sessionCount: backup.data.studySessions ? backup.data.studySessions.length : 0,
+                    pdfCount: backup.data.pdfMarkers ? backup.data.pdfMarkers.length : 0
+                };
                 
                 // JSONファイルとしてダウンロード
                 const jsonStr = JSON.stringify(backup, null, 2);
@@ -5997,7 +6011,7 @@
                 version: '1.0',
                 userId: null,
                 exportDate: new Date().toISOString(),
-                appVersion: 'v14.02.7',
+                appVersion: 'v14.02.7.1',
                 data: {
                     decks: decks,
                     flashcards: flashcards,
