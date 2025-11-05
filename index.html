@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.2</title>
+    <title>MyAnkiApp v14.01.3</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3014,7 +3014,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.2',
+                    appVersion: 'v14.01.3',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3105,7 +3105,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.2',
+                    appVersion: 'v14.01.3',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3416,13 +3416,36 @@
                 if (backup.data.flashcards && backup.data.flashcards.length > 0) {
                     for (const card of backup.data.flashcards) {
                         try {
-                            if (skipDuplicates && card.question && card.answer) {
-                                // 基本カードの場合のみ重複チェック
-                                const existing = await db.collection('flashcards')
-                                    .where('question', '==', card.question)
-                                    .where('answer', '==', card.answer)
-                                    .limit(1).get();
-                                if (!existing.empty) {
+                            // カードタイプに応じた重複チェック
+                            if (skipDuplicates) {
+                                let isDuplicate = false;
+                                
+                                if (card.type === 'basic' && card.question && card.answer) {
+                                    // 基本カード
+                                    const existing = await db.collection('flashcards')
+                                        .where('type', '==', 'basic')
+                                        .where('question', '==', card.question)
+                                        .where('answer', '==', card.answer)
+                                        .limit(1).get();
+                                    isDuplicate = !existing.empty;
+                                } else if (card.type === 'cloze' && card.clozeText) {
+                                    // 穴埋めカード
+                                    const existing = await db.collection('flashcards')
+                                        .where('type', '==', 'cloze')
+                                        .where('clozeText', '==', card.clozeText)
+                                        .limit(1).get();
+                                    isDuplicate = !existing.empty;
+                                } else if (card.type === 'typing' && card.typingQuestion && card.typingAnswer) {
+                                    // タイピングカード
+                                    const existing = await db.collection('flashcards')
+                                        .where('type', '==', 'typing')
+                                        .where('typingQuestion', '==', card.typingQuestion)
+                                        .where('typingAnswer', '==', card.typingAnswer)
+                                        .limit(1).get();
+                                    isDuplicate = !existing.empty;
+                                }
+                                
+                                if (isDuplicate) {
                                     stats.flashcards.skipped++;
                                     continue;
                                 }
