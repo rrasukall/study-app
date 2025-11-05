@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.15</title>
+    <title>MyAnkiApp v14.01</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.15</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2361,11 +2361,46 @@
                     </div>
                 </div>
                 
-                <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
-                    <p style="margin: 0; color: #856404;">
-                        <strong>⚠️ 注意:</strong> バックアップファイルは安全な場所に保管してください。<br>
-                        データの復元機能は今後のバージョンで実装予定です。
+                <div style="background: #d4edda; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745;">
+                    <p style="margin: 0; color: #155724;">
+                        <strong>✓ データバックアップ＆復元:</strong> バックアップファイルは安全な場所に保管してください。<br>
+                        下部の「データインポート」セクションからバックアップを復元できます。
                     </p>
+                </div>
+                
+                <!-- v14.01: データインポート -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; margin-top: 30px;">
+                    <h3 style="margin-bottom: 15px;">データインポート</h3>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <label class="btn" style="cursor: pointer; display: inline-block; width: auto;">
+                                📥 CSVからカードをインポート
+                                <input type="file" id="csvImportInput" accept=".csv" style="display: none;" onchange="importCardsFromCsv(event)">
+                            </label>
+                            <div style="color: #666; font-size: 13px; margin-top: 8px; margin-left: 5px;">
+                                <strong>CSVフォーマット:</strong> 問題,答え,デッキ名,タグ（スペース区切り）<br>
+                                <strong>例:</strong> "徳川家康が江戸幕府を開いた年は？","1603年","日本史","重要 試験範囲"
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="btn" style="cursor: pointer; display: inline-block; width: auto;">
+                                💾 バックアップから復元 (JSON)
+                                <input type="file" id="jsonImportInput" accept=".json" style="display: none;" onchange="importFromBackup(event)">
+                            </label>
+                            <div style="color: #666; font-size: 13px; margin-top: 8px; margin-left: 5px;">
+                                v14.00で作成したバックアップファイルから復元します
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
+                            <input type="checkbox" id="skipDuplicates" checked>
+                            <span>重複するカードをスキップ（問題と答えが完全一致）</span>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2979,7 +3014,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.15',
+                    appVersion: 'v14.01',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3070,7 +3105,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.15',
+                    appVersion: 'v14.01',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3199,6 +3234,289 @@
                 }
                 alert('カスタムバックアップのエクスポートに失敗しました。\nエラー: ' + error.message);
             }
+        }
+        
+        // ========== v14.01: データインポート機能 ==========
+        
+        // CSVからカードをインポート
+        async function importCardsFromCsv(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                if (lines.length === 0) {
+                    alert('CSVファイルが空です。');
+                    return;
+                }
+                
+                const skipDuplicates = document.getElementById('skipDuplicates').checked;
+                let importedCount = 0;
+                let skippedCount = 0;
+                let errorCount = 0;
+                
+                // 既存のカードを取得（重複チェック用）
+                let existingCards = [];
+                if (skipDuplicates) {
+                    const snapshot = await db.collection('flashcards').get();
+                    snapshot.forEach(doc => {
+                        existingCards.push(doc.data());
+                    });
+                }
+                
+                for (const line of lines) {
+                    try {
+                        // CSVパース（簡易版：ダブルクォートで囲まれた値に対応）
+                        const matches = line.match(/("([^"]*)"|[^,]+)/g);
+                        if (!matches || matches.length < 2) {
+                            errorCount++;
+                            continue;
+                        }
+                        
+                        const question = matches[0].replace(/^"|"$/g, '').trim();
+                        const answer = matches[1].replace(/^"|"$/g, '').trim();
+                        const deckName = matches.length > 2 ? matches[2].replace(/^"|"$/g, '').trim() : '';
+                        const tags = matches.length > 3 ? matches[3].replace(/^"|"$/g, '').trim() : '';
+                        
+                        if (!question || !answer) {
+                            errorCount++;
+                            continue;
+                        }
+                        
+                        // 重複チェック
+                        if (skipDuplicates) {
+                            const isDuplicate = existingCards.some(card => 
+                                card.question === question && card.answer === answer
+                            );
+                            if (isDuplicate) {
+                                skippedCount++;
+                                continue;
+                            }
+                        }
+                        
+                        // デッキIDを取得または作成
+                        let deckId = '';
+                        if (deckName) {
+                            const decksSnapshot = await db.collection('decks').where('name', '==', deckName).limit(1).get();
+                            if (!decksSnapshot.empty) {
+                                deckId = decksSnapshot.docs[0].id;
+                            } else {
+                                // 新しいデッキを作成
+                                const newDeckRef = await db.collection('decks').add({
+                                    name: deckName,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    order: Date.now()
+                                });
+                                deckId = newDeckRef.id;
+                            }
+                        }
+                        
+                        // カードを追加
+                        await db.collection('flashcards').add({
+                            type: 'basic',
+                            question: question,
+                            answer: answer,
+                            deckId: deckId,
+                            tags: tags ? tags.split(/\s+/) : [],
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            state: 'new',
+                            easeFactor: 2.5,
+                            interval: 0,
+                            lapseCount: 0
+                        });
+                        
+                        importedCount++;
+                        
+                    } catch (err) {
+                        console.error('カード追加エラー:', err);
+                        errorCount++;
+                    }
+                }
+                
+                // 結果を表示
+                let message = `インポート完了\n\n`;
+                message += `✓ インポート成功: ${importedCount}枚\n`;
+                if (skippedCount > 0) {
+                    message += `⊘ 重複スキップ: ${skippedCount}枚\n`;
+                }
+                if (errorCount > 0) {
+                    message += `✗ エラー: ${errorCount}行\n`;
+                }
+                
+                alert(message);
+                
+                // カードリストを更新
+                if (importedCount > 0) {
+                    await loadCards();
+                    renderCardList();
+                    updateDeckStats();
+                }
+                
+            } catch (error) {
+                console.error('CSVインポートエラー:', error);
+                alert('CSVファイルの読み込みに失敗しました。\nエラー: ' + error.message);
+            }
+            
+            // ファイル入力をリセット
+            event.target.value = '';
+        }
+        
+        // JSONバックアップから復元
+        async function importFromBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!confirm('バックアップから復元すると、現在のデータに追加されます。\n重複するデータはスキップされます。\n\n続行しますか？')) {
+                event.target.value = '';
+                return;
+            }
+            
+            try {
+                const text = await file.text();
+                const backup = JSON.parse(text);
+                
+                // バージョンチェック
+                if (!backup.version) {
+                    throw new Error('無効なバックアップファイル形式です。');
+                }
+                
+                const skipDuplicates = document.getElementById('skipDuplicates').checked;
+                let stats = {
+                    decks: { imported: 0, skipped: 0, errors: 0 },
+                    flashcards: { imported: 0, skipped: 0, errors: 0 },
+                    studySessions: { imported: 0, skipped: 0, errors: 0 },
+                    pdfMarkers: { imported: 0, skipped: 0, errors: 0 }
+                };
+                
+                // デッキのインポート
+                if (backup.data.decks && backup.data.decks.length > 0) {
+                    for (const deck of backup.data.decks) {
+                        try {
+                            if (skipDuplicates) {
+                                const existing = await db.collection('decks').where('name', '==', deck.name).limit(1).get();
+                                if (!existing.empty) {
+                                    stats.decks.skipped++;
+                                    continue;
+                                }
+                            }
+                            
+                            const deckData = { ...deck };
+                            delete deckData.id;
+                            await db.collection('decks').doc(deck.id).set(deckData);
+                            stats.decks.imported++;
+                        } catch (err) {
+                            console.error('デッキインポートエラー:', err);
+                            stats.decks.errors++;
+                        }
+                    }
+                }
+                
+                // カードのインポート
+                if (backup.data.flashcards && backup.data.flashcards.length > 0) {
+                    for (const card of backup.data.flashcards) {
+                        try {
+                            if (skipDuplicates) {
+                                const existing = await db.collection('flashcards')
+                                    .where('question', '==', card.question)
+                                    .where('answer', '==', card.answer)
+                                    .limit(1).get();
+                                if (!existing.empty) {
+                                    stats.flashcards.skipped++;
+                                    continue;
+                                }
+                            }
+                            
+                            const cardData = { ...card };
+                            delete cardData.id;
+                            await db.collection('flashcards').doc(card.id).set(cardData);
+                            stats.flashcards.imported++;
+                        } catch (err) {
+                            console.error('カードインポートエラー:', err);
+                            stats.flashcards.errors++;
+                        }
+                    }
+                }
+                
+                // 学習セッションのインポート
+                if (backup.data.studySessions && backup.data.studySessions.length > 0) {
+                    for (const session of backup.data.studySessions) {
+                        try {
+                            const sessionData = { ...session };
+                            delete sessionData.id;
+                            await db.collection('studySessions').doc(session.id).set(sessionData);
+                            stats.studySessions.imported++;
+                        } catch (err) {
+                            console.error('セッションインポートエラー:', err);
+                            stats.studySessions.errors++;
+                        }
+                    }
+                }
+                
+                // PDFマーカーのインポート
+                if (backup.data.pdfMarkers && backup.data.pdfMarkers.length > 0) {
+                    for (const pdfMarker of backup.data.pdfMarkers) {
+                        try {
+                            if (skipDuplicates) {
+                                const existing = await db.collection('pdfMarkers').doc(pdfMarker.pdfHash).get();
+                                if (existing.exists) {
+                                    stats.pdfMarkers.skipped++;
+                                    continue;
+                                }
+                            }
+                            
+                            const markerData = { ...pdfMarker };
+                            delete markerData.pdfHash;
+                            await db.collection('pdfMarkers').doc(pdfMarker.pdfHash).set(markerData);
+                            stats.pdfMarkers.imported++;
+                        } catch (err) {
+                            console.error('PDFマーカーインポートエラー:', err);
+                            stats.pdfMarkers.errors++;
+                        }
+                    }
+                }
+                
+                // 設定のインポート
+                if (backup.settings) {
+                    if (backup.settings.theme) localStorage.setItem('theme', backup.settings.theme);
+                    if (backup.settings.customColors) localStorage.setItem('customColors', backup.settings.customColors);
+                    if (backup.settings.fontSize) localStorage.setItem('fontSize', backup.settings.fontSize);
+                    if (backup.settings.globalStudySettings) localStorage.setItem('globalStudySettings', backup.settings.globalStudySettings);
+                    if (backup.settings.deckStudySettings) localStorage.setItem('deckStudySettings', backup.settings.deckStudySettings);
+                    if (backup.settings.collapsedDecks) localStorage.setItem('collapsedDecks', backup.settings.collapsedDecks);
+                    if (backup.settings.cardsPerPage) localStorage.setItem('cardsPerPage', backup.settings.cardsPerPage);
+                    if (backup.settings.lastSelectedDeckId) localStorage.setItem('lastSelectedDeckId', backup.settings.lastSelectedDeckId);
+                    if (backup.settings.instantDeleteMode) localStorage.setItem('instantDeleteMode', backup.settings.instantDeleteMode);
+                }
+                
+                // 結果を表示
+                let message = 'バックアップから復元しました\n\n';
+                message += `【デッキ】\n✓ ${stats.decks.imported}件 ⊘ ${stats.decks.skipped}件 ✗ ${stats.decks.errors}件\n\n`;
+                message += `【カード】\n✓ ${stats.flashcards.imported}件 ⊘ ${stats.flashcards.skipped}件 ✗ ${stats.flashcards.errors}件\n\n`;
+                message += `【学習記録】\n✓ ${stats.studySessions.imported}件 ⊘ ${stats.studySessions.skipped}件 ✗ ${stats.studySessions.errors}件\n\n`;
+                message += `【PDFマーカー】\n✓ ${stats.pdfMarkers.imported}件 ⊘ ${stats.pdfMarkers.skipped}件 ✗ ${stats.pdfMarkers.errors}件`;
+                
+                alert(message);
+                
+                // データを再読み込み
+                await loadDecks();
+                await loadCards();
+                renderCardList();
+                updateDeckStats();
+                
+                // 設定を適用
+                if (backup.settings) {
+                    location.reload();
+                }
+                
+            } catch (error) {
+                console.error('バックアップ復元エラー:', error);
+                alert('バックアップファイルの復元に失敗しました。\nエラー: ' + error.message);
+            }
+            
+            // ファイル入力をリセット
+            event.target.value = '';
         }
         
         // v12.03: フォントサイズ適用
