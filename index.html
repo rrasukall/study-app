@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01</title>
+    <title>MyAnkiApp v14.01.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3014,7 +3014,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01',
+                    appVersion: 'v14.01.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3105,7 +3105,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01',
+                    appVersion: 'v14.01.1',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3349,9 +3349,8 @@
                 
                 // カードリストを更新
                 if (importedCount > 0) {
-                    await loadCards();
-                    renderCardList();
-                    updateDeckStats();
+                    // ページをリロードしてデータを反映
+                    location.reload();
                 }
                 
             } catch (error) {
@@ -3499,16 +3498,8 @@
                 
                 alert(message);
                 
-                // データを再読み込み
-                await loadDecks();
-                await loadCards();
-                renderCardList();
-                updateDeckStats();
-                
-                // 設定を適用
-                if (backup.settings) {
-                    location.reload();
-                }
+                // データを再読み込み（ページリロード）
+                location.reload();
                 
             } catch (error) {
                 console.error('バックアップ復元エラー:', error);
