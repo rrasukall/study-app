@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.4</title>
+    <title>MyAnkiApp v14.02.4.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.4.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3124,7 +3124,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.4',
+                    appVersion: 'v14.02.4.1',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3215,7 +3215,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.4',
+                    appVersion: 'v14.02.4.1',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -4293,22 +4293,32 @@
                     cutoffDate = now - (days * 24 * 60 * 60 * 1000);
                 }
                 
-                // v14.02.4: 完了した古い学習記録を取得
-                const completedSnapshot = await db.collection('studySessions')
-                    .where('isComplete', '==', true)
-                    .where('startTime', '<', cutoffDate)
-                    .get();
+                // v14.02.4.1: 全件取得してJavaScriptでフィルタリング（インデックス不要）
+                const allSnapshot = await db.collection('studySessions').get();
                 
-                const completedCount = completedSnapshot.size;
-                
-                // v14.02.4: 古いタイマー状態を取得（7日以上更新なし）
                 const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-                const oldTimerSnapshot = await db.collection('studySessions')
-                    .where('isComplete', '==', false)
-                    .where('updatedAt', '<', firebase.firestore.Timestamp.fromMillis(sevenDaysAgo))
-                    .get();
                 
-                const oldTimerCount = oldTimerSnapshot.size;
+                const completedOldDocs = [];
+                const oldTimerDocs = [];
+                
+                allSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // 完了した古い学習記録
+                    if (data.isComplete === true && data.startTime && data.startTime < cutoffDate) {
+                        completedOldDocs.push(doc);
+                    }
+                    // 古いタイマー状態（7日以上更新なし）
+                    else if (data.isComplete === false && data.updatedAt) {
+                        const updatedAtMs = data.updatedAt.toMillis ? data.updatedAt.toMillis() : data.updatedAt;
+                        if (updatedAtMs < sevenDaysAgo) {
+                            oldTimerDocs.push(doc);
+                        }
+                    }
+                });
+                
+                const completedCount = completedOldDocs.length;
+                const oldTimerCount = oldTimerDocs.length;
                 
                 // 合計
                 const totalCount = completedCount + oldTimerCount;
@@ -4316,7 +4326,7 @@
                 // サイズを推定
                 let totalSize = 0;
                 
-                completedSnapshot.forEach(doc => {
+                completedOldDocs.forEach(doc => {
                     const data = doc.data();
                     const jsonStr = JSON.stringify(data);
                     const baseSize = new Blob([jsonStr]).size;
@@ -4325,7 +4335,7 @@
                     totalSize += baseSize + overhead + indexSize;
                 });
                 
-                oldTimerSnapshot.forEach(doc => {
+                oldTimerDocs.forEach(doc => {
                     const data = doc.data();
                     const jsonStr = JSON.stringify(data);
                     const baseSize = new Blob([jsonStr]).size;
@@ -4404,20 +4414,31 @@
                     cutoffDate = now - (days * 24 * 60 * 60 * 1000);
                 }
                 
-                // v14.02.4: 完了した古い学習記録を取得
-                const completedSnapshot = await db.collection('studySessions')
-                    .where('isComplete', '==', true)
-                    .where('startTime', '<', cutoffDate)
-                    .get();
+                // v14.02.4.1: 全件取得してJavaScriptでフィルタリング（インデックス不要）
+                const allSnapshot = await db.collection('studySessions').get();
                 
-                // v14.02.4: 古いタイマー状態を取得（7日以上更新なし）
                 const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-                const oldTimerSnapshot = await db.collection('studySessions')
-                    .where('isComplete', '==', false)
-                    .where('updatedAt', '<', firebase.firestore.Timestamp.fromMillis(sevenDaysAgo))
-                    .get();
                 
-                const totalCount = completedSnapshot.size + oldTimerSnapshot.size;
+                const completedOldDocs = [];
+                const oldTimerDocs = [];
+                
+                allSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // 完了した古い学習記録
+                    if (data.isComplete === true && data.startTime && data.startTime < cutoffDate) {
+                        completedOldDocs.push(doc);
+                    }
+                    // 古いタイマー状態（7日以上更新なし）
+                    else if (data.isComplete === false && data.updatedAt) {
+                        const updatedAtMs = data.updatedAt.toMillis ? data.updatedAt.toMillis() : data.updatedAt;
+                        if (updatedAtMs < sevenDaysAgo) {
+                            oldTimerDocs.push(doc);
+                        }
+                    }
+                });
+                
+                const totalCount = completedOldDocs.length + oldTimerDocs.length;
                 
                 if (totalCount === 0) {
                     showToast('削除対象がありません', 3000, 'info');
@@ -4430,7 +4451,7 @@
                 
                 showToast(`削除中... 0/${totalCount}件`, 1000, 'info');
                 
-                const allDocs = [...completedSnapshot.docs, ...oldTimerSnapshot.docs];
+                const allDocs = [...completedOldDocs, ...oldTimerDocs];
                 const batches = [];
                 let batch = db.batch();
                 let operationCount = 0;
@@ -4457,7 +4478,7 @@
                     showToast(`削除中... ${deletedCount}/${totalCount}件`, 1000, 'info');
                 }
                 
-                showToast(`✅ ${deletedCount}件のセッション履歴を削除しました\n（完了記録: ${completedSnapshot.size}件 / タイマー状態: ${oldTimerSnapshot.size}件）`, 10000, 'success');
+                showToast(`✅ ${deletedCount}件のセッション履歴を削除しました\n（完了記録: ${completedOldDocs.length}件 / タイマー状態: ${oldTimerDocs.length}件）`, 10000, 'success');
                 
                 // プレビューを更新
                 await previewSessionDeletion();
