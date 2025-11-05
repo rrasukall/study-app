@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.1</title>
+    <title>MyAnkiApp v14.02.1.2</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1491,12 +1491,35 @@
         body.font-xlarge {
             font-size: 18px;
         }
+        
+        /* v14.02.1.2: トースト通知のアニメーション */
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
 
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.1.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1746,6 +1769,9 @@
                             <div>
                                 <div style="font-size: 14px; color: #666; margin-bottom: 5px;">総データ量（推定）</div>
                                 <div style="font-size: 32px; font-weight: bold; color: #667eea;" id="totalStorageSize">計算中...</div>
+                                <div style="font-size: 11px; color: #999; margin-top: 5px;">
+                                    ※オーバーヘッドとインデックスを含む推定値。実際のFirestoreストレージとの誤差は±10-20%程度です
+                                </div>
                             </div>
                             <div style="text-align: right;">
                                 <div style="font-size: 14px; color: #666; margin-bottom: 5px;">総ドキュメント数</div>
@@ -3048,7 +3074,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.1',
+                    appVersion: 'v14.02.1.2',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3139,7 +3165,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.1',
+                    appVersion: 'v14.02.1.2',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3985,9 +4011,68 @@
             if (usageEl) usageEl.textContent = percentage + '%';
         }
         
+        // v14.02.1.2: トースト通知を表示
+        function showToast(message, duration = 10000, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            const colors = {
+                success: { bg: '#27ae60', icon: '✅' },
+                error: { bg: '#e74c3c', icon: '❌' },
+                info: { bg: '#3498db', icon: 'ℹ️' },
+                warning: { bg: '#f39c12', icon: '⚠️' }
+            };
+            
+            const style = colors[type] || colors.info;
+            
+            toast.style.cssText = `
+                background: ${style.bg};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                margin-top: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                min-width: 250px;
+                max-width: 400px;
+                font-size: 14px;
+                animation: slideIn 0.3s ease-out;
+                cursor: pointer;
+            `;
+            
+            toast.innerHTML = `
+                <span style="font-size: 20px;">${style.icon}</span>
+                <span style="flex: 1;">${message}</span>
+            `;
+            
+            // クリックで即座に閉じる
+            toast.onclick = () => {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            };
+            
+            container.appendChild(toast);
+            
+            // 指定時間後に自動で消える
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+        
         // v14.02.1: ストレージ使用量を計算
+        // v14.02.1.2: フィードバック追加
         async function calculateStorageUsage() {
             try {
+                // 計算中表示
+                const totalSizeEl = document.getElementById('totalStorageSize');
+                if (totalSizeEl) totalSizeEl.textContent = '計算中...';
+                
                 const collections = {
                     flashcards: { name: 'カード', icon: '📇', color: '#667eea' },
                     decks: { name: 'デッキ', icon: '📚', color: '#3498db' },
@@ -4006,12 +4091,22 @@
                         const snapshot = await db.collection(collectionName).get();
                         const docCount = snapshot.size;
                         
-                        // データサイズを推定（JSON文字列のバイト数）
+                        // データサイズを推定
                         let collectionSize = 0;
                         snapshot.forEach(doc => {
                             const data = doc.data();
                             const jsonStr = JSON.stringify(data);
-                            collectionSize += new Blob([jsonStr]).size;
+                            const baseSize = new Blob([jsonStr]).size;
+                            
+                            // Firestoreの実際のサイズ推定
+                            // - ドキュメント名: 約16バイト
+                            // - フィールド名のオーバーヘッド: 約32バイト
+                            // - インデックス: データサイズの約20-30%
+                            const overhead = 48; // ドキュメントID + フィールド名
+                            const indexSize = baseSize * 0.25; // インデックス推定
+                            const estimatedSize = baseSize + overhead + indexSize;
+                            
+                            collectionSize += estimatedSize;
                         });
                         
                         totalSize += collectionSize;
@@ -4087,6 +4182,9 @@
                         })
                         .join('');
                 }
+                
+                // v14.02.1.2: 計算完了のトースト通知
+                showToast(`ストレージ使用量を再計算しました\n総データ量: ${(totalSize / 1024 / 1024).toFixed(2)} MB / ${totalDocs}件`, 10000, 'success');
                 
             } catch (error) {
                 console.error('ストレージ計算エラー:', error);
@@ -4659,13 +4757,28 @@
             }
         }
 
+        // v14.02.1.2: タブ切り替え（イベント不要に修正）
         function switchTab(tab) {
+            // すべてのタブとセクションの active を削除
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             
-            event.target.classList.add('active');
-            document.getElementById(tab + '-section').classList.add('active');
+            // v14.02.1.2: タブのonclick属性から対象を特定して直接activeを付与
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => {
+                const onclickAttr = t.getAttribute('onclick');
+                if (onclickAttr && onclickAttr.includes(`'${tab}'`)) {
+                    t.classList.add('active');
+                }
+            });
             
+            // セクションを表示
+            const section = document.getElementById(tab + '-section');
+            if (section) {
+                section.classList.add('active');
+            }
+            
+            // タブごとの初期化処理
             if (tab === 'home') {
                 loadDecks();
             } else if (tab === 'cards') {
@@ -10133,13 +10246,8 @@
         }
 
         function viewDeckCards(deckId) {
-            // カード管理タブに切り替え
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            
-            const cardTab = document.querySelectorAll('.tab')[2]; // カード管理タブ
-            cardTab.classList.add('active');
-            document.getElementById('cards-section').classList.add('active');
+            // v14.02.1.2: カード管理タブに正しく切り替え
+            switchTab('cards');
             
             // デッキフィルターを設定
             const deckFilter = document.getElementById('deckFilter');
@@ -11781,5 +11889,8 @@
             </div>
         </div>
     </div>
+    
+    <!-- v14.02.1.2: トースト通知 -->
+    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 10000;"></div>
 </body>
 </html>
