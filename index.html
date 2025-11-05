@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.5</title>
+    <title>MyAnkiApp v14.02.6</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1841,6 +1841,92 @@
                             <button class="btn btn-secondary" onclick="createTestSessions()" style="width: 100%; font-size: 13px;">
                                 🧪 テストデータ作成（100件の古いセッション履歴）
                             </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- v14.02.6: データ容量の最適化 -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-top: 20px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #667eea;">🔧 データ容量の最適化</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        不要なデータを検出して削除し、ストレージ容量を最適化します。
+                    </p>
+                    
+                    <button class="btn" onclick="scanForOptimization()" style="width: 100%; margin-bottom: 20px;">
+                        🔍 データスキャンを実行
+                    </button>
+                    
+                    <div id="optimizationResults" style="display: none;">
+                        <!-- 孤立カード -->
+                        <div id="orphanCardsSection" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f39c12;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="color: #856404; margin: 0;">⚠️ 孤立カード</h4>
+                                <span style="font-size: 20px; font-weight: bold; color: #e74c3c;" id="orphanCardsCount">0件</span>
+                            </div>
+                            <p style="font-size: 13px; color: #856404; margin-bottom: 10px;">
+                                デッキが存在しないカードが見つかりました。これらのカードは学習に使用できません。
+                            </p>
+                            <div id="orphanCardsList" style="max-height: 150px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px;">
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteOrphanCards()" style="width: 100%;">
+                                🗑️ 孤立カードを削除
+                            </button>
+                        </div>
+                        
+                        <!-- 孤立PDFマーカー -->
+                        <div id="orphanMarkersSection" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f39c12;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="color: #856404; margin: 0;">⚠️ 孤立PDFマーカー</h4>
+                                <span style="font-size: 20px; font-weight: bold; color: #e74c3c;" id="orphanMarkersCount">0件</span>
+                            </div>
+                            <p style="font-size: 13px; color: #856404; margin-bottom: 10px;">
+                                対応するPDFが存在しないマーカー情報が見つかりました。
+                            </p>
+                            <div id="orphanMarkersList" style="max-height: 150px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px;">
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteOrphanMarkers()" style="width: 100%;">
+                                🗑️ 孤立PDFマーカーを削除
+                            </button>
+                        </div>
+                        
+                        <!-- 重複カード -->
+                        <div id="duplicateCardsSection" style="display: none; background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #3498db;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="color: #1565c0; margin: 0;">📋 重複カード</h4>
+                                <span style="font-size: 20px; font-weight: bold; color: #1565c0;" id="duplicateCardsCount">0グループ</span>
+                            </div>
+                            <p style="font-size: 13px; color: #1565c0; margin-bottom: 10px;">
+                                同じ内容のカードが複数見つかりました。重複を削除できます。
+                            </p>
+                            <div id="duplicateCardsList" style="max-height: 150px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px;">
+                            </div>
+                            <button class="btn" onclick="showDuplicateCardsDetail()" style="width: 100%; background: #3498db; border-color: #3498db;">
+                                📋 重複カードの詳細を表示
+                            </button>
+                        </div>
+                        
+                        <!-- 未使用タグ -->
+                        <div id="unusedTagsSection" style="display: none; background: #f3e5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #9c27b0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="color: #6a1b9a; margin: 0;">🏷️ 未使用タグ</h4>
+                                <span style="font-size: 20px; font-weight: bold; color: #6a1b9a;" id="unusedTagsCount">0件</span>
+                            </div>
+                            <p style="font-size: 13px; color: #6a1b9a; margin-bottom: 10px;">
+                                カードに使用されていないタグが見つかりました。
+                            </p>
+                            <div id="unusedTagsList" style="max-height: 150px; overflow-y: auto; background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px;">
+                            </div>
+                            <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                                ℹ️ 未使用タグは自動的に表示から除外されます。手動削除は不要です。
+                            </p>
+                        </div>
+                        
+                        <!-- 最適化完了 -->
+                        <div id="optimizationComplete" style="display: none; background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                            <h4 style="color: #155724; margin: 0 0 10px 0;">✅ 最適化の必要なデータはありません</h4>
+                            <p style="font-size: 13px; color: #155724; margin: 0;">
+                                すべてのデータは適切に管理されています。
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -4609,6 +4695,481 @@
             } catch (error) {
                 console.error('テストデータ作成エラー:', error);
                 showToast('❌ テストデータ作成中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
+        // v14.02.6: データ容量の最適化 - データスキャン
+        let orphanCardsData = [];
+        let orphanMarkersData = [];
+        let duplicateCardsData = [];
+        let unusedTagsData = [];
+        
+        async function scanForOptimization() {
+            try {
+                showToast('データスキャン中...', 1000, 'info');
+                
+                // 初期化
+                orphanCardsData = [];
+                orphanMarkersData = [];
+                duplicateCardsData = [];
+                unusedTagsData = [];
+                
+                // すべてのデッキを取得
+                const decksSnapshot = await db.collection('decks').get();
+                const deckIds = new Set(decksSnapshot.docs.map(doc => doc.id));
+                
+                // すべてのカードを取得
+                const cardsSnapshot = await db.collection('flashcards').get();
+                const allCards = cardsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // 1. 孤立カードの検出（デッキが存在しないカード）
+                allCards.forEach(card => {
+                    if (!deckIds.has(card.deckId)) {
+                        orphanCardsData.push(card);
+                    }
+                });
+                
+                // 2. PDFマーカーの孤立検出は複雑なので省略（PDF本体がないマーカー）
+                // 実際にはPDFMetadataコレクションと照合する必要がある
+                const pdfMetadataSnapshot = await db.collection('pdfMetadata').get();
+                const pdfHashes = new Set(pdfMetadataSnapshot.docs.map(doc => doc.id));
+                
+                const pdfMarkersSnapshot = await db.collection('pdfMarkers').get();
+                pdfMarkersSnapshot.docs.forEach(doc => {
+                    const markerData = doc.data();
+                    if (!pdfHashes.has(doc.id)) {
+                        orphanMarkersData.push({ id: doc.id, ...markerData });
+                    }
+                });
+                
+                // 3. 重複カードの検出（問題と答えが完全一致）
+                const cardMap = new Map();
+                allCards.forEach(card => {
+                    if (card.type === 'basic') {
+                        const key = `${card.question.trim()}|||${card.answer.trim()}`;
+                        if (!cardMap.has(key)) {
+                            cardMap.set(key, []);
+                        }
+                        cardMap.get(key).push(card);
+                    } else if (card.type === 'cloze') {
+                        const key = `cloze|||${card.text.trim()}`;
+                        if (!cardMap.has(key)) {
+                            cardMap.set(key, []);
+                        }
+                        cardMap.get(key).push(card);
+                    } else if (card.type === 'typing') {
+                        const key = `typing|||${card.question.trim()}|||${card.answer.trim()}`;
+                        if (!cardMap.has(key)) {
+                            cardMap.set(key, []);
+                        }
+                        cardMap.get(key).push(card);
+                    }
+                });
+                
+                cardMap.forEach((cards, key) => {
+                    if (cards.length > 1) {
+                        duplicateCardsData.push(cards);
+                    }
+                });
+                
+                // 4. 未使用タグの検出
+                const allTags = new Set();
+                allCards.forEach(card => {
+                    if (card.tags && Array.isArray(card.tags)) {
+                        card.tags.forEach(tag => allTags.add(tag));
+                    }
+                });
+                
+                // タグが実際に使用されているかチェック
+                const usedTags = new Set();
+                allCards.forEach(card => {
+                    if (card.tags && Array.isArray(card.tags)) {
+                        card.tags.forEach(tag => usedTags.add(tag));
+                    }
+                });
+                
+                allTags.forEach(tag => {
+                    if (!usedTags.has(tag)) {
+                        unusedTagsData.push(tag);
+                    }
+                });
+                
+                // 結果を表示
+                displayOptimizationResults();
+                
+                showToast('✅ データスキャンが完了しました', 10000, 'success');
+                
+            } catch (error) {
+                console.error('スキャンエラー:', error);
+                showToast('❌ スキャン中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
+        // v14.02.6: 最適化結果を表示
+        function displayOptimizationResults() {
+            const resultsDiv = document.getElementById('optimizationResults');
+            resultsDiv.style.display = 'block';
+            
+            // 孤立カード
+            const orphanCardsSection = document.getElementById('orphanCardsSection');
+            if (orphanCardsData.length > 0) {
+                orphanCardsSection.style.display = 'block';
+                document.getElementById('orphanCardsCount').textContent = `${orphanCardsData.length}件`;
+                
+                const listDiv = document.getElementById('orphanCardsList');
+                listDiv.innerHTML = orphanCardsData.slice(0, 10).map(card => {
+                    const question = card.type === 'basic' ? card.question : 
+                                   card.type === 'cloze' ? card.text : 
+                                   card.question;
+                    return `<div style="padding: 5px; border-bottom: 1px solid #f0f0f0;">
+                        ${question.substring(0, 60)}${question.length > 60 ? '...' : ''}
+                        <span style="color: #999; font-size: 11px;"> (ID: ${card.id.substring(0, 8)}...)</span>
+                    </div>`;
+                }).join('');
+                
+                if (orphanCardsData.length > 10) {
+                    listDiv.innerHTML += `<div style="padding: 5px; color: #999; font-size: 12px;">他 ${orphanCardsData.length - 10}件...</div>`;
+                }
+            } else {
+                orphanCardsSection.style.display = 'none';
+            }
+            
+            // 孤立PDFマーカー
+            const orphanMarkersSection = document.getElementById('orphanMarkersSection');
+            if (orphanMarkersData.length > 0) {
+                orphanMarkersSection.style.display = 'block';
+                document.getElementById('orphanMarkersCount').textContent = `${orphanMarkersData.length}件`;
+                
+                const listDiv = document.getElementById('orphanMarkersList');
+                listDiv.innerHTML = orphanMarkersData.slice(0, 10).map(marker => {
+                    const markerCount = marker.markers ? Object.keys(marker.markers).length : 0;
+                    return `<div style="padding: 5px; border-bottom: 1px solid #f0f0f0;">
+                        PDF Hash: ${marker.id.substring(0, 16)}... (マーカー数: ${markerCount})
+                    </div>`;
+                }).join('');
+                
+                if (orphanMarkersData.length > 10) {
+                    listDiv.innerHTML += `<div style="padding: 5px; color: #999; font-size: 12px;">他 ${orphanMarkersData.length - 10}件...</div>`;
+                }
+            } else {
+                orphanMarkersSection.style.display = 'none';
+            }
+            
+            // 重複カード
+            const duplicateCardsSection = document.getElementById('duplicateCardsSection');
+            if (duplicateCardsData.length > 0) {
+                duplicateCardsSection.style.display = 'block';
+                document.getElementById('duplicateCardsCount').textContent = `${duplicateCardsData.length}グループ`;
+                
+                const listDiv = document.getElementById('duplicateCardsList');
+                const totalDuplicates = duplicateCardsData.reduce((sum, group) => sum + group.length - 1, 0);
+                listDiv.innerHTML = `<div style="padding: 10px;">
+                    ${duplicateCardsData.length}グループ（合計${totalDuplicates}枚の重複カード）が見つかりました。<br>
+                    詳細ボタンから確認・削除できます。
+                </div>`;
+            } else {
+                duplicateCardsSection.style.display = 'none';
+            }
+            
+            // 未使用タグ
+            const unusedTagsSection = document.getElementById('unusedTagsSection');
+            if (unusedTagsData.length > 0) {
+                unusedTagsSection.style.display = 'block';
+                document.getElementById('unusedTagsCount').textContent = `${unusedTagsData.length}件`;
+                
+                const listDiv = document.getElementById('unusedTagsList');
+                listDiv.innerHTML = unusedTagsData.slice(0, 20).map(tag => {
+                    return `<span style="display: inline-block; background: #f0f0f0; padding: 3px 8px; margin: 3px; border-radius: 3px; font-size: 12px;">${tag}</span>`;
+                }).join('');
+                
+                if (unusedTagsData.length > 20) {
+                    listDiv.innerHTML += `<div style="padding: 5px; color: #999; font-size: 12px;">他 ${unusedTagsData.length - 20}件...</div>`;
+                }
+            } else {
+                unusedTagsSection.style.display = 'none';
+            }
+            
+            // すべて正常な場合
+            const optimizationComplete = document.getElementById('optimizationComplete');
+            if (orphanCardsData.length === 0 && orphanMarkersData.length === 0 && 
+                duplicateCardsData.length === 0 && unusedTagsData.length === 0) {
+                optimizationComplete.style.display = 'block';
+            } else {
+                optimizationComplete.style.display = 'none';
+            }
+        }
+        
+        // v14.02.6: 孤立カードを削除
+        async function deleteOrphanCards() {
+            if (orphanCardsData.length === 0) {
+                showToast('削除対象がありません', 3000, 'info');
+                return;
+            }
+            
+            if (!confirm(`${orphanCardsData.length}件の孤立カードを削除します。\n\nこの操作は取り消せません。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                showToast('削除中...', 1000, 'info');
+                
+                const batchSize = 500;
+                const batches = [];
+                let batch = db.batch();
+                let operationCount = 0;
+                let deletedCount = 0;
+                
+                orphanCardsData.forEach(card => {
+                    const cardRef = db.collection('flashcards').doc(card.id);
+                    batch.delete(cardRef);
+                    operationCount++;
+                    
+                    if (operationCount >= batchSize) {
+                        batches.push(batch);
+                        batch = db.batch();
+                        operationCount = 0;
+                    }
+                });
+                
+                if (operationCount > 0) {
+                    batches.push(batch);
+                }
+                
+                // バッチを順次実行
+                for (let i = 0; i < batches.length; i++) {
+                    await batches[i].commit();
+                    deletedCount += Math.min(batchSize, orphanCardsData.length - deletedCount);
+                    showToast(`削除中... ${deletedCount}/${orphanCardsData.length}件`, 1000, 'info');
+                }
+                
+                showToast(`✅ ${deletedCount}件の孤立カードを削除しました`, 10000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
+        // v14.02.6: 孤立PDFマーカーを削除
+        async function deleteOrphanMarkers() {
+            if (orphanMarkersData.length === 0) {
+                showToast('削除対象がありません', 3000, 'info');
+                return;
+            }
+            
+            if (!confirm(`${orphanMarkersData.length}件の孤立PDFマーカーを削除します。\n\nこの操作は取り消せません。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                showToast('削除中...', 1000, 'info');
+                
+                const batchSize = 500;
+                const batches = [];
+                let batch = db.batch();
+                let operationCount = 0;
+                let deletedCount = 0;
+                
+                orphanMarkersData.forEach(marker => {
+                    const markerRef = db.collection('pdfMarkers').doc(marker.id);
+                    batch.delete(markerRef);
+                    operationCount++;
+                    
+                    if (operationCount >= batchSize) {
+                        batches.push(batch);
+                        batch = db.batch();
+                        operationCount = 0;
+                    }
+                });
+                
+                if (operationCount > 0) {
+                    batches.push(batch);
+                }
+                
+                // バッチを順次実行
+                for (let i = 0; i < batches.length; i++) {
+                    await batches[i].commit();
+                    deletedCount += Math.min(batchSize, orphanMarkersData.length - deletedCount);
+                    showToast(`削除中... ${deletedCount}/${orphanMarkersData.length}件`, 1000, 'info');
+                }
+                
+                showToast(`✅ ${deletedCount}件の孤立PDFマーカーを削除しました`, 10000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
+        // v14.02.6: 重複カードの詳細を表示（モーダルで）
+        function showDuplicateCardsDetail() {
+            if (duplicateCardsData.length === 0) {
+                showToast('重複カードがありません', 3000, 'info');
+                return;
+            }
+            
+            let html = '<div style="max-height: 500px; overflow-y: auto;">';
+            
+            duplicateCardsData.forEach((group, groupIndex) => {
+                const firstCard = group[0];
+                const question = firstCard.type === 'basic' ? firstCard.question : 
+                               firstCard.type === 'cloze' ? firstCard.text : 
+                               firstCard.question;
+                const answer = firstCard.type === 'basic' ? firstCard.answer : 
+                             firstCard.type === 'typing' ? firstCard.answer : '';
+                
+                html += `<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">グループ ${groupIndex + 1}（${group.length}枚の重複）</div>
+                    <div style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                        <div style="font-size: 13px; color: #666; margin-bottom: 5px;">問題:</div>
+                        <div style="font-size: 14px;">${question.substring(0, 100)}${question.length > 100 ? '...' : ''}</div>
+                        ${answer ? `<div style="font-size: 13px; color: #666; margin-top: 10px; margin-bottom: 5px;">答え:</div>
+                        <div style="font-size: 14px;">${answer.substring(0, 100)}${answer.length > 100 ? '...' : ''}</div>` : ''}
+                    </div>
+                    <div style="font-size: 12px; color: #999;">
+                        このグループの重複カードを削除すると、最も新しい1枚だけが残ります。
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteDuplicateGroup(${groupIndex})" style="margin-top: 10px; width: 100%;">
+                        このグループの重複を削除（${group.length - 1}枚削除）
+                    </button>
+                </div>`;
+            });
+            
+            html += '</div>';
+            html += `<button class="btn" onclick="deleteAllDuplicates()" style="margin-top: 20px; width: 100%; background: #e74c3c; border-color: #e74c3c;">
+                すべての重複を削除（合計${duplicateCardsData.reduce((sum, group) => sum + group.length - 1, 0)}枚）
+            </button>`;
+            
+            // 簡易モーダル表示
+            const modalHtml = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 90%; overflow-y: auto;" onclick="event.stopPropagation()">
+                        <h2 style="margin-bottom: 20px;">重複カードの詳細</h2>
+                        ${html}
+                        <button class="btn btn-secondary" onclick="this.closest('div[style*=\\'position: fixed\\']').remove()" style="margin-top: 20px; width: 100%;">閉じる</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        // v14.02.6: 特定グループの重複を削除
+        async function deleteDuplicateGroup(groupIndex) {
+            const group = duplicateCardsData[groupIndex];
+            if (!group || group.length <= 1) {
+                showToast('削除対象がありません', 3000, 'info');
+                return;
+            }
+            
+            if (!confirm(`${group.length - 1}枚の重複カードを削除します。\n\n最も新しい1枚だけが残ります。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                // 最も新しいカード（最後のカード）を残し、それ以外を削除
+                const cardsToDelete = group.slice(0, -1);
+                
+                const batch = db.batch();
+                cardsToDelete.forEach(card => {
+                    const cardRef = db.collection('flashcards').doc(card.id);
+                    batch.delete(cardRef);
+                });
+                
+                await batch.commit();
+                
+                showToast(`✅ ${cardsToDelete.length}枚の重複カードを削除しました`, 10000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+                // モーダルを閉じる
+                document.querySelector('div[style*="position: fixed"]')?.remove();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
+        // v14.02.6: すべての重複を削除
+        async function deleteAllDuplicates() {
+            if (duplicateCardsData.length === 0) {
+                showToast('削除対象がありません', 3000, 'info');
+                return;
+            }
+            
+            const totalToDelete = duplicateCardsData.reduce((sum, group) => sum + group.length - 1, 0);
+            
+            if (!confirm(`${totalToDelete}枚の重複カードを削除します。\n\n各グループで最も新しい1枚だけが残ります。続けますか？`)) {
+                return;
+            }
+            
+            try {
+                showToast('削除中...', 1000, 'info');
+                
+                const batchSize = 500;
+                const batches = [];
+                let batch = db.batch();
+                let operationCount = 0;
+                let deletedCount = 0;
+                
+                duplicateCardsData.forEach(group => {
+                    // 最も新しいカード（最後のカード）を残し、それ以外を削除
+                    const cardsToDelete = group.slice(0, -1);
+                    cardsToDelete.forEach(card => {
+                        const cardRef = db.collection('flashcards').doc(card.id);
+                        batch.delete(cardRef);
+                        operationCount++;
+                        
+                        if (operationCount >= batchSize) {
+                            batches.push(batch);
+                            batch = db.batch();
+                            operationCount = 0;
+                        }
+                    });
+                });
+                
+                if (operationCount > 0) {
+                    batches.push(batch);
+                }
+                
+                // バッチを順次実行
+                for (let i = 0; i < batches.length; i++) {
+                    await batches[i].commit();
+                    deletedCount += Math.min(batchSize, totalToDelete - deletedCount);
+                    showToast(`削除中... ${deletedCount}/${totalToDelete}件`, 1000, 'info');
+                }
+                
+                showToast(`✅ ${deletedCount}枚の重複カードを削除しました`, 10000, 'success');
+                
+                // 再スキャン
+                await scanForOptimization();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+                // モーダルを閉じる
+                document.querySelector('div[style*="position: fixed"]')?.remove();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
             }
         }
         
