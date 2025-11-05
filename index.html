@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.8.1</title>
+    <title>MyAnkiApp v14.02.8.2</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3454,7 +3454,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.8.1',
+                    appVersion: 'v14.02.8.2',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3551,7 +3551,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.8.1',
+                    appVersion: 'v14.02.8.2',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -6087,7 +6087,7 @@
                 version: '1.0',
                 userId: null,
                 exportDate: new Date().toISOString(),
-                appVersion: 'v14.02.8.1',
+                appVersion: 'v14.02.8.2',
                 data: {
                     decks: decks,
                     flashcards: flashcards,
@@ -6792,20 +6792,41 @@
         async function editCardFromIntegrity(cardId) {
             try {
                 // カードタブに切り替え
-                switchSection('cards');
+                switchTab('cards');
                 
-                // カードを取得して編集モーダルを開く
+                // カードを取得
                 const cardDoc = await db.collection('flashcards').doc(cardId).get();
-                if (cardDoc.exists) {
-                    const card = { id: cardDoc.id, ...cardDoc.data() };
-                    openEditModal(card);
-                    showToast('カード編集画面を開きました', 3000, 'info');
-                } else {
-                    showToast('カードが見つかりませんでした', 3000, 'error');
+                if (!cardDoc.exists) {
+                    showToast('❌ カードが見つかりませんでした', 3000, 'error');
+                    return;
                 }
+                
+                const cardData = { id: cardDoc.id, ...cardDoc.data() };
+                
+                // グローバルのcards配列を更新（editCard関数が使用するため）
+                if (!cards) {
+                    cards = [];
+                }
+                
+                // cards配列内で該当カードを探す
+                const cardIndex = cards.findIndex(c => c.id === cardId);
+                if (cardIndex >= 0) {
+                    // 既存のカードを更新
+                    cards[cardIndex] = cardData;
+                } else {
+                    // カードが配列にない場合は追加
+                    cards.push(cardData);
+                }
+                
+                // 少し待ってからeditCard関数を呼び出す（タブ切り替えの完了を待つ）
+                setTimeout(() => {
+                    editCard(cardId);
+                    showToast('✅ カード編集画面を開きました', 3000, 'info');
+                }, 300);
+                
             } catch (error) {
                 console.error('カード編集エラー:', error);
-                showToast('カードを開けませんでした', 3000, 'error');
+                showToast('❌ カードを開けませんでした', 3000, 'error');
             }
         }
         
@@ -6981,21 +7002,35 @@
         }
         
         // v14.02.10: ストレージアラートを更新
+        // v14.02.10: ストレージアラートを更新
         async function updateStorageAlert() {
             try {
-                // ストレージ使用量を取得
-                const storageInfo = await calculateStorageUsage();
-                
-                if (!storageInfo) return;
-                
-                // 履歴に記録
-                recordStorageUsage(storageInfo);
-                
                 const alertDiv = document.getElementById('storageAlertStatus');
                 const recommendDiv = document.getElementById('storageRecommendations');
                 const recommendList = document.getElementById('storageRecommendationsList');
                 
-                const percentage = storageInfo.usagePercentage;
+                // 要素が存在しない場合は処理を中断
+                if (!alertDiv) {
+                    console.log('ストレージアラート要素が見つかりません');
+                    return;
+                }
+                
+                // ストレージ使用量を取得
+                const storageInfo = await calculateStorageUsage();
+                
+                if (!storageInfo) {
+                    console.log('ストレージ情報の取得に失敗しました');
+                    alertDiv.innerHTML = `<div style="background: #f8f9fa; border-left: 4px solid #999; padding: 15px; border-radius: 5px;">
+                        <div style="font-weight: bold; color: #666; margin-bottom: 5px;">ℹ️ ストレージ情報を計算中...</div>
+                        <div style="font-size: 13px; color: #999;">統計タブのストレージ使用量を計算ボタンをクリックしてください。</div>
+                    </div>`;
+                    return;
+                }
+                
+                // 履歴に記録
+                recordStorageUsage(storageInfo);
+                
+                const percentage = storageInfo.usagePercentage || 0;
                 
                 let alertHTML = '';
                 let alertColor = '';
@@ -7022,13 +7057,13 @@
                 
                 alertHTML = `<div style="background: ${alertColor}22; border-left: 4px solid ${alertColor}; padding: 15px; border-radius: 5px;">
                     <div style="font-weight: bold; color: ${alertColor}; margin-bottom: 5px;">${alertIcon} ${alertMessage}</div>
-                    <div style="font-size: 13px; color: #666;">現在の使用量: ${storageInfo.usedMB} MB / ${storageInfo.totalMB} MB (${percentage.toFixed(1)}%)</div>
+                    <div style="font-size: 13px; color: #666;">現在の使用量: ${storageInfo.usedMB.toFixed(2)} MB / ${storageInfo.totalMB} MB (${percentage.toFixed(1)}%)</div>
                 </div>`;
                 
                 alertDiv.innerHTML = alertHTML;
                 
                 // 削除推奨項目を表示
-                if (percentage >= 70) {
+                if (percentage >= 70 && recommendDiv && recommendList) {
                     const recommendations = await getStorageRecommendations();
                     
                     if (recommendations.length > 0) {
@@ -7045,7 +7080,7 @@
                     } else {
                         recommendDiv.style.display = 'none';
                     }
-                } else {
+                } else if (recommendDiv) {
                     recommendDiv.style.display = 'none';
                 }
                 
@@ -7054,6 +7089,13 @@
                 
             } catch (error) {
                 console.error('ストレージアラート更新エラー:', error);
+                const alertDiv = document.getElementById('storageAlertStatus');
+                if (alertDiv) {
+                    alertDiv.innerHTML = `<div style="background: #f8d7da; border-left: 4px solid #e74c3c; padding: 15px; border-radius: 5px;">
+                        <div style="font-weight: bold; color: #e74c3c; margin-bottom: 5px;">❌ エラー</div>
+                        <div style="font-size: 13px; color: #666;">ストレージアラートの更新に失敗しました: ${error.message}</div>
+                    </div>`;
+                }
             }
         }
         
