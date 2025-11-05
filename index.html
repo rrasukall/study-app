@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.2</title>
+    <title>MyAnkiApp v14.02.3</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -1810,7 +1810,7 @@
                                     <option value="90">90日より前</option>
                                     <option value="180">180日より前</option>
                                     <option value="365">1年より前</option>
-                                    <option value="custom">カスタム日付</option>
+                                    <option value="custom">カスタム日付より前</option>
                                 </select>
                                 
                                 <div id="customDateInput" style="display: none; margin-top: 10px;">
@@ -1829,6 +1829,16 @@
                         </div>
                         
                         <button class="btn btn-danger" onclick="deleteOldSessions()" style="width: 100%;">🗑️ 古いセッション履歴を削除</button>
+                        
+                        <!-- v14.02.3: 開発者用テストデータ作成 -->
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #f39c12;">
+                            <p style="font-size: 12px; color: #999; margin-bottom: 10px;">
+                                🧪 開発者用：削除機能のテスト用に古いセッション履歴を作成します
+                            </p>
+                            <button class="btn btn-secondary" onclick="createTestSessions()" style="width: 100%; font-size: 13px;">
+                                🧪 テストデータ作成（100件の古いセッション履歴）
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -3111,7 +3121,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.2',
+                    appVersion: 'v14.02.3',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3202,7 +3212,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.2',
+                    appVersion: 'v14.02.3',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -4116,7 +4126,6 @@
                     flashcards: { name: 'カード', icon: '📇', color: '#667eea' },
                     decks: { name: 'デッキ', icon: '📚', color: '#3498db' },
                     studySessions: { name: '学習セッション', icon: '📊', color: '#27ae60' },
-                    studySessionHistory: { name: 'セッション履歴', icon: '📝', color: '#95a5a6' },
                     pdfMarkers: { name: 'PDFマーカー', icon: '📄', color: '#f39c12' }
                 };
                 
@@ -4280,7 +4289,8 @@
                 }
                 
                 // 削除対象のセッション履歴を取得
-                const snapshot = await db.collection('studySessionHistory')
+                // v14.02.3: studySessions コレクションを対象に修正
+                const snapshot = await db.collection('studySessions')
                     .where('startTime', '<', cutoffDate)
                     .get();
                 
@@ -4359,7 +4369,8 @@
                 }
                 
                 // 削除対象を取得
-                const snapshot = await db.collection('studySessionHistory')
+                // v14.02.3: studySessions コレクションを対象に修正
+                const snapshot = await db.collection('studySessions')
                     .where('startTime', '<', cutoffDate)
                     .get();
                 
@@ -4412,6 +4423,59 @@
             } catch (error) {
                 console.error('削除エラー:', error);
                 showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
+            }
+        }
+        
+        // v14.02.3: テストデータ作成（開発者用）
+        async function createTestSessions() {
+            if (!confirm('100件の古いセッション履歴（90日前）を作成します。\n\nこれはテスト用の機能です。続けますか？')) {
+                return;
+            }
+            
+            try {
+                const testDate = Date.now() - (90 * 24 * 60 * 60 * 1000); // 90日前
+                const batch = db.batch();
+                let createdCount = 0;
+                
+                showToast('テストデータ作成中...', 1000, 'info');
+                
+                // 100件のテストセッション履歴を作成
+                for (let i = 0; i < 100; i++) {
+                    const sessionRef = db.collection('studySessions').doc();
+                    const sessionData = {
+                        startTime: testDate + (i * 60000), // 1分ずつずらす
+                        endTime: testDate + (i * 60000) + 600000, // 10分間
+                        duration: 600000,
+                        cardsStudied: Math.floor(Math.random() * 20) + 10,
+                        ratings: {
+                            again: Math.floor(Math.random() * 3),
+                            hard: Math.floor(Math.random() * 5),
+                            good: Math.floor(Math.random() * 10) + 5,
+                            easy: Math.floor(Math.random() * 5)
+                        },
+                        deckId: 'test-deck',
+                        createdAt: testDate
+                    };
+                    
+                    batch.set(sessionRef, sessionData);
+                    createdCount++;
+                    
+                    // Firestoreのバッチ制限は500なので問題なし
+                }
+                
+                await batch.commit();
+                
+                showToast(`✅ ${createdCount}件のテストセッション履歴を作成しました`, 10000, 'success');
+                
+                // プレビューを更新
+                await previewSessionDeletion();
+                
+                // ストレージ使用量を再計算
+                await calculateStorageUsage();
+                
+            } catch (error) {
+                console.error('テストデータ作成エラー:', error);
+                showToast('❌ テストデータ作成中にエラーが発生しました', 10000, 'error');
             }
         }
         
