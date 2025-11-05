@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.10</title>
+    <title>MyAnkiApp v14.01.11</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.10</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.11</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3015,7 +3015,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.10',
+                    appVersion: 'v14.01.11',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3106,7 +3106,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.10',
+                    appVersion: 'v14.01.11',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -6685,6 +6685,7 @@
         // v10.01: カードフィルター（タグ検索、カードタイプ、学習状態対応）
         function filterCards() {
             // v12.01.5: ページネーション対応
+            // v14.01.11: プレビューもすべてのフィルターを反映
             const deckFilter = document.getElementById('deckFilter').value;
             currentDeckFilter = deckFilter;
             
@@ -6694,18 +6695,69 @@
             // 新しい表示関数を呼び出し
             displayCardListWithPagination();
             
-            // v6.00.1: プレビュー表示を更新
+            // v6.00.1: プレビュー表示を更新（v14.01.11: 全フィルター適用）
             currentIndex = 0;
             showingQuestion = true;
             displayCard();
         }
 
         // v6.00.1: フィルター適用済みカードを取得
+        // v14.01.11: カードタイプ・学習状態・検索テキストフィルター対応
         function getFilteredCards() {
-            if (!currentDeckFilter) {
-                return cards;
-            }
-            return cards.filter(card => card.deckId === currentDeckFilter);
+            // フィルター条件を取得
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const deckFilter = document.getElementById('deckFilter').value;
+            const cardTypeFilter = document.getElementById('cardTypeFilter').value;
+            const cardStateFilter = document.getElementById('cardStateFilter').value;
+            
+            // フィルター処理
+            return cards.filter(card => {
+                // 検索テキスト
+                let matchesSearch = true;
+                if (searchText) {
+                    const tags = card.tags || [];
+                    const tagsText = tags.join(' ').toLowerCase();
+                    
+                    if (card.type === 'typing') {
+                        const answer = card.answer || (card.answers && card.answers.join(' ')) || '';
+                        matchesSearch = card.question.toLowerCase().includes(searchText) ||
+                                      answer.toLowerCase().includes(searchText) ||
+                                      tagsText.includes(searchText);
+                    } else if (card.type === 'cloze') {
+                        matchesSearch = card.text.toLowerCase().includes(searchText) ||
+                                      tagsText.includes(searchText);
+                    } else {
+                        matchesSearch = card.question.toLowerCase().includes(searchText) || 
+                                      card.answer.toLowerCase().includes(searchText) ||
+                                      tagsText.includes(searchText);
+                    }
+                }
+                
+                // デッキフィルター
+                const matchesDeck = !deckFilter || card.deckId === deckFilter;
+                
+                // カードタイプフィルター
+                let matchesType = true;
+                if (cardTypeFilter) {
+                    matchesType = card.type === cardTypeFilter || 
+                                 (cardTypeFilter === 'basic' && (card.type === 'basic' || card.type === 'basic-reversed'));
+                }
+                
+                // 学習状態フィルター
+                let matchesState = true;
+                if (cardStateFilter) {
+                    const state = card.state || 'new';
+                    if (cardStateFilter === 'new') {
+                        matchesState = state === 'new';
+                    } else if (cardStateFilter === 'learning') {
+                        matchesState = state === 'learning';
+                    } else if (cardStateFilter === 'review') {
+                        matchesState = state === 'review' || state === 'relearning';
+                    }
+                }
+                
+                return matchesSearch && matchesDeck && matchesType && matchesState;
+            });
         }
 
         // v10.02: ドラッグ&ドロップ機能
