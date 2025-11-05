@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.4.1</title>
+    <title>MyAnkiApp v14.02.5</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.4.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.5</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2512,6 +2512,73 @@
                         </label>
                     </div>
                 </div>
+                
+                <!-- v14.02.5: データ完全削除 -->
+                <hr style="margin: 50px 0; border: none; border-top: 2px solid #e0e0e0;">
+                
+                <h2 style="margin-bottom: 30px; color: #e74c3c;">⚠️ データ完全削除</h2>
+                
+                <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f39c12;">
+                    <p style="margin: 0; color: #856404; font-weight: bold;">
+                        ⚠️ 警告：この操作は取り消せません！<br>
+                        必ず事前にバックアップを作成してください。
+                    </p>
+                </div>
+                
+                <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e74c3c;">
+                    <h3 style="margin-bottom: 15px; color: #e74c3c;">削除対象を選択</h3>
+                    
+                    <div style="display: grid; gap: 15px; margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='#e74c3c'" onmouseout="this.style.borderColor='transparent'">
+                            <input type="checkbox" id="deleteCards" onchange="updateDeletePreview()" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                                <div style="font-weight: bold;">📇 すべてのカード</div>
+                                <div style="font-size: 13px; color: #666;" id="deleteCardsCount">-</div>
+                            </div>
+                        </label>
+                        
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='#e74c3c'" onmouseout="this.style.borderColor='transparent'">
+                            <input type="checkbox" id="deleteDecks" onchange="updateDeletePreview()" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                                <div style="font-weight: bold;">📚 すべてのデッキ</div>
+                                <div style="font-size: 13px; color: #666;" id="deleteDecksCount">-</div>
+                            </div>
+                        </label>
+                        
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='#e74c3c'" onmouseout="this.style.borderColor='transparent'">
+                            <input type="checkbox" id="deleteSessions" onchange="updateDeletePreview()" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                                <div style="font-weight: bold;">📊 すべての学習記録</div>
+                                <div style="font-size: 13px; color: #666;" id="deleteSessionsCount">-</div>
+                            </div>
+                        </label>
+                        
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='#e74c3c'" onmouseout="this.style.borderColor='transparent'">
+                            <input type="checkbox" id="deleteMarkers" onchange="updateDeletePreview()" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                                <div style="font-weight: bold;">📄 PDFマーカー</div>
+                                <div style="font-size: 13px; color: #666;" id="deleteMarkersCount">-</div>
+                            </div>
+                        </label>
+                        
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.borderColor='#e74c3c'" onmouseout="this.style.borderColor='transparent'">
+                            <input type="checkbox" id="deleteSettings" onchange="updateDeletePreview()" style="width: 20px; height: 20px; cursor: pointer;">
+                            <div>
+                                <div style="font-weight: bold;">⚙️ 設定データ</div>
+                                <div style="font-size: 13px; color: #666;">テーマ、学習設定など</div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div style="background: #ffebee; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <div style="font-weight: bold; color: #c62828; margin-bottom: 8px;">削除プレビュー</div>
+                        <div id="deletePreviewText" style="color: #666;">選択すると削除対象が表示されます</div>
+                    </div>
+                    
+                    <button class="btn btn-danger" onclick="executeCompleteDataDeletion()" style="width: 100%; font-size: 16px; padding: 15px;">
+                        🗑️ 選択したデータを完全削除
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -3124,7 +3191,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.4.1',
+                    appVersion: 'v14.02.5',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3215,7 +3282,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.4.1',
+                    appVersion: 'v14.02.5',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -11225,6 +11292,9 @@
             document.getElementById('easyBonus').value = globalStudySettings.easyBonus;
             document.getElementById('intervalModifier').value = globalStudySettings.intervalModifier;
             document.getElementById('maximumInterval').value = globalStudySettings.maximumInterval;
+            
+            // v14.02.5: データ削除プレビューを更新
+            updateDeletePreview();
         }
         
         function addLearningStep() {
@@ -11262,6 +11332,189 @@
             globalStudySettings = {...defaultStudySettings};
             loadGlobalSettingsUI();
             alert('デフォルト設定に戻しました');
+        }
+        
+        // v14.02.5: データ削除プレビューを更新
+        async function updateDeletePreview() {
+            const cardsCheck = document.getElementById('deleteCards');
+            const decksCheck = document.getElementById('deleteDecks');
+            const sessionsCheck = document.getElementById('deleteSessions');
+            const markersCheck = document.getElementById('deleteMarkers');
+            const settingsCheck = document.getElementById('deleteSettings');
+            
+            const cardsCountEl = document.getElementById('deleteCardsCount');
+            const decksCountEl = document.getElementById('deleteDecksCount');
+            const sessionsCountEl = document.getElementById('deleteSessionsCount');
+            const markersCountEl = document.getElementById('deleteMarkersCount');
+            const previewEl = document.getElementById('deletePreviewText');
+            
+            if (!cardsCountEl || !decksCountEl || !sessionsCountEl || !markersCountEl || !previewEl) return;
+            
+            try {
+                // カード数
+                cardsCountEl.textContent = `${cards.length}件`;
+                
+                // デッキ数
+                decksCountEl.textContent = `${decks.length}件`;
+                
+                // 学習記録数
+                const sessionsSnapshot = await db.collection('studySessions').get();
+                sessionsCountEl.textContent = `${sessionsSnapshot.size}件`;
+                
+                // PDFマーカー数
+                const markersSnapshot = await db.collection('pdfMarkers').get();
+                markersCountEl.textContent = `${markersSnapshot.size}件`;
+                
+                // プレビューテキスト
+                const selected = [];
+                if (cardsCheck && cardsCheck.checked) selected.push(`カード ${cards.length}件`);
+                if (decksCheck && decksCheck.checked) selected.push(`デッキ ${decks.length}件`);
+                if (sessionsCheck && sessionsCheck.checked) selected.push(`学習記録 ${sessionsSnapshot.size}件`);
+                if (markersCheck && markersCheck.checked) selected.push(`PDFマーカー ${markersSnapshot.size}件`);
+                if (settingsCheck && settingsCheck.checked) selected.push('設定データ');
+                
+                if (selected.length === 0) {
+                    previewEl.textContent = '選択すると削除対象が表示されます';
+                    previewEl.style.color = '#666';
+                } else {
+                    previewEl.innerHTML = `<strong style="color: #c62828;">以下が削除されます：</strong><br>${selected.join('、')}`;
+                }
+                
+            } catch (error) {
+                console.error('プレビュー更新エラー:', error);
+            }
+        }
+        
+        // v14.02.5: データ完全削除を実行
+        async function executeCompleteDataDeletion() {
+            const cardsCheck = document.getElementById('deleteCards');
+            const decksCheck = document.getElementById('deleteDecks');
+            const sessionsCheck = document.getElementById('deleteSessions');
+            const markersCheck = document.getElementById('deleteMarkers');
+            const settingsCheck = document.getElementById('deleteSettings');
+            
+            // 選択チェック
+            if (!cardsCheck.checked && !decksCheck.checked && !sessionsCheck.checked && !markersCheck.checked && !settingsCheck.checked) {
+                showToast('削除対象を選択してください', 3000, 'warning');
+                return;
+            }
+            
+            // 確認ダイアログ1
+            const items = [];
+            if (cardsCheck.checked) items.push(`・カード ${cards.length}件`);
+            if (decksCheck.checked) items.push(`・デッキ ${decks.length}件`);
+            if (sessionsCheck.checked) items.push('・学習記録（すべて）');
+            if (markersCheck.checked) items.push('・PDFマーカー（すべて）');
+            if (settingsCheck.checked) items.push('・設定データ');
+            
+            if (!confirm(`⚠️ 警告：以下のデータを完全削除します\n\n${items.join('\n')}\n\nこの操作は取り消せません。\n本当に削除しますか？`)) {
+                return;
+            }
+            
+            // 最終確認（DELETE入力）
+            const confirmText = prompt('最終確認：削除を実行するには「DELETE」と入力してください');
+            if (confirmText !== 'DELETE') {
+                showToast('削除をキャンセルしました', 3000, 'info');
+                return;
+            }
+            
+            try {
+                let deletedCount = 0;
+                
+                // カード削除
+                if (cardsCheck.checked) {
+                    showToast('カードを削除中...', 1000, 'info');
+                    const batch = db.batch();
+                    const cardsSnapshot = await db.collection('flashcards').get();
+                    cardsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    cards.length = 0;
+                    deletedCount++;
+                }
+                
+                // デッキ削除
+                if (decksCheck.checked) {
+                    showToast('デッキを削除中...', 1000, 'info');
+                    const batch = db.batch();
+                    const decksSnapshot = await db.collection('decks').get();
+                    decksSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    decks.length = 0;
+                    deletedCount++;
+                }
+                
+                // 学習記録削除
+                if (sessionsCheck.checked) {
+                    showToast('学習記録を削除中...', 1000, 'info');
+                    const sessionsSnapshot = await db.collection('studySessions').get();
+                    const batches = [];
+                    let batch = db.batch();
+                    let count = 0;
+                    
+                    sessionsSnapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                        count++;
+                        if (count === 500) {
+                            batches.push(batch);
+                            batch = db.batch();
+                            count = 0;
+                        }
+                    });
+                    
+                    if (count > 0) batches.push(batch);
+                    
+                    for (const b of batches) {
+                        await b.commit();
+                    }
+                    deletedCount++;
+                }
+                
+                // PDFマーカー削除
+                if (markersCheck.checked) {
+                    showToast('PDFマーカーを削除中...', 1000, 'info');
+                    const batch = db.batch();
+                    const markersSnapshot = await db.collection('pdfMarkers').get();
+                    markersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    deletedCount++;
+                }
+                
+                // 設定データ削除
+                if (settingsCheck.checked) {
+                    showToast('設定データを削除中...', 1000, 'info');
+                    localStorage.removeItem('theme');
+                    localStorage.removeItem('fontSize');
+                    localStorage.removeItem('customColors');
+                    localStorage.removeItem('globalStudySettings');
+                    localStorage.removeItem('deckStudySettings');
+                    localStorage.removeItem('collapsedDecks');
+                    localStorage.removeItem('cardsPerPage');
+                    localStorage.removeItem('lastSelectedDeckId');
+                    localStorage.removeItem('instantDeleteMode');
+                    deletedCount++;
+                }
+                
+                showToast(`✅ ${deletedCount}種類のデータを削除しました`, 10000, 'success');
+                
+                // UI更新
+                if (cardsCheck.checked || decksCheck.checked) {
+                    loadDecks();
+                    displayCardListWithPagination();
+                }
+                
+                // チェックボックスをリセット
+                cardsCheck.checked = false;
+                decksCheck.checked = false;
+                sessionsCheck.checked = false;
+                markersCheck.checked = false;
+                settingsCheck.checked = false;
+                
+                updateDeletePreview();
+                
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showToast('❌ 削除中にエラーが発生しました', 10000, 'error');
+            }
         }
         
         // v8.02.4: デッキモーダルタブ切り替え
