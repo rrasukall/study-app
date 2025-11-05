@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.1.2</title>
+    <title>MyAnkiApp v14.02.1.3</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.1.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.1.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3074,7 +3074,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.1.2',
+                    appVersion: 'v14.02.1.3',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3165,7 +3165,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.02.1.2',
+                    appVersion: 'v14.02.1.3',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -4068,9 +4068,11 @@
         // v14.02.1: ストレージ使用量を計算
         // v14.02.1.2: フィードバック追加
         async function calculateStorageUsage() {
+            // v14.02.1.2: 要素を関数スコープで取得
+            const totalSizeEl = document.getElementById('totalStorageSize');
+            
             try {
                 // 計算中表示
-                const totalSizeEl = document.getElementById('totalStorageSize');
                 if (totalSizeEl) totalSizeEl.textContent = '計算中...';
                 
                 const collections = {
@@ -4124,8 +4126,7 @@
                     }
                 }
                 
-                // 総データ量を表示
-                const totalSizeEl = document.getElementById('totalStorageSize');
+                // 総データ量を更新（totalSizeElは上部で宣言済み）
                 const totalDocsEl = document.getElementById('totalDocuments');
                 const progressEl = document.getElementById('storageProgress');
                 
@@ -4188,7 +4189,7 @@
                 
             } catch (error) {
                 console.error('ストレージ計算エラー:', error);
-                const totalSizeEl = document.getElementById('totalStorageSize');
+                // totalSizeElはtry節で宣言済み
                 if (totalSizeEl) totalSizeEl.textContent = 'エラー';
             }
         }
