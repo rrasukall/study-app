@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.6.2</title>
+    <title>MyAnkiApp v14.02.6.3</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.6.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.6.3</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -5384,7 +5384,7 @@
             }
         }
         
-        // v14.02.6.2: 重複カードを編集（修正版）
+        // v14.02.6.3: 重複カードを編集（モーダル重なり問題を修正）
         async function editDuplicateCard(groupIndex, cardIndex) {
             const group = duplicateCardsData[groupIndex];
             const card = group[cardIndex];
@@ -5394,6 +5394,12 @@
             }
             
             try {
+                // 重複カード詳細モーダルを一時的に非表示
+                const duplicateModal = document.getElementById('duplicateCardsModal');
+                if (duplicateModal) {
+                    duplicateModal.style.display = 'none';
+                }
+                
                 // カード編集モーダルに値を設定
                 document.getElementById('editDeckId').value = card.deckId || '';
                 
@@ -5432,6 +5438,9 @@
                 
                 // モーダルを開く
                 document.getElementById('cardEditModal').style.display = 'block';
+                
+                // 編集モーダルが閉じられたときに重複カード詳細モーダルを再表示
+                // closeCardEditModalのオーバーライドは避け、保存後に再スキャンで対応
                 
             } catch (error) {
                 console.error('編集エラー:', error);
