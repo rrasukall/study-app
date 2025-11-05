@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.5</title>
+    <title>MyAnkiApp v14.01.6</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.5</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.6</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -3014,7 +3014,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.5',
+                    appVersion: 'v14.01.6',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3105,7 +3105,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.5',
+                    appVersion: 'v14.01.6',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3404,10 +3404,12 @@
                             const deckData = { ...deck };
                             delete deckData.id;
                             // Firestoreタイムスタンプの互換性問題を回避
-                            if (deckData.createdAt) {
+                            if (deckData.createdAt && typeof deckData.createdAt === 'object' && !deckData.createdAt.toDate) {
+                                // toDateメソッドがない場合はタイムスタンプを削除
                                 delete deckData.createdAt;
-                            }
-                            if (!deckData.createdAt) {
+                                deckData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                            } else if (!deckData.createdAt) {
+                                // createdAtがない場合は新規に設定
                                 deckData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                             }
                             await db.collection('decks').doc(deck.id).set(deckData);
@@ -3461,10 +3463,12 @@
                             const cardData = { ...card };
                             delete cardData.id;
                             // Firestoreタイムスタンプの互換性問題を回避
-                            if (cardData.createdAt) {
+                            if (cardData.createdAt && typeof cardData.createdAt === 'object' && !cardData.createdAt.toDate) {
+                                // toDateメソッドがない場合はタイムスタンプを削除
                                 delete cardData.createdAt;
-                            }
-                            if (!cardData.createdAt) {
+                                cardData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                            } else if (!cardData.createdAt) {
+                                // createdAtがない場合は新規に設定
                                 cardData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                             }
                             await db.collection('flashcards').doc(card.id).set(cardData);
@@ -6084,9 +6088,25 @@
                 
                 // 作成日
                 if (card.createdAt) {
-                    const date = card.createdAt.toDate();
-                    const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
-                    stats.push(`📅 ${dateStr}`);
+                    let date;
+                    if (card.createdAt.toDate && typeof card.createdAt.toDate === 'function') {
+                        // Firestoreのタイムスタンプ型
+                        date = card.createdAt.toDate();
+                    } else if (card.createdAt.seconds) {
+                        // タイムスタンプオブジェクト（秒とナノ秒）
+                        date = new Date(card.createdAt.seconds * 1000);
+                    } else if (typeof card.createdAt === 'number') {
+                        // ミリ秒のタイムスタンプ
+                        date = new Date(card.createdAt);
+                    } else if (typeof card.createdAt === 'string') {
+                        // ISO文字列
+                        date = new Date(card.createdAt);
+                    }
+                    
+                    if (date && !isNaN(date.getTime())) {
+                        const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+                        stats.push(`📅 ${dateStr}`);
+                    }
                 }
                 
                 // 最終学習日
