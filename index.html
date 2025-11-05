@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.01.7</title>
+    <title>MyAnkiApp v14.01.9</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1496,7 +1496,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.7</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.01.9</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2379,9 +2379,9 @@
                                 <input type="file" id="csvImportInput" accept=".csv" style="display: none;" onchange="importCardsFromCsv(event)">
                             </label>
                             <div style="color: #666; font-size: 13px; margin-top: 8px; margin-left: 5px;">
-                                <strong>CSVフォーマット:</strong> 問題,答え,デッキ名,タグ（スペース区切り）<br>
-                                <strong>例:</strong> "徳川家康が江戸幕府を開いた年は？","1603年","日本史","重要 試験範囲"<br>
-                                <strong>※</strong> 基本カードのみインポート可能。改行を含むテキストにも対応
+                                <strong>基本カード:</strong> 問題,答え,デッキ名,タグ<br>
+                                <strong>穴埋めカード:</strong> {{c1::答え}}形式のテキスト,デッキ名,タグ<br>
+                                <strong>※</strong> 改行対応。タイピング式は基本カードとしてインポートされます
                             </div>
                         </div>
                         
@@ -3015,7 +3015,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.7',
+                    appVersion: 'v14.01.9',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3106,7 +3106,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.01.7',
+                    appVersion: 'v14.01.9',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -3341,59 +3341,121 @@
                             continue;
                         }
                         
-                        const question = fields[0];
-                        const answer = fields[1];
-                        const deckName = fields.length > 2 ? fields[2] : '';
-                        const tags = fields.length > 3 ? fields[3] : '';
+                        const firstField = fields[0];
                         
-                        if (!question || !answer) {
-                            errorCount++;
-                            continue;
-                        }
+                        // v14.01.8: 穴埋めカード判定（{{c1::}}などのパターンを含む）
+                        const isCloze = /\{\{c\d+::[^}]+\}\}/.test(firstField);
                         
-                        // 重複チェック
-                        if (skipDuplicates) {
-                            const isDuplicate = existingCards.some(card => 
-                                card.question === question && card.answer === answer
-                            );
-                            if (isDuplicate) {
-                                skippedCount++;
+                        if (isCloze) {
+                            // 穴埋めカード：clozeText,デッキ名,タグ
+                            const clozeText = firstField;
+                            const deckName = fields.length > 1 ? fields[1] : '';
+                            const tags = fields.length > 2 ? fields[2] : '';
+                            
+                            if (!clozeText) {
+                                errorCount++;
                                 continue;
                             }
-                        }
-                        
-                        // デッキIDを取得または作成
-                        let deckId = '';
-                        if (deckName) {
-                            const decksSnapshot = await db.collection('decks').where('name', '==', deckName).limit(1).get();
-                            if (!decksSnapshot.empty) {
-                                deckId = decksSnapshot.docs[0].id;
-                            } else {
-                                // 新しいデッキを作成
-                                const newDeckRef = await db.collection('decks').add({
-                                    name: deckName,
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                    order: Date.now()
-                                });
-                                deckId = newDeckRef.id;
+                            
+                            // 重複チェック
+                            if (skipDuplicates) {
+                                const isDuplicate = existingCards.some(card => 
+                                    card.type === 'cloze' && (card.clozeText === clozeText || card.text === clozeText)
+                                );
+                                if (isDuplicate) {
+                                    skippedCount++;
+                                    continue;
+                                }
                             }
+                            
+                            // デッキIDを取得または作成
+                            let deckId = '';
+                            if (deckName) {
+                                const decksSnapshot = await db.collection('decks').where('name', '==', deckName).limit(1).get();
+                                if (!decksSnapshot.empty) {
+                                    deckId = decksSnapshot.docs[0].id;
+                                } else {
+                                    const newDeckRef = await db.collection('decks').add({
+                                        name: deckName,
+                                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                        order: Date.now()
+                                    });
+                                    deckId = newDeckRef.id;
+                                }
+                            }
+                            
+                            // 穴埋めカードを追加
+                            await db.collection('flashcards').add({
+                                type: 'cloze',
+                                clozeText: clozeText,
+                                text: clozeText, // 互換性のため
+                                deckId: deckId,
+                                tags: tags ? tags.split(/\s+/) : [],
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                state: 'new',
+                                easeFactor: 2.5,
+                                interval: 0,
+                                lapseCount: 0
+                            });
+                            
+                            importedCount++;
+                            
+                        } else {
+                            // 基本カード：問題,答え,デッキ名,タグ
+                            const question = fields[0];
+                            const answer = fields[1];
+                            const deckName = fields.length > 2 ? fields[2] : '';
+                            const tags = fields.length > 3 ? fields[3] : '';
+                            
+                            if (!question || !answer) {
+                                errorCount++;
+                                continue;
+                            }
+                            
+                            // 重複チェック
+                            if (skipDuplicates) {
+                                const isDuplicate = existingCards.some(card => 
+                                    card.question === question && card.answer === answer
+                                );
+                                if (isDuplicate) {
+                                    skippedCount++;
+                                    continue;
+                                }
+                            }
+                            
+                            // デッキIDを取得または作成
+                            let deckId = '';
+                            if (deckName) {
+                                const decksSnapshot = await db.collection('decks').where('name', '==', deckName).limit(1).get();
+                                if (!decksSnapshot.empty) {
+                                    deckId = decksSnapshot.docs[0].id;
+                                } else {
+                                    // 新しいデッキを作成
+                                    const newDeckRef = await db.collection('decks').add({
+                                        name: deckName,
+                                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                        order: Date.now()
+                                    });
+                                    deckId = newDeckRef.id;
+                                }
+                            }
+                            
+                            // カードを追加
+                            await db.collection('flashcards').add({
+                                type: 'basic',
+                                question: question,
+                                answer: answer,
+                                deckId: deckId,
+                                tags: tags ? tags.split(/\s+/) : [],
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                state: 'new',
+                                easeFactor: 2.5,
+                                interval: 0,
+                                lapseCount: 0
+                            });
+                            
+                            importedCount++;
                         }
-                        
-                        // カードを追加
-                        await db.collection('flashcards').add({
-                            type: 'basic',
-                            question: question,
-                            answer: answer,
-                            deckId: deckId,
-                            tags: tags ? tags.split(/\s+/) : [],
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            state: 'new',
-                            easeFactor: 2.5,
-                            interval: 0,
-                            lapseCount: 0
-                        });
-                        
-                        importedCount++;
                         
                     } catch (err) {
                         console.error('カード追加エラー:', err);
@@ -7504,6 +7566,8 @@
         // CSV出力（デッキ名対応）
         // v10.01: Anki用CSV出力（タグ形式に変更）
         // v14.01.7: RFC 4180準拠のCSV出力、改行対応
+        // v14.01.8: 穴埋めカード対応
+        // v14.01.9: タイピングカード対応（基本カードとして出力）
         function escapeCSVField(field) {
             if (field == null) return '';
             const str = String(field);
@@ -7540,33 +7604,49 @@
                 return;
             }
             
-            // v14.01.7: 基本カードのみ抽出（穴埋め・タイピングは除外）
-            const basicCards = targetCards.filter(card => card.type === 'basic' || !card.type || card.type === 'basic-reversed');
-            const excludedCount = targetCards.length - basicCards.length;
-            
-            if (basicCards.length === 0) {
-                alert('エクスポート可能な基本カードがありません。\n\n※CSV形式では基本カードのみエクスポート可能です。\n穴埋めカード・タイピングカードはJSON形式でエクスポートしてください。');
-                return;
-            }
-            
             // BOM付きCSV
             let csv = '\ufeff';
             
-            basicCards.forEach(card => {
+            let basicCount = 0;
+            let clozeCount = 0;
+            let typingCount = 0;
+            
+            targetCards.forEach(card => {
                 const tags = card.tags || [];
                 const tagsStr = tags.join(' ');
                 const deckName = card.deckId ? getDeckNameById(card.deckId) : '';
                 
-                const question = escapeCSVField(card.question);
-                const answer = escapeCSVField(card.answer);
-                const deck = escapeCSVField(deckName);
-                const tagField = escapeCSVField(tagsStr);
-                
-                csv += `${question},${answer},${deck},${tagField}\n`;
-                
-                // 逆方向カード
-                if (card.enableReverse) {
-                    csv += `${answer},${question},${deck},${tagField}\n`;
+                if (card.type === 'cloze') {
+                    // 穴埋めカード：clozeText,デッキ名,タグ
+                    const clozeText = escapeCSVField(card.clozeText || card.text);
+                    const deck = escapeCSVField(deckName);
+                    const tagField = escapeCSVField(tagsStr);
+                    
+                    csv += `${clozeText},${deck},${tagField}\n`;
+                    clozeCount++;
+                } else if (card.type === 'typing') {
+                    // v14.01.9: タイピングカードを基本カードとして出力
+                    const question = escapeCSVField(card.typingQuestion || card.question);
+                    const answer = escapeCSVField(card.typingAnswer || card.answer);
+                    const deck = escapeCSVField(deckName);
+                    const tagField = escapeCSVField(tagsStr);
+                    
+                    csv += `${question},${answer},${deck},${tagField}\n`;
+                    typingCount++;
+                } else {
+                    // 基本カード
+                    const question = escapeCSVField(card.question);
+                    const answer = escapeCSVField(card.answer);
+                    const deck = escapeCSVField(deckName);
+                    const tagField = escapeCSVField(tagsStr);
+                    
+                    csv += `${question},${answer},${deck},${tagField}\n`;
+                    basicCount++;
+                    
+                    // 逆方向カード
+                    if (card.enableReverse) {
+                        csv += `${answer},${question},${deck},${tagField}\n`;
+                    }
                 }
             });
             
@@ -7582,11 +7662,13 @@
             link.click();
             document.body.removeChild(link);
             
-            let message = `CSVファイルをダウンロードしました！\n\n対象: ${exportInfo}`;
-            message += `\n出力: 基本カード${basicCards.length}枚`;
-            if (excludedCount > 0) {
-                message += `\n\n※穴埋めカード・タイピングカード${excludedCount}枚は除外されました`;
-                message += `\n（これらのカードはJSON形式でエクスポートしてください）`;
+            let message = `CSVファイルをダウンロードしました！\n\n対象: ${exportInfo}\n\n出力:`;
+            if (basicCount > 0) message += `\n基本カード: ${basicCount}枚`;
+            if (clozeCount > 0) message += `\n穴埋めカード: ${clozeCount}枚`;
+            if (typingCount > 0) {
+                message += `\nタイピングカード: ${typingCount}枚`;
+                message += `\n\n※タイピングカードは基本カードとして出力されました`;
+                message += `\n（インポート時はタイピング情報が失われます）`;
             }
             
             alert(message);
