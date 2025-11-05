@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.00.12</title>
+    <title>MyAnkiApp v14.00.14</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1487,7 +1487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.13</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.00.14</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2434,6 +2434,12 @@
                             <canvas id="pdfCanvas"></canvas>
                             <div id="textLayer" class="textLayer"></div>
                             <canvas id="markerCanvas"></canvas>
+                            <canvas id="previewCanvas" style="display: none;"></canvas>
+                        </div>
+                        <!-- v14.00.14: プレビューモード警告 -->
+                        <div id="previewModeWarning" style="display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 12px 20px; border-radius: 8px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                            ⚠️ プレビューモード：点線は旧PDFのマーカー位置です
+                            <button onclick="exitPreviewMode()" style="margin-left: 15px; background: white; color: #e74c3c; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">プレビュー終了</button>
                         </div>
                     </div>
                     
@@ -2964,7 +2970,7 @@
                     version: '1.0',
                     userId: null,  // 将来の複数ユーザー対応用
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.13',
+                    appVersion: 'v14.00.14',
                     data: {
                         decks: decks,
                         flashcards: flashcards,
@@ -3055,7 +3061,7 @@
                     version: '1.0',
                     userId: null,
                     exportDate: new Date().toISOString(),
-                    appVersion: 'v14.00.13',
+                    appVersion: 'v14.00.14',
                     exportType: 'custom',
                     exportOptions: exportOptions,
                     data: {},
@@ -7171,6 +7177,9 @@
                 if (editMode) toggleEditMode();
                 if (deleteMode) toggleDeleteMode();
                 
+                // v14.00.14: プレビューモードも終了
+                if (previewMode) exitPreviewMode();
+                
                 const arrayBuffer = await file.arrayBuffer();
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
@@ -7233,6 +7242,9 @@
                 if (markerMode) toggleMarkerMode();
                 if (editMode) toggleEditMode();
                 if (deleteMode) toggleDeleteMode();
+                
+                // v14.00.14: プレビューモードも終了
+                if (previewMode) exitPreviewMode();
                 
                 pdfDoc = await pdfjsLib.getDocument({
                     data: arrayBuffer,
@@ -7340,6 +7352,23 @@
                 markerCanvas.width = viewport.width;
                 markerCanvas.height = viewport.height;
                 
+                // v14.00.14: previewCanvasも再作成
+                let previewCanvas = document.getElementById('previewCanvas');
+                if (!previewCanvas) {
+                    previewCanvas = document.createElement('canvas');
+                    previewCanvas.id = 'previewCanvas';
+                    previewCanvas.style.display = 'none';
+                    document.getElementById('canvasWrapper').appendChild(previewCanvas);
+                } else {
+                    const oldPreviewCanvas = previewCanvas;
+                    previewCanvas = document.createElement('canvas');
+                    previewCanvas.id = 'previewCanvas';
+                    previewCanvas.style.display = previewMode ? 'block' : 'none';
+                    oldPreviewCanvas.parentNode.replaceChild(previewCanvas, oldPreviewCanvas);
+                }
+                previewCanvas.width = viewport.width;
+                previewCanvas.height = viewport.height;
+                
                 // v14.00.12: Canvas再作成時にマーカーモードの状態を反映
                 if (markerMode) {
                     markerCanvas.style.cursor = 'crosshair';
@@ -7353,6 +7382,11 @@
                 sheetClickToggles = {};
                 
                 drawMarkers();
+                
+                // v14.00.14: プレビューモード時は旧マーカーも再描画
+                if (previewMode) {
+                    drawPreviewMarkers();
+                }
                 
                 await renderTextLayer(page, viewport);
                 
@@ -10076,6 +10110,10 @@
         let searchedMarkerData = [];
         let selectedMarkerData = null;
         
+        // v14.00.14: プレビューモード用の変数
+        let previewMode = false;
+        let previewMarkerData = null;
+        
         // マーカー情報検索モーダルを開く
         function openMarkerSearch() {
             if (!pdfHash) {
@@ -10451,6 +10489,11 @@
                 closeMarkerPreviewModal();
                 closeMarkerSearchModal();
                 
+                // v14.00.14: プレビューモードを終了
+                if (previewMode) {
+                    exitPreviewMode();
+                }
+                
                 // DOMの更新を待ってから適用成功メッセージを表示
                 setTimeout(() => {
                     alert(`✅ マーカー情報を適用しました。\n\n` +
@@ -10503,6 +10546,113 @@
                 console.error('削除エラー:', error);
                 alert('マーカーデータの削除中にエラーが発生しました');
             }
+        }
+        
+        // ============================================
+        // v14.00.14: Canvas上でマーカープレビュー機能
+        // ============================================
+        
+        // Canvas上でプレビューを開始
+        function startCanvasPreview() {
+            if (!selectedMarkerData) {
+                alert('プレビューするマーカー情報が選択されていません');
+                return;
+            }
+            
+            // プレビューモードをON
+            previewMode = true;
+            previewMarkerData = selectedMarkerData;
+            
+            // モーダルを閉じる
+            closeMarkerPreviewModal();
+            closeMarkerSearchModal();
+            
+            // プレビューCanvasと警告を表示
+            const previewCanvas = document.getElementById('previewCanvas');
+            const warningDiv = document.getElementById('previewModeWarning');
+            if (previewCanvas) previewCanvas.style.display = 'block';
+            if (warningDiv) warningDiv.style.display = 'block';
+            
+            // プレビューを描画
+            drawPreviewMarkers();
+        }
+        
+        // プレビューモードを終了
+        function exitPreviewMode() {
+            previewMode = false;
+            previewMarkerData = null;
+            
+            // プレビューCanvasと警告を非表示
+            const previewCanvas = document.getElementById('previewCanvas');
+            const warningDiv = document.getElementById('previewModeWarning');
+            if (previewCanvas) {
+                previewCanvas.style.display = 'none';
+                const ctx = previewCanvas.getContext('2d');
+                ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            }
+            if (warningDiv) warningDiv.style.display = 'none';
+        }
+        
+        // プレビューマーカーを描画
+        function drawPreviewMarkers() {
+            const previewCanvas = document.getElementById('previewCanvas');
+            if (!previewCanvas || !previewMode || !previewMarkerData) return;
+            
+            const pdfCanvas = document.getElementById('pdfCanvas');
+            if (!pdfCanvas) return;
+            
+            // Canvasサイズを合わせる
+            previewCanvas.width = pdfCanvas.width;
+            previewCanvas.height = pdfCanvas.height;
+            
+            const ctx = previewCanvas.getContext('2d');
+            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            
+            // 現在のページの旧マーカーを取得
+            const oldMarkers = previewMarkerData.markers?.[currentPage];
+            
+            // ページ情報を更新
+            const warningDiv = document.getElementById('previewModeWarning');
+            if (warningDiv) {
+                const markerCount = oldMarkers ? oldMarkers.length : 0;
+                const pageText = markerCount > 0 ? 
+                    `⚠️ プレビューモード：このページに旧マーカーが${markerCount}個あります` :
+                    `⚠️ プレビューモード：このページには旧マーカーがありません`;
+                
+                // ボタンを保持したまま、テキストのみを更新
+                const buttonHtml = '<button onclick="exitPreviewMode()" style="margin-left: 15px; background: white; color: #e74c3c; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">プレビュー終了</button>';
+                warningDiv.innerHTML = pageText + buttonHtml;
+            }
+            
+            if (!oldMarkers || oldMarkers.length === 0) return;
+            
+            // 各マーカーを点線で描画
+            oldMarkers.forEach(marker => {
+                const scaleRatio = scale / marker.scale;
+                const x = marker.x * scaleRatio;
+                const y = marker.y * scaleRatio;
+                const width = marker.width * scaleRatio;
+                const height = marker.height * scaleRatio;
+                
+                // 色に応じた点線色を設定
+                let strokeColor;
+                switch (marker.color) {
+                    case 'yellow': strokeColor = 'rgba(255, 235, 59, 0.9)'; break;
+                    case 'red': strokeColor = 'rgba(244, 67, 54, 0.9)'; break;
+                    case 'green': strokeColor = 'rgba(76, 175, 80, 0.9)'; break;
+                    case 'blue': strokeColor = 'rgba(33, 150, 243, 0.9)'; break;
+                    default: strokeColor = 'rgba(255, 0, 0, 0.9)';
+                }
+                
+                // 点線で枠を描画
+                ctx.setLineDash([8, 4]);
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, y, width, height);
+                
+                // 実線を戻す
+                ctx.setLineDash([]);
+            });
         }
         
         // ============================================
@@ -10847,6 +10997,7 @@
             </div>
             
             <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="startCanvasPreview()" style="flex: 1; background: #f39c12; border-color: #f39c12;">📍 Canvas上でプレビュー</button>
                 <button class="btn" onclick="confirmApplyMarkerData()" style="flex: 1;">この情報を適用</button>
                 <button class="btn btn-secondary" onclick="closeMarkerPreviewModal()" style="flex: 1;">閉じる</button>
             </div>
