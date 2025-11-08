@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.8.5</title>
+    <title>MyAnkiApp v14.02.8.6</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -7444,6 +7444,7 @@
             
             let deckOptions = '<option value="">デッキを選択してください</option>';
             let filterOptions = '<option value="">すべてのデッキ</option>';
+            filterOptions += '<option value="__uncategorized__">未分類カード</option>';
             
             // トップレベルデッキから階層的に構築
             function buildDeckOptions(parentId = null, prefix = '') {
@@ -9897,7 +9898,18 @@
                 }
                 
                 // デッキフィルター
-                const matchesDeck = !deckFilter || card.deckId === deckFilter;
+                let matchesDeck = true;
+                if (deckFilter === '__uncategorized__') {
+                    // 未分類カード: deckIdが空、null、undefined、または存在しないデッキID
+                    if (!card.deckId) {
+                        matchesDeck = true;
+                    } else {
+                        const deckExists = decks.some(d => d.id === card.deckId);
+                        matchesDeck = !deckExists;
+                    }
+                } else if (deckFilter) {
+                    matchesDeck = card.deckId === deckFilter;
+                }
                 
                 // カードタイプフィルター
                 let matchesType = true;
@@ -10133,7 +10145,18 @@
                 }
                 
                 // デッキフィルター
-                const matchesDeck = !deckFilter || card.deckId === deckFilter;
+                let matchesDeck = true;
+                if (deckFilter === '__uncategorized__') {
+                    // 未分類カード: deckIdが空、null、undefined、または存在しないデッキID
+                    if (!card.deckId) {
+                        matchesDeck = true;
+                    } else {
+                        const deckExists = decks.some(d => d.id === card.deckId);
+                        matchesDeck = !deckExists;
+                    }
+                } else if (deckFilter) {
+                    matchesDeck = card.deckId === deckFilter;
+                }
                 
                 // カードタイプフィルター
                 let matchesType = true;
@@ -10447,6 +10470,7 @@
         }
         
         // v10.00.1: デッキ移動を確定
+        // v14.02.8.6: カード移動のバグ修正（成功カウント、詳細なエラー処理）
         async function confirmDeckMove() {
             if (!selectedDeckForMove) return;
             
@@ -10463,28 +10487,51 @@
             closeDeckSelectorModal();
             updateSyncStatus('syncing');
             
+            let successCount = 0;
+            let failCount = 0;
+            const errors = [];
+            
             try {
                 for (const cardId of selectedCardIds) {
                     if (!incrementWriteCounter()) {
-                        alert('書き込み上限に達しました。一部のカードのみ移動されました。');
+                        alert(`書き込み上限に達しました。${successCount}枚のカードを移動しました。`);
                         break;
                     }
                     
-                    await db.collection('flashcards').doc(cardId).update({
-                        deckId: selectedDeckForMove
-                    });
+                    try {
+                        await db.collection('flashcards').doc(cardId).update({
+                            deckId: selectedDeckForMove
+                        });
+                        successCount++;
+                    } catch (error) {
+                        console.error(`カードID ${cardId} の移動エラー:`, error);
+                        failCount++;
+                        errors.push({cardId, error: error.message});
+                    }
                 }
                 
-                alert(`${selectedCardIds.length}枚のカードを移動しました`);
+                // 結果メッセージを作成
+                let message = '';
+                if (successCount > 0 && failCount === 0) {
+                    message = `${successCount}枚のカードを「${targetDeck.name}」に移動しました`;
+                } else if (successCount > 0 && failCount > 0) {
+                    message = `${successCount}枚のカードを移動しました\n${failCount}枚のカードは移動できませんでした`;
+                } else if (successCount === 0) {
+                    message = `カードの移動に失敗しました\n詳細: ${errors[0]?.error || '不明なエラー'}`;
+                }
+                
+                alert(message);
                 
                 // 選択をクリア
                 selectedCardIds = [];
                 document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
                 updateSelectedCards();
                 
+                updateSyncStatus('synced');
+                
             } catch (error) {
                 console.error('カード移動エラー:', error);
-                alert('カードの移動に失敗しました');
+                alert(`カードの移動に失敗しました\n${successCount}枚は移動済み\nエラー: ${error.message}`);
                 updateSyncStatus('error');
             }
         }
