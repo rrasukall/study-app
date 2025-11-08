@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.8.6</title>
+    <title>MyAnkiApp v14.02.8.7</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1519,7 +1519,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8.5</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v14.02.8.7</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -10471,6 +10471,7 @@
         
         // v10.00.1: デッキ移動を確定
         // v14.02.8.6: カード移動のバグ修正（成功カウント、詳細なエラー処理）
+        // v14.02.8.7: 致命的バグ修正（モーダルを閉じる前にdeckIdを保存）
         async function confirmDeckMove() {
             if (!selectedDeckForMove) return;
             
@@ -10483,6 +10484,9 @@
             if (!confirm(`${selectedCardIds.length}枚のカードを「${targetDeck.name}」に移動しますか？`)) {
                 return;
             }
+            
+            // 重要: モーダルを閉じる前にdeckIdを保存（closeDeckSelectorModalでnullになるため）
+            const targetDeckId = selectedDeckForMove;
             
             closeDeckSelectorModal();
             updateSyncStatus('syncing');
@@ -10500,7 +10504,7 @@
                     
                     try {
                         await db.collection('flashcards').doc(cardId).update({
-                            deckId: selectedDeckForMove
+                            deckId: targetDeckId
                         });
                         successCount++;
                     } catch (error) {
