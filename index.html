@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.8.8</title>
+    <title>MyAnkiApp v14.02.8.9</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -2776,6 +2776,16 @@
                             <span>重複するカードをスキップ（問題と答えが完全一致）</span>
                         </label>
                     </div>
+                    
+                    <div style="margin-top: 15px; text-align: left;">
+                        <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
+                            <input type="checkbox" id="specifyDeckForImport">
+                            <span>デッキを指定してインポート（CSV内のデッキ名を無視）</span>
+                        </label>
+                        <div style="color: #666; font-size: 13px; margin-top: 5px; margin-left: 28px;">
+                            ※チェックしない場合、CSV内のデッキ名を使用（空の場合は「インポート」デッキに自動振り分け）
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- v14.02.5: データ完全削除 -->
@@ -3762,6 +3772,7 @@
         }
         
         // CSVからカードをインポート
+        // v14.02.8.9: デッキ指定オプション追加、自動「インポート」デッキ振り分け
         async function importCardsFromCsv(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -3775,6 +3786,32 @@
                     return;
                 }
                 
+                // CSVデータを保存
+                csvDataForImport = lines;
+                
+                // デッキを指定してインポートする場合はモーダルを表示
+                const specifyDeck = document.getElementById('specifyDeckForImport').checked;
+                if (specifyDeck) {
+                    openCsvDeckSelectorModal();
+                } else {
+                    // 通常インポート（CSV内のデッキ名を使用、空なら「インポート」デッキ）
+                    await executeImportWithDeck(null);
+                }
+                
+            } catch (error) {
+                console.error('CSVインポートエラー:', error);
+                alert('CSVファイルの読み込みに失敗しました。\nエラー: ' + error.message);
+            }
+            
+            // ファイル入力をリセット
+            event.target.value = '';
+        }
+        
+        // v14.02.8.9: CSVインポート実行（デッキIDを指定、またはCSV内のデッキ名を使用）
+        async function executeImportWithDeck(forceDeckId) {
+            if (!csvDataForImport || csvDataForImport.length === 0) return;
+            
+            try {
                 const skipDuplicates = document.getElementById('skipDuplicates').checked;
                 let importedCount = 0;
                 let skippedCount = 0;
@@ -3789,7 +3826,7 @@
                     });
                 }
                 
-                for (const fields of lines) {
+                for (const fields of csvDataForImport) {
                     try {
                         if (fields.length < 2) {
                             errorCount++;
@@ -3804,7 +3841,7 @@
                         if (isCloze) {
                             // 穴埋めカード：clozeText,デッキ名,タグ
                             const clozeText = firstField;
-                            const deckName = fields.length > 1 ? fields[1] : '';
+                            const csvDeckName = fields.length > 1 ? fields[1] : '';
                             const tags = fields.length > 2 ? fields[2] : '';
                             
                             if (!clozeText) {
@@ -3823,15 +3860,32 @@
                                 }
                             }
                             
-                            // デッキIDを取得または作成
+                            // デッキIDを決定
                             let deckId = '';
-                            if (deckName) {
-                                const decksSnapshot = await db.collection('decks').where('name', '==', deckName).limit(1).get();
+                            if (forceDeckId !== null) {
+                                // デッキが指定されている場合はそれを使用
+                                deckId = forceDeckId;
+                            } else if (csvDeckName) {
+                                // CSV内のデッキ名を使用
+                                const decksSnapshot = await db.collection('decks').where('name', '==', csvDeckName).limit(1).get();
                                 if (!decksSnapshot.empty) {
                                     deckId = decksSnapshot.docs[0].id;
                                 } else {
                                     const newDeckRef = await db.collection('decks').add({
-                                        name: deckName,
+                                        name: csvDeckName,
+                                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                        order: Date.now()
+                                    });
+                                    deckId = newDeckRef.id;
+                                }
+                            } else {
+                                // デッキ名が空の場合は「インポート」デッキを使用
+                                const importDeckSnapshot = await db.collection('decks').where('name', '==', 'インポート').limit(1).get();
+                                if (!importDeckSnapshot.empty) {
+                                    deckId = importDeckSnapshot.docs[0].id;
+                                } else {
+                                    const newDeckRef = await db.collection('decks').add({
+                                        name: 'インポート',
                                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                                         order: Date.now()
                                     });
@@ -3859,7 +3913,7 @@
                             // 基本カード：問題,答え,デッキ名,タグ
                             const question = fields[0];
                             const answer = fields[1];
-                            const deckName = fields.length > 2 ? fields[2] : '';
+                            const csvDeckName = fields.length > 2 ? fields[2] : '';
                             const tags = fields.length > 3 ? fields[3] : '';
                             
                             if (!question || !answer) {
@@ -3880,16 +3934,33 @@
                                 }
                             }
                             
-                            // デッキIDを取得または作成
+                            // デッキIDを決定
                             let deckId = '';
-                            if (deckName) {
-                                const decksSnapshot = await db.collection('decks').where('name', '==', deckName).limit(1).get();
+                            if (forceDeckId !== null) {
+                                // デッキが指定されている場合はそれを使用
+                                deckId = forceDeckId;
+                            } else if (csvDeckName) {
+                                // CSV内のデッキ名を使用
+                                const decksSnapshot = await db.collection('decks').where('name', '==', csvDeckName).limit(1).get();
                                 if (!decksSnapshot.empty) {
                                     deckId = decksSnapshot.docs[0].id;
                                 } else {
                                     // 新しいデッキを作成
                                     const newDeckRef = await db.collection('decks').add({
-                                        name: deckName,
+                                        name: csvDeckName,
+                                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                        order: Date.now()
+                                    });
+                                    deckId = newDeckRef.id;
+                                }
+                            } else {
+                                // デッキ名が空の場合は「インポート」デッキを使用
+                                const importDeckSnapshot = await db.collection('decks').where('name', '==', 'インポート').limit(1).get();
+                                if (!importDeckSnapshot.empty) {
+                                    deckId = importDeckSnapshot.docs[0].id;
+                                } else {
+                                    const newDeckRef = await db.collection('decks').add({
+                                        name: 'インポート',
                                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                                         order: Date.now()
                                     });
@@ -3932,6 +4003,9 @@
                 
                 alert(message);
                 
+                // CSVデータをクリア
+                csvDataForImport = null;
+                
                 // カードリストを更新
                 if (importedCount > 0) {
                     // ページをリロードしてデータを反映
@@ -3939,12 +4013,9 @@
                 }
                 
             } catch (error) {
-                console.error('CSVインポートエラー:', error);
-                alert('CSVファイルの読み込みに失敗しました。\nエラー: ' + error.message);
+                console.error('CSVインポート実行エラー:', error);
+                alert('インポート処理に失敗しました。\nエラー: ' + error.message);
             }
-            
-            // ファイル入力をリセット
-            event.target.value = '';
         }
         
         // JSONバックアップから復元
@@ -10345,6 +10416,10 @@
 
         // v10.00: 選択されたカードIDを管理
         let selectedCardIds = [];
+        
+        // v14.02.8.9: CSVインポート用変数
+        let csvDataForImport = null;
+        let selectedDeckForCsvImport = null;
 
         // v10.00: 選択状態を更新
         // v10.00.2: 選択状態を更新（表示中のカードのみで判定）
@@ -10539,6 +10614,118 @@
                 console.error('カード移動エラー:', error);
                 alert(`カードの移動に失敗しました\n${successCount}枚は移動済み\nエラー: ${error.message}`);
                 updateSyncStatus('error');
+            }
+        }
+
+        // v14.02.8.9: CSVインポート用デッキ選択モーダルを開く
+        function openCsvDeckSelectorModal() {
+            const listEl = document.getElementById('csvDeckSelectorList');
+            listEl.innerHTML = '';
+            
+            decks.forEach(deck => {
+                const deckItem = document.createElement('div');
+                deckItem.className = 'deck-selector-item';
+                
+                if (deck.level === 1) {
+                    deckItem.classList.add('child-deck');
+                } else if (deck.level >= 2) {
+                    deckItem.classList.add('grandchild-deck');
+                }
+                
+                const indent = '　'.repeat(deck.level || 0);
+                deckItem.textContent = `${indent}${deck.name}`;
+                deckItem.dataset.deckId = deck.id;
+                
+                deckItem.onclick = function() {
+                    // 他の選択を解除
+                    document.querySelectorAll('#csvDeckSelectorList .deck-selector-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    
+                    // この項目を選択
+                    this.classList.add('selected');
+                    selectedDeckForCsvImport = deck.id;
+                    
+                    // 新規デッキ名入力欄をクリア
+                    document.getElementById('newDeckNameForImport').value = '';
+                    
+                    // インポートボタンを有効化
+                    document.getElementById('confirmCsvImportBtn').disabled = false;
+                };
+                
+                listEl.appendChild(deckItem);
+            });
+            
+            // 新規デッキ名入力欄のイベント
+            const newDeckInput = document.getElementById('newDeckNameForImport');
+            newDeckInput.value = '';
+            newDeckInput.oninput = function() {
+                if (this.value.trim()) {
+                    // 既存デッキの選択を解除
+                    document.querySelectorAll('#csvDeckSelectorList .deck-selector-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    selectedDeckForCsvImport = 'new:' + this.value.trim();
+                    document.getElementById('confirmCsvImportBtn').disabled = false;
+                } else {
+                    if (!document.querySelector('#csvDeckSelectorList .deck-selector-item.selected')) {
+                        document.getElementById('confirmCsvImportBtn').disabled = true;
+                    }
+                }
+            };
+            
+            selectedDeckForCsvImport = null;
+            document.getElementById('confirmCsvImportBtn').disabled = true;
+            document.getElementById('csvDeckSelectorModal').style.display = 'block';
+        }
+        
+        // v14.02.8.9: CSVインポート用デッキ選択モーダルを閉じる
+        function closeCsvDeckSelectorModal() {
+            document.getElementById('csvDeckSelectorModal').style.display = 'none';
+            selectedDeckForCsvImport = null;
+            csvDataForImport = null;
+        }
+        
+        // v14.02.8.9: CSVインポートを確定
+        async function confirmCsvImport() {
+            if (!selectedDeckForCsvImport) return;
+            
+            let targetDeckId = '';
+            
+            try {
+                // 新規デッキの場合
+                if (selectedDeckForCsvImport.startsWith('new:')) {
+                    const deckName = selectedDeckForCsvImport.substring(4);
+                    
+                    // 同名のデッキが存在しないか確認
+                    const existingDeck = await db.collection('decks').where('name', '==', deckName).limit(1).get();
+                    if (!existingDeck.empty) {
+                        alert(`「${deckName}」という名前のデッキは既に存在します。既存のデッキから選択してください。`);
+                        return;
+                    }
+                    
+                    // 新規デッキを作成
+                    const newDeckRef = await db.collection('decks').add({
+                        name: deckName,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        order: Date.now()
+                    });
+                    targetDeckId = newDeckRef.id;
+                    
+                } else {
+                    // 既存デッキを使用
+                    targetDeckId = selectedDeckForCsvImport;
+                }
+                
+                // モーダルを閉じる
+                document.getElementById('csvDeckSelectorModal').style.display = 'none';
+                
+                // インポート実行
+                await executeImportWithDeck(targetDeckId);
+                
+            } catch (error) {
+                console.error('デッキ作成エラー:', error);
+                alert('デッキの作成に失敗しました。\nエラー: ' + error.message);
             }
         }
 
@@ -15271,5 +15458,36 @@
     
     <!-- v14.02.1.2: トースト通知 -->
     <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 10000;"></div>
+    
+    <!-- v14.02.8.9: CSVインポート用デッキ選択モーダル -->
+    <div id="csvDeckSelectorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close" onclick="closeCsvDeckSelectorModal()">&times;</span>
+                <h2>インポート先デッキを選択</h2>
+            </div>
+            <div style="margin-bottom: 20px; color: #666;">
+                CSVファイル内のすべてのカードを指定したデッキにインポートします
+            </div>
+            
+            <!-- 既存デッキから選択 -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">既存のデッキから選択</h3>
+                <div id="csvDeckSelectorList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
+                </div>
+            </div>
+            
+            <!-- または新規デッキを作成 -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">または新規デッキを作成</h3>
+                <input type="text" id="newDeckNameForImport" placeholder="新しいデッキ名を入力" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="confirmCsvImport()" id="confirmCsvImportBtn" disabled>この設定でインポート</button>
+                <button class="btn btn-secondary" onclick="closeCsvDeckSelectorModal()">キャンセル</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
