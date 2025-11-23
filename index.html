@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.00.1</title>
+    <title>MyAnkiApp v15.00.2</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.00.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.00.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7388,6 +7388,11 @@
         let pinchCenterX;
         let pinchCenterY;
         
+        // v15.00.2: ジェスチャー判定用変数（パンとピンチを排他的に）
+        let gestureMode = null; // null, 'pan', 'pinch'
+        let gestureStartTime = 0;
+        let gestureDecisionTime = 100; // 判定猶予時間（ms）
+        
         // v14.00: PDFメタデータ保存用
         let currentPdfMetadata = {
             fileName: '',
@@ -12921,7 +12926,7 @@
         }
         
         function handleTouchStart(e) {
-            // v15.00.1: 2本指の場合はピンチズーム + パン
+            // v15.00.2: 2本指の場合はピンチズーム + パン（排他的）
             if (e.touches.length === 2) {
                 e.preventDefault();
                 
@@ -12938,6 +12943,10 @@
                 // パン用：2本指の中心点を記録
                 pinchCenterX = (touch1.clientX + touch2.clientX) / 2;
                 pinchCenterY = (touch1.clientY + touch2.clientY) / 2;
+                
+                // v15.00.2: ジェスチャー判定を初期化
+                gestureMode = null;
+                gestureStartTime = Date.now();
                 
                 // マーカー描画を中断
                 if (isDrawing) {
@@ -12999,7 +13008,7 @@
         }
         
         function handleTouchMove(e) {
-            // v15.00.1: ピンチズーム + パン処理
+            // v15.00.2: ピンチズーム + パン処理（排他的）
             if (isPinching && e.touches.length === 2) {
                 e.preventDefault();
                 
@@ -13010,36 +13019,65 @@
                 const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
                 const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
                 
-                // パン処理：中心点の移動量を計算
-                if (typeof pinchCenterX !== 'undefined') {
-                    const deltaX = currentCenterX - pinchCenterX;
-                    const deltaY = currentCenterY - pinchCenterY;
-                    offsetX += deltaX;
-                    offsetY += deltaY;
-                    updateCanvasPosition();
-                }
-                
-                // 次回の計算のために現在の中心点を保存
-                pinchCenterX = currentCenterX;
-                pinchCenterY = currentCenterY;
-                
-                // ピンチズーム処理：2本指の距離を計算
+                // 現在の2本指の距離を計算
                 const dx = touch2.clientX - touch1.clientX;
                 const dy = touch2.clientY - touch1.clientY;
                 const currentDistance = Math.sqrt(dx * dx + dy * dy);
                 
-                // 拡大率を計算（距離の比率）
-                const scaleChange = currentDistance / pinchStartDistance;
-                let newScale = pinchStartScale * scaleChange;
+                // v15.00.2: ジェスチャー判定（最初の100ms内）
+                if (gestureMode === null && Date.now() - gestureStartTime < gestureDecisionTime) {
+                    // 判定期間中：距離変化と中心移動を観察
+                    const distanceChange = Math.abs(currentDistance - pinchStartDistance);
+                    
+                    let centerMovement = 0;
+                    if (typeof pinchCenterX !== 'undefined') {
+                        const centerDx = currentCenterX - pinchCenterX;
+                        const centerDy = currentCenterY - pinchCenterY;
+                        centerMovement = Math.sqrt(centerDx * centerDx + centerDy * centerDy);
+                    }
+                    
+                    // 判定閾値：距離変化20px以上でピンチ、中心移動10px以上でパン
+                    if (distanceChange > 20) {
+                        gestureMode = 'pinch';
+                    } else if (centerMovement > 10) {
+                        gestureMode = 'pan';
+                    }
+                    // まだ判定できない場合はnullのまま継続
+                    
+                } else if (gestureMode === null) {
+                    // 判定期間終了でも決まらない → デフォルトでパン
+                    gestureMode = 'pan';
+                }
                 
-                // 範囲制限（0.5〜3.0）
-                if (newScale < 0.5) newScale = 0.5;
-                if (newScale > 3.0) newScale = 3.0;
-                
-                // 拡大率が変更された場合のみ再描画
-                if (Math.abs(newScale - scale) > 0.01) {
-                    scale = newScale;
-                    renderPage(currentPage);
+                // モード別処理
+                if (gestureMode === 'pinch') {
+                    // ピンチズームのみ
+                    const scaleChange = currentDistance / pinchStartDistance;
+                    let newScale = pinchStartScale * scaleChange;
+                    
+                    // 範囲制限（0.5〜3.0）
+                    if (newScale < 0.5) newScale = 0.5;
+                    if (newScale > 3.0) newScale = 3.0;
+                    
+                    // 拡大率が変更された場合のみ再描画
+                    if (Math.abs(newScale - scale) > 0.01) {
+                        scale = newScale;
+                        renderPage(currentPage);
+                    }
+                    
+                } else if (gestureMode === 'pan') {
+                    // パンのみ
+                    if (typeof pinchCenterX !== 'undefined') {
+                        const deltaX = currentCenterX - pinchCenterX;
+                        const deltaY = currentCenterY - pinchCenterY;
+                        offsetX += deltaX;
+                        offsetY += deltaY;
+                        updateCanvasPosition();
+                    }
+                    
+                    // 次回の計算のために現在の中心点を保存
+                    pinchCenterX = currentCenterX;
+                    pinchCenterY = currentCenterY;
                 }
                 
                 return;
@@ -13109,13 +13147,14 @@
         }
         
         function handleTouchEnd(e) {
-            // v15.00.1: ピンチズーム終了（パン位置は維持）
+            // v15.00.2: ピンチズーム終了（パン位置は維持）
             if (isPinching) {
                 isPinching = false;
                 pinchStartDistance = 0;
                 pinchStartScale = 1.0;
                 pinchCenterX = undefined;
                 pinchCenterY = undefined;
+                gestureMode = null; // v15.00.2: ジェスチャーモードをリセット
                 return;
             }
             
