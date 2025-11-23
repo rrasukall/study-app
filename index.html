@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.0</title>
+    <title>MyAnkiApp v15.01.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2863,10 +2863,10 @@
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
-                    <!-- v15.01.0: 全画面表示チェックボックス -->
-                    <label style="margin-left: 15px; display: none;" id="fullscreenLabel">
-                        <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()">
-                        <span style="color: white;">学習モード時に全画面表示</span>
+                    <!-- v15.01.1: 全画面表示チェックボックス（修正版） -->
+                    <label style="margin-left: 15px; display: none; cursor: pointer; user-select: none;" id="fullscreenLabel">
+                        <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()" style="cursor: pointer; margin-right: 5px;">
+                        <span style="color: white; font-size: 14px; font-weight: normal;">学習モード時に全画面表示</span>
                     </label>
                     <!-- v7.02: 学習統計パネル（2行構成） -->
                     <div class="study-stats inactive" id="studyStats" style="display: none;">
@@ -12431,6 +12431,7 @@
         }
         
         // v15.01.0: 全画面表示の更新
+        // v15.01.1: 全画面表示の更新（修正版）
         function updateFullscreenDisplay() {
             const checkbox = document.getElementById('fullscreenCheckbox');
             const fullscreenEnabled = checkbox && checkbox.checked;
@@ -12440,10 +12441,25 @@
                 fullscreenMode = true;
                 
                 // 通常のUI要素を非表示
-                document.querySelector('.main-content').style.display = 'none';
-                document.querySelector('.tabs').style.display = 'none';
-                document.querySelector('.pdf-header').style.display = 'none';
-                document.getElementById('studyStats').style.display = 'none';
+                const container = document.querySelector('.container');
+                const tabs = document.querySelector('.tabs');
+                const pdfHeader = document.querySelector('.pdf-header');
+                const studyStats = document.getElementById('studyStats');
+                const h1 = document.querySelector('h1');
+                const syncStatus = document.getElementById('syncStatus');
+                
+                // 各セクションを非表示（PDF section以外）
+                const sections = ['home-section', 'study-section', 'cards-section', 'stats-section', 'settings-section'];
+                sections.forEach(id => {
+                    const section = document.getElementById(id);
+                    if (section) section.style.display = 'none';
+                });
+                
+                if (tabs) tabs.style.display = 'none';
+                if (pdfHeader) pdfHeader.style.display = 'none';
+                if (studyStats) studyStats.style.display = 'none';
+                if (h1) h1.style.display = 'none';
+                if (syncStatus) syncStatus.style.display = 'none';
                 
                 const pdfControls = document.querySelectorAll('.pdf-controls-row');
                 pdfControls.forEach(el => el.style.display = 'none');
@@ -12462,6 +12478,7 @@
                     canvasContainer.style.width = '100%';
                     canvasContainer.style.height = 'calc(100vh - 50px)';
                     canvasContainer.style.zIndex = '1000';
+                    canvasContainer.style.background = '#333';
                 }
                 
                 // 全画面コントロールバーを表示
@@ -12493,12 +12510,26 @@
                 fullscreenMode = false;
                 
                 // 通常のUI要素を表示
-                document.querySelector('.main-content').style.display = '';
-                document.querySelector('.tabs').style.display = '';
-                document.querySelector('.pdf-header').style.display = '';
+                const tabs = document.querySelector('.tabs');
+                const pdfHeader = document.querySelector('.pdf-header');
+                const studyStats = document.getElementById('studyStats');
+                const h1 = document.querySelector('h1');
+                const syncStatus = document.getElementById('syncStatus');
                 
-                if (studyMode) {
-                    document.getElementById('studyStats').style.display = '';
+                // 各セクションを表示状態に戻す（activeなもののみ表示される）
+                const sections = ['home-section', 'study-section', 'cards-section', 'stats-section', 'settings-section'];
+                sections.forEach(id => {
+                    const section = document.getElementById(id);
+                    if (section) section.style.display = '';
+                });
+                
+                if (tabs) tabs.style.display = '';
+                if (pdfHeader) pdfHeader.style.display = '';
+                if (h1) h1.style.display = '';
+                if (syncStatus) syncStatus.style.display = '';
+                
+                if (studyMode && studyStats) {
+                    studyStats.style.display = '';
                 }
                 
                 const pdfControls = document.querySelectorAll('.pdf-controls-row');
@@ -12518,6 +12549,7 @@
                     canvasContainer.style.width = '';
                     canvasContainer.style.height = '';
                     canvasContainer.style.zIndex = '';
+                    canvasContainer.style.background = '';
                 }
                 
                 // 全画面コントロールバーを非表示
