@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.6</title>
+    <title>MyAnkiApp v15.01.7</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.6</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.7</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -12529,22 +12529,21 @@
                 }
                 
                 // シートボタンの状態を同期
-                    ['yellow', 'red', 'green', 'blue'].forEach(color => {
-                        const fullscreenBtn = document.getElementById('fullscreenSheet' + color.charAt(0).toUpperCase() + color.slice(1));
-                        if (fullscreenBtn) {
-                            if (redSheetColors[color]) {
-                                fullscreenBtn.classList.add('active');
-                            } else {
-                                fullscreenBtn.classList.remove('active');
-                            }
+                ['yellow', 'red', 'green', 'blue'].forEach(color => {
+                    const fullscreenBtn = document.getElementById('fullscreenSheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                    if (fullscreenBtn) {
+                        if (redSheetColors[color]) {
+                            fullscreenBtn.classList.add('active');
+                        } else {
+                            fullscreenBtn.classList.remove('active');
                         }
-                    });
-                    
-                    // ページ情報を同期
-                    const fullscreenPageInfo = document.getElementById('fullscreenPageInfo');
-                    if (fullscreenPageInfo) {
-                        fullscreenPageInfo.textContent = `${currentPage} / ${totalPages}`;
                     }
+                });
+                
+                // ページ情報を同期
+                const fullscreenPageInfo = document.getElementById('fullscreenPageInfo');
+                if (fullscreenPageInfo) {
+                    fullscreenPageInfo.textContent = `${currentPage} / ${totalPages}`;
                 }
                 
             } else {
