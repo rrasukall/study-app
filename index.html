@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.4</title>
+    <title>MyAnkiApp v15.01.5</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.4</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.5</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7417,6 +7417,7 @@
         
         // v15.01.0: 全画面表示モード
         let fullscreenMode = false;
+        let savedScaleBeforeFullscreen = null;  // v15.01.5: 全画面前のscaleを保存
         
         // v14.00: PDFメタデータ保存用
         let currentPdfMetadata = {
@@ -12485,13 +12486,19 @@
                     canvasContainer.style.background = '#333';
                 }
                 
-                // v15.01.4: canvas-wrapperを画面いっぱいに拡張
-                const canvasWrapper = document.getElementById('canvasWrapper');
-                if (canvasWrapper) {
-                    canvasWrapper.style.height = '100%';
-                    canvasWrapper.style.display = 'flex';
-                    canvasWrapper.style.alignItems = 'center';
-                    canvasWrapper.style.justifyContent = 'center';
+                // v15.01.5: 全画面用にscaleを調整してPDFを再描画
+                savedScaleBeforeFullscreen = scale;
+                const availableHeight = window.innerHeight - 60;  // コントロールバーの高さを除く
+                const availableWidth = window.innerWidth;
+                
+                if (pdfDoc && currentPage > 0) {
+                    pdfDoc.getPage(currentPage).then(page => {
+                        const viewport = page.getViewport({ scale: 1 });
+                        const scaleHeight = availableHeight / viewport.height;
+                        const scaleWidth = availableWidth / viewport.width;
+                        scale = Math.min(scaleHeight, scaleWidth) * 0.95;  // 95%で余白を確保
+                        renderPage(currentPage);
+                    });
                 }
                 
                 // 全画面コントロールバーを表示
@@ -12569,13 +12576,11 @@
                     canvasContainer.style.background = '';
                 }
                 
-                // v15.01.4: canvas-wrapperも元に戻す
-                const canvasWrapper = document.getElementById('canvasWrapper');
-                if (canvasWrapper) {
-                    canvasWrapper.style.height = '';
-                    canvasWrapper.style.display = '';
-                    canvasWrapper.style.alignItems = '';
-                    canvasWrapper.style.justifyContent = '';
+                // v15.01.5: scaleを元に戻してPDFを再描画
+                if (savedScaleBeforeFullscreen !== null) {
+                    scale = savedScaleBeforeFullscreen;
+                    savedScaleBeforeFullscreen = null;
+                    renderPage(currentPage);
                 }
                 
                 // 全画面コントロールバーを非表示
