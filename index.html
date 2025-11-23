@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v14.02.8.9</title>
+    <title>MyAnkiApp v15.00.0</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -7379,6 +7379,11 @@
         let pdfHash = null;
         let currentPDFFile = null;
         
+        // v15.00.0: ピンチズーム用変数
+        let isPinching = false;
+        let pinchStartDistance = 0;
+        let pinchStartScale = 1.0;
+        
         // v14.00: PDFメタデータ保存用
         let currentPdfMetadata = {
             fileName: '',
@@ -11715,8 +11720,12 @@
 
         async function zoomIn() {
             const oldScale = scale;
-            scale += 0.25;
-            if (scale > 3) scale = 3;
+            
+            // v15.00.0: 現在の拡大率を0.5刻みに丸めてから+0.5
+            const roundedScale = Math.round(scale * 2) / 2;  // 0.5刻みに丸める
+            scale = roundedScale + 0.5;
+            
+            if (scale > 3.0) scale = 3.0;
             
             if (oldScale !== scale) {
                 await renderPage(currentPage);
@@ -11725,7 +11734,11 @@
 
         async function zoomOut() {
             const oldScale = scale;
-            scale -= 0.25;
+            
+            // v15.00.0: 現在の拡大率を0.5刻みに丸めてから-0.5
+            const roundedScale = Math.round(scale * 2) / 2;  // 0.5刻みに丸める
+            scale = roundedScale - 0.5;
+            
             if (scale < 0.5) scale = 0.5;
             
             if (oldScale !== scale) {
@@ -12904,18 +12917,31 @@
         }
         
         function handleTouchStart(e) {
+            // v15.00.0: 2本指の場合はピンチズーム
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                
+                // ピンチ開始：2本指の距離を計算
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const dx = touch2.clientX - touch1.clientX;
+                const dy = touch2.clientY - touch1.clientY;
+                pinchStartDistance = Math.sqrt(dx * dx + dy * dy);
+                pinchStartScale = scale;
+                isPinching = true;
+                
+                // マーカー描画を中断
+                if (isDrawing) {
+                    isDrawing = false;
+                }
+                
+                return;
+            }
+            
             const touch = e.touches[0];
             const rect = e.target.getBoundingClientRect();
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
-            
-            if (e.touches.length === 2) {
-                e.preventDefault();
-                isPanning = true;
-                panStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                panStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                return;
-            }
             
             e.preventDefault();
             
@@ -12964,20 +12990,31 @@
         }
         
         function handleTouchMove(e) {
-            if (isPanning && e.touches.length === 2) {
+            // v15.00.0: ピンチズーム中の処理
+            if (isPinching && e.touches.length === 2) {
                 e.preventDefault();
-                const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const deltaX = currentX - panStartX;
-                const deltaY = currentY - panStartY;
                 
-                offsetX += deltaX;
-                offsetY += deltaY;
+                // 現在の2本指の距離を計算
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const dx = touch2.clientX - touch1.clientX;
+                const dy = touch2.clientY - touch1.clientY;
+                const currentDistance = Math.sqrt(dx * dx + dy * dy);
                 
-                panStartX = currentX;
-                panStartY = currentY;
+                // 拡大率を計算（距離の比率）
+                const scaleChange = currentDistance / pinchStartDistance;
+                let newScale = pinchStartScale * scaleChange;
                 
-                updateCanvasPosition();
+                // 範囲制限（0.5〜3.0）
+                if (newScale < 0.5) newScale = 0.5;
+                if (newScale > 3.0) newScale = 3.0;
+                
+                // 拡大率が変更された場合のみ再描画
+                if (Math.abs(newScale - scale) > 0.01) {
+                    scale = newScale;
+                    renderPage(currentPage);
+                }
+                
                 return;
             }
             
@@ -13045,8 +13082,11 @@
         }
         
         function handleTouchEnd(e) {
-            if (isPanning) {
-                isPanning = false;
+            // v15.00.0: ピンチズーム終了
+            if (isPinching) {
+                isPinching = false;
+                pinchStartDistance = 0;
+                pinchStartScale = 1.0;
                 return;
             }
             
@@ -15491,4 +15531,3 @@
     </div>
 </body>
 </html>
-
