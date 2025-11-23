@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.00.0</title>
+    <title>MyAnkiApp v15.00.1</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.00.0</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.00.1</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7384,6 +7384,10 @@
         let pinchStartDistance = 0;
         let pinchStartScale = 1.0;
         
+        // v15.00.1: パン用変数
+        let pinchCenterX;
+        let pinchCenterY;
+        
         // v14.00: PDFメタデータ保存用
         let currentPdfMetadata = {
             fileName: '',
@@ -12917,18 +12921,23 @@
         }
         
         function handleTouchStart(e) {
-            // v15.00.0: 2本指の場合はピンチズーム
+            // v15.00.1: 2本指の場合はピンチズーム + パン
             if (e.touches.length === 2) {
                 e.preventDefault();
                 
-                // ピンチ開始：2本指の距離を計算
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
+                
+                // ピンチ開始：2本指の距離を計算
                 const dx = touch2.clientX - touch1.clientX;
                 const dy = touch2.clientY - touch1.clientY;
                 pinchStartDistance = Math.sqrt(dx * dx + dy * dy);
                 pinchStartScale = scale;
                 isPinching = true;
+                
+                // パン用：2本指の中心点を記録
+                pinchCenterX = (touch1.clientX + touch2.clientX) / 2;
+                pinchCenterY = (touch1.clientY + touch2.clientY) / 2;
                 
                 // マーカー描画を中断
                 if (isDrawing) {
@@ -12990,13 +12999,31 @@
         }
         
         function handleTouchMove(e) {
-            // v15.00.0: ピンチズーム中の処理
+            // v15.00.1: ピンチズーム + パン処理
             if (isPinching && e.touches.length === 2) {
                 e.preventDefault();
                 
-                // 現在の2本指の距離を計算
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
+                
+                // 現在の2本指の中心点を計算
+                const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
+                const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
+                
+                // パン処理：中心点の移動量を計算
+                if (typeof pinchCenterX !== 'undefined') {
+                    const deltaX = currentCenterX - pinchCenterX;
+                    const deltaY = currentCenterY - pinchCenterY;
+                    offsetX += deltaX;
+                    offsetY += deltaY;
+                    updateCanvasPosition();
+                }
+                
+                // 次回の計算のために現在の中心点を保存
+                pinchCenterX = currentCenterX;
+                pinchCenterY = currentCenterY;
+                
+                // ピンチズーム処理：2本指の距離を計算
                 const dx = touch2.clientX - touch1.clientX;
                 const dy = touch2.clientY - touch1.clientY;
                 const currentDistance = Math.sqrt(dx * dx + dy * dy);
@@ -13082,11 +13109,13 @@
         }
         
         function handleTouchEnd(e) {
-            // v15.00.0: ピンチズーム終了
+            // v15.00.1: ピンチズーム終了（パン位置は維持）
             if (isPinching) {
                 isPinching = false;
                 pinchStartDistance = 0;
                 pinchStartScale = 1.0;
+                pinchCenterX = undefined;
+                pinchCenterY = undefined;
                 return;
             }
             
@@ -15531,4 +15560,3 @@
     </div>
 </body>
 </html>
-
