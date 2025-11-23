@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.00.2</title>
+    <title>MyAnkiApp v15.01.0</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.00.2</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.0</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2863,6 +2863,11 @@
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
+                    <!-- v15.01.0: 全画面表示チェックボックス -->
+                    <label style="margin-left: 15px; display: none;" id="fullscreenLabel">
+                        <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()">
+                        <span style="color: white;">学習モード時に全画面表示</span>
+                    </label>
                     <!-- v7.02: 学習統計パネル（2行構成） -->
                     <div class="study-stats inactive" id="studyStats" style="display: none;">
                         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px;">
@@ -2951,6 +2956,22 @@
                         </div>
                         
                         <button class="btn btn-danger" onclick="closePDF()">PDFを閉じる</button>
+                    </div>
+                </div>
+                
+                <!-- v15.01.0: 全画面表示用コントロールバー -->
+                <div id="fullscreenControls" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(0, 0, 0, 0.85); color: white; padding: 10px 20px; z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: nowrap;">
+                        <button class="btn" onclick="toggleStudyMode()" id="fullscreenStudyModeBtn" style="background: #e74c3c; color: white; padding: 8px 16px;">学習OFF</button>
+                        <span style="color: #888;">|</span>
+                        <button class="sheet-btn yellow" id="fullscreenSheetYellow" onclick="toggleRedSheetColor('yellow')" style="padding: 8px 16px;">黄</button>
+                        <button class="sheet-btn red" id="fullscreenSheetRed" onclick="toggleRedSheetColor('red')" style="padding: 8px 16px;">赤</button>
+                        <button class="sheet-btn green" id="fullscreenSheetGreen" onclick="toggleRedSheetColor('green')" style="padding: 8px 16px;">緑</button>
+                        <button class="sheet-btn blue" id="fullscreenSheetBlue" onclick="toggleRedSheetColor('blue')" style="padding: 8px 16px;">青</button>
+                        <span style="color: #888;">|</span>
+                        <button class="btn btn-secondary" onclick="previousPage()" style="padding: 8px 16px;">◀</button>
+                        <span style="font-size: 14px; min-width: 80px; text-align: center;" id="fullscreenPageInfo">1 / 1</span>
+                        <button class="btn btn-secondary" onclick="nextPage()" style="padding: 8px 16px;">▶</button>
                     </div>
                 </div>
             </div>
@@ -7393,6 +7414,9 @@
         let gestureStartTime = 0;
         let gestureDecisionTime = 100; // 判定猶予時間（ms）
         
+        // v15.01.0: 全画面表示モード
+        let fullscreenMode = false;
+        
         // v14.00: PDFメタデータ保存用
         let currentPdfMetadata = {
             fileName: '',
@@ -11483,6 +11507,13 @@
                 // v7.00: 学習モードボタンを表示
                 document.getElementById('studyModeBtn').style.display = 'block';
                 
+                // v15.01.0: 全画面表示チェックボックスを表示し、設定を読み込む
+                const fullscreenLabel = document.getElementById('fullscreenLabel');
+                if (fullscreenLabel) {
+                    fullscreenLabel.style.display = 'inline-block';
+                }
+                loadFullscreenSetting();
+                
                 // v7.01: 統計パネルを表示し、統計をリセット
                 const statsPanel = document.getElementById('studyStats');
                 if (statsPanel) {
@@ -11681,6 +11712,12 @@
                 
                 document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
                 document.getElementById('zoomInfo').textContent = `${Math.round(scale * 100)}%`;
+                
+                // v15.01.0: 全画面モード時のページ情報も更新
+                const fullscreenPageInfo = document.getElementById('fullscreenPageInfo');
+                if (fullscreenPageInfo) {
+                    fullscreenPageInfo.textContent = `${currentPage} / ${totalPages}`;
+                }
                 
             } catch (error) {
                 console.error('ページレンダリングエラー:', error);
@@ -11901,6 +11938,20 @@
             // v7.03: 学習モードON時はシート変更で統計を再計算
             if (studyMode) {
                 updateStudyStats();
+            }
+            
+            // v15.01.0: 全画面モード時のボタンも同期
+            if (fullscreenMode) {
+                ['yellow', 'red', 'green', 'blue'].forEach(c => {
+                    const fullscreenBtn = document.getElementById('fullscreenSheet' + c.charAt(0).toUpperCase() + c.slice(1));
+                    if (fullscreenBtn) {
+                        if (redSheetColors[c]) {
+                            fullscreenBtn.classList.add('active');
+                        } else {
+                            fullscreenBtn.classList.remove('active');
+                        }
+                    }
+                });
             }
         }
         
@@ -12354,6 +12405,127 @@
             }
             
             drawMarkers();
+            
+            // v15.01.0: 全画面表示の切り替え
+            updateFullscreenDisplay();
+        }
+        
+        // v15.01.0: 全画面表示の設定を保存
+        function saveFullscreenSetting() {
+            const checkbox = document.getElementById('fullscreenCheckbox');
+            localStorage.setItem('fullscreenMode', checkbox.checked);
+            
+            // 学習モード中の場合は即座に反映
+            if (studyMode) {
+                updateFullscreenDisplay();
+            }
+        }
+        
+        // v15.01.0: 全画面表示の設定を読み込み
+        function loadFullscreenSetting() {
+            const saved = localStorage.getItem('fullscreenMode');
+            const checkbox = document.getElementById('fullscreenCheckbox');
+            if (checkbox && saved !== null) {
+                checkbox.checked = saved === 'true';
+            }
+        }
+        
+        // v15.01.0: 全画面表示の更新
+        function updateFullscreenDisplay() {
+            const checkbox = document.getElementById('fullscreenCheckbox');
+            const fullscreenEnabled = checkbox && checkbox.checked;
+            
+            if (studyMode && fullscreenEnabled) {
+                // 全画面表示ON
+                fullscreenMode = true;
+                
+                // 通常のUI要素を非表示
+                document.querySelector('.main-content').style.display = 'none';
+                document.querySelector('.tabs').style.display = 'none';
+                document.querySelector('.pdf-header').style.display = 'none';
+                document.getElementById('studyStats').style.display = 'none';
+                
+                const pdfControls = document.querySelectorAll('.pdf-controls-row');
+                pdfControls.forEach(el => el.style.display = 'none');
+                
+                const pdfControlsBottom = document.querySelector('.pdf-controls');
+                if (pdfControlsBottom) pdfControlsBottom.style.display = 'none';
+                
+                // PDF canvas containerのみ表示（全画面）
+                const canvasContainer = document.querySelector('.pdf-canvas-container');
+                if (canvasContainer) {
+                    canvasContainer.style.position = 'fixed';
+                    canvasContainer.style.top = '50px';  // コントロールバーの高さ分
+                    canvasContainer.style.left = '0';
+                    canvasContainer.style.right = '0';
+                    canvasContainer.style.bottom = '0';
+                    canvasContainer.style.width = '100%';
+                    canvasContainer.style.height = 'calc(100vh - 50px)';
+                    canvasContainer.style.zIndex = '1000';
+                }
+                
+                // 全画面コントロールバーを表示
+                const fullscreenControls = document.getElementById('fullscreenControls');
+                if (fullscreenControls) {
+                    fullscreenControls.style.display = 'block';
+                    
+                    // シートボタンの状態を同期
+                    ['yellow', 'red', 'green', 'blue'].forEach(color => {
+                        const fullscreenBtn = document.getElementById('fullscreenSheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                        if (fullscreenBtn) {
+                            if (redSheetColors[color]) {
+                                fullscreenBtn.classList.add('active');
+                            } else {
+                                fullscreenBtn.classList.remove('active');
+                            }
+                        }
+                    });
+                    
+                    // ページ情報を同期
+                    const fullscreenPageInfo = document.getElementById('fullscreenPageInfo');
+                    if (fullscreenPageInfo) {
+                        fullscreenPageInfo.textContent = `${currentPage} / ${totalPages}`;
+                    }
+                }
+                
+            } else {
+                // 全画面表示OFF（通常表示）
+                fullscreenMode = false;
+                
+                // 通常のUI要素を表示
+                document.querySelector('.main-content').style.display = '';
+                document.querySelector('.tabs').style.display = '';
+                document.querySelector('.pdf-header').style.display = '';
+                
+                if (studyMode) {
+                    document.getElementById('studyStats').style.display = '';
+                }
+                
+                const pdfControls = document.querySelectorAll('.pdf-controls-row');
+                pdfControls.forEach(el => el.style.display = '');
+                
+                const pdfControlsBottom = document.querySelector('.pdf-controls');
+                if (pdfControlsBottom) pdfControlsBottom.style.display = '';
+                
+                // PDF canvas containerを元に戻す
+                const canvasContainer = document.querySelector('.pdf-canvas-container');
+                if (canvasContainer) {
+                    canvasContainer.style.position = '';
+                    canvasContainer.style.top = '';
+                    canvasContainer.style.left = '';
+                    canvasContainer.style.right = '';
+                    canvasContainer.style.bottom = '';
+                    canvasContainer.style.width = '';
+                    canvasContainer.style.height = '';
+                    canvasContainer.style.zIndex = '';
+                }
+                
+                // 全画面コントロールバーを非表示
+                const fullscreenControls = document.getElementById('fullscreenControls');
+                if (fullscreenControls) {
+                    fullscreenControls.style.display = 'none';
+                }
+            }
         }
         
         // v7.00.2: ボタンをグレーアウト（シートボタンも追加）
