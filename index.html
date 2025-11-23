@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.1</title>
+    <title>MyAnkiApp v15.01.2</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.1</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.2</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2863,10 +2863,10 @@
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
-                    <!-- v15.01.1: 全画面表示チェックボックス（修正版） -->
-                    <label style="margin-left: 15px; display: none; cursor: pointer; user-select: none;" id="fullscreenLabel">
-                        <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()" style="cursor: pointer; margin-right: 5px;">
-                        <span style="color: white; font-size: 14px; font-weight: normal;">学習モード時に全画面表示</span>
+                    <!-- v15.01.2: 全画面表示チェックボックス（視認性向上） -->
+                    <label style="margin-left: 15px; display: none; cursor: pointer; user-select: none; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px;" id="fullscreenLabel">
+                        <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()" style="cursor: pointer; margin-right: 5px; vertical-align: middle;">
+                        <span style="color: white; font-size: 14px; font-weight: normal; vertical-align: middle;">学習モード時に全画面表示</span>
                     </label>
                     <!-- v7.02: 学習統計パネル（2行構成） -->
                     <div class="study-stats inactive" id="studyStats" style="display: none;">
@@ -2960,7 +2960,8 @@
                 </div>
                 
                 <!-- v15.01.0: 全画面表示用コントロールバー -->
-                <div id="fullscreenControls" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(0, 0, 0, 0.85); color: white; padding: 10px 20px; z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+                <!-- v15.01.2: 全画面表示用コントロールバー（z-index: 2001） -->
+                <div id="fullscreenControls" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(0, 0, 0, 0.85); color: white; padding: 10px 20px; z-index: 2001; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: nowrap;">
                         <button class="btn" onclick="toggleStudyMode()" id="fullscreenStudyModeBtn" style="background: #e74c3c; color: white; padding: 8px 16px;">学習OFF</button>
                         <span style="color: #888;">|</span>
@@ -12471,12 +12472,12 @@
                 const canvasContainer = document.querySelector('.pdf-canvas-container');
                 if (canvasContainer) {
                     canvasContainer.style.position = 'fixed';
-                    canvasContainer.style.top = '50px';  // コントロールバーの高さ分
+                    canvasContainer.style.top = '0';  // v15.01.2: 画面全体に表示
                     canvasContainer.style.left = '0';
                     canvasContainer.style.right = '0';
                     canvasContainer.style.bottom = '0';
                     canvasContainer.style.width = '100%';
-                    canvasContainer.style.height = 'calc(100vh - 50px)';
+                    canvasContainer.style.height = '100vh';  // v15.01.2: 画面全体の高さ
                     canvasContainer.style.zIndex = '1000';
                     canvasContainer.style.background = '#333';
                 }
@@ -12485,6 +12486,7 @@
                 const fullscreenControls = document.getElementById('fullscreenControls');
                 if (fullscreenControls) {
                     fullscreenControls.style.display = 'block';
+                    fullscreenControls.style.zIndex = '2001';  // v15.01.2: canvas containerより上に
                     
                     // シートボタンの状態を同期
                     ['yellow', 'red', 'green', 'blue'].forEach(color => {
@@ -12556,6 +12558,7 @@
                 const fullscreenControls = document.getElementById('fullscreenControls');
                 if (fullscreenControls) {
                     fullscreenControls.style.display = 'none';
+                    fullscreenControls.style.zIndex = '';  // v15.01.2: zIndexもリセット
                 }
             }
         }
