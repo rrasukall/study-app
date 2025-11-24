@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.13</title>
+    <title>MyAnkiApp v15.01.14</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.13</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.14</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -7447,6 +7447,7 @@
         let dragStartX, dragStartY;
         let instantDeleteMode = false;
         let resizingHandle = null;
+        let movingMarker = false; // v15.01.14: マーカー移動中フラグ
         let lastMarkerHeight = 0; // v15.01.13: 直前のマーカー高さを記憶
         let fixHeightMode = false; // v15.01.13: 高さ固定モード
         
@@ -11872,6 +11873,8 @@
                 
                 selectedMarkerIndex = null;
                 selectedMarkerPage = null;
+                movingMarker = false; // v15.01.14: 移動モードもリセット
+                resizingHandle = null; // v15.01.14: リサイズモードもリセット
                 drawMarkers();
             }
         }
@@ -12839,6 +12842,19 @@
                     dragStartY = y;
                     return;
                 }
+                
+                // v15.01.14: 四つ角以外のマーカー内をクリックした場合は移動モード
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    movingMarker = true;
+                    dragStartX = x;
+                    dragStartY = y;
+                    return;
+                }
             }
             
             // v7.02.1: 修正モード時にShift+クリックで色変更
@@ -13139,6 +13155,43 @@
             const currentX = e.clientX - rect.left;
             const currentY = e.clientY - rect.top;
             
+            // v15.01.14: 編集モード時のカーソル形状変更
+            if (editMode && selectedMarkerIndex !== null && !resizingHandle && !movingMarker) {
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                const scaleRatio = scale / marker.scale;
+                const handle = detectHandle(currentX, currentY, marker, scaleRatio);
+                
+                if (handle) {
+                    // 四つ角：リサイズカーソル
+                    switch (handle) {
+                        case 'nw':
+                            canvas.style.cursor = 'nw-resize';
+                            break;
+                        case 'ne':
+                            canvas.style.cursor = 'ne-resize';
+                            break;
+                        case 'sw':
+                            canvas.style.cursor = 'sw-resize';
+                            break;
+                        case 'se':
+                            canvas.style.cursor = 'se-resize';
+                            break;
+                    }
+                } else {
+                    // マーカー内かチェック
+                    const mx = marker.x * scaleRatio;
+                    const my = marker.y * scaleRatio;
+                    const mw = marker.width * scaleRatio;
+                    const mh = marker.height * scaleRatio;
+                    
+                    if (currentX >= mx && currentX <= mx + mw && currentY >= my && currentY <= my + mh) {
+                        canvas.style.cursor = 'move';
+                    } else {
+                        canvas.style.cursor = 'default';
+                    }
+                }
+            }
+            
             if (resizingHandle && selectedMarkerIndex !== null) {
                 e.preventDefault();
                 const deltaX = currentX - dragStartX;
@@ -13179,6 +13232,37 @@
                 return;
             }
             
+            // v15.01.14: マーカー移動処理
+            if (movingMarker && selectedMarkerIndex !== null) {
+                e.preventDefault();
+                const deltaX = currentX - dragStartX;
+                const deltaY = currentY - dragStartY;
+                
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                
+                // 新しい位置を計算
+                let newX = marker.x + deltaX;
+                let newY = marker.y + deltaY;
+                
+                // Canvas範囲内に制限
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                
+                if (newX < 0) newX = 0;
+                if (newY < 0) newY = 0;
+                if (newX + marker.width > canvasWidth) newX = canvasWidth - marker.width;
+                if (newY + marker.height > canvasHeight) newY = canvasHeight - marker.height;
+                
+                marker.x = newX;
+                marker.y = newY;
+                
+                dragStartX = currentX;
+                dragStartY = currentY;
+                
+                drawMarkers();
+                return;
+            }
+            
             if (!isDrawing || !markerMode) return;
             e.preventDefault();
             
@@ -13201,6 +13285,13 @@
         function stopDrawing(e) {
             if (resizingHandle) {
                 resizingHandle = null;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            // v15.01.14: マーカー移動終了処理
+            if (movingMarker) {
+                movingMarker = false;
                 saveMarkersToFirebase();
                 return;
             }
@@ -13311,6 +13402,19 @@
                 
                 if (handle) {
                     resizingHandle = handle;
+                    dragStartX = x;
+                    dragStartY = y;
+                    return;
+                }
+                
+                // v15.01.14: 四つ角以外のマーカー内をタッチした場合は移動モード
+                const mx = marker.x * scaleRatio;
+                const my = marker.y * scaleRatio;
+                const mw = marker.width * scaleRatio;
+                const mh = marker.height * scaleRatio;
+                
+                if (x >= mx && x <= mx + mw && y >= my && y <= my + mh) {
+                    movingMarker = true;
                     dragStartX = x;
                     dragStartY = y;
                     return;
@@ -13459,6 +13563,37 @@
                 return;
             }
             
+            // v15.01.14: マーカー移動処理
+            if (movingMarker && selectedMarkerIndex !== null) {
+                e.preventDefault();
+                const deltaX = currentX - dragStartX;
+                const deltaY = currentY - dragStartY;
+                
+                const marker = markers[pdfHash][currentPage][selectedMarkerIndex];
+                
+                // 新しい位置を計算
+                let newX = marker.x + deltaX;
+                let newY = marker.y + deltaY;
+                
+                // Canvas範囲内に制限
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                
+                if (newX < 0) newX = 0;
+                if (newY < 0) newY = 0;
+                if (newX + marker.width > canvasWidth) newX = canvasWidth - marker.width;
+                if (newY + marker.height > canvasHeight) newY = canvasHeight - marker.height;
+                
+                marker.x = newX;
+                marker.y = newY;
+                
+                dragStartX = currentX;
+                dragStartY = currentY;
+                
+                drawMarkers();
+                return;
+            }
+            
             if (!isDrawing || !markerMode) return;
             e.preventDefault();
             
@@ -13500,6 +13635,13 @@
             if (resizingHandle) {
                 e.preventDefault();
                 resizingHandle = null;
+                saveMarkersToFirebase();
+                return;
+            }
+            
+            // v15.01.14: マーカー移動終了処理
+            if (movingMarker) {
+                movingMarker = false;
                 saveMarkersToFirebase();
                 return;
             }
