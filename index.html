@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.15</title>
+    <title>MyAnkiApp v15.01.16</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1520,7 +1520,7 @@
     </style>
 </head>
 <body>
-    <!-- v15.01.15: Firebase Authentication ログイン画面 -->
+    <!-- v15.01.16: Firebase Authentication ログイン画面 -->
     <div id="loginScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 10000; display: flex; align-items: center; justify-content: center;">
         <div style="background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
             <h2 style="text-align: center; color: #667eea; margin-bottom: 30px;">📚 MyAnkiApp ログイン</h2>
@@ -1532,15 +1532,18 @@
                 <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">パスワード</label>
                 <input type="password" id="loginPassword" placeholder="パスワードを入力" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
             </div>
+            <div style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 8px; font-size: 13px; color: #1976d2;">
+                ℹ️ ログイン状態は自動的に維持されます
+            </div>
             <button onclick="loginWithEmail()" style="width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px;">ログイン</button>
-            <div id="loginError" style="color: #e74c3c; text-align: center; margin-top: 10px; display: none;"></div>
+            <div id="loginError" style="color: #e74c3c; text-align: center; margin-top: 10px; font-weight: bold; display: none;"></div>
         </div>
     </div>
     
-    <!-- v15.01.15: メインアプリ画面 -->
+    <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.15</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.16</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -3013,7 +3016,21 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
-        // v15.01.15: Firebase Authentication処理
+        // v15.01.16: Firebase初期化（最初に実行）
+        const firebaseConfig = {
+            apiKey: "AIzaSyBxtut_pGgtNSGmUZ6wXC4aqNufkGjbxQQ",
+            authDomain: "myankiapp.firebaseapp.com",
+            projectId: "myankiapp",
+            storageBucket: "myankiapp.firebasestorage.app",
+            messagingSenderId: "407986420613",
+            appId: "1:407986420613:web:02caaf05b825fb4a2ce2ec"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // v15.01.16: Firebase Authentication処理
         let currentUser = null;
         
         // ログイン状態の監視
@@ -3083,19 +3100,6 @@
                 });
             }
         });
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBxtut_pGgtNSGmUZ6wXC4aqNufkGjbxQQ",
-            authDomain: "myankiapp.firebaseapp.com",
-            projectId: "myankiapp",
-            storageBucket: "myankiapp.firebasestorage.app",
-            messagingSenderId: "407986420613",
-            appId: "1:407986420613:web:02caaf05b825fb4a2ce2ec"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth(); // v15.01.15: Firebase Authentication
         
         // v12.03: テーマとフォントサイズ管理
         let currentTheme = localStorage.getItem('theme') || 'light';
