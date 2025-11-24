@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.8</title>
+    <title>MyAnkiApp v15.01.9</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.8</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.9</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -12482,15 +12482,20 @@
                     canvasContainer.style.bottom = '0';
                     canvasContainer.style.width = '100%';
                     canvasContainer.style.height = 'calc(100vh - 70px)';  // v15.01.8: コントロールバーの高さを除く
+                    canvasContainer.style.maxHeight = 'none';  // v15.01.9: max-height: 70vhを解除
+                    canvasContainer.style.padding = '0';  // v15.01.9: paddingを除去
+                    canvasContainer.style.margin = '0';  // v15.01.9: marginを除去
                     canvasContainer.style.zIndex = '1000';
                     canvasContainer.style.background = '#333';
                     canvasContainer.style.overflow = 'hidden';  // v15.01.6: スクロールバーを非表示
                 }
                 
-                // v15.01.8: canvas-wrapperの高さを100%に（flexは使わない）
+                // v15.01.9: canvas-wrapperのpadding/marginも除去
                 const canvasWrapper = document.getElementById('canvasWrapper');
                 if (canvasWrapper) {
                     canvasWrapper.style.height = '100%';
+                    canvasWrapper.style.padding = '0';
+                    canvasWrapper.style.margin = '0';
                 }
                 
                 // 全画面コントロールバーを表示（先に表示して高さを取得）
@@ -12508,7 +12513,7 @@
                 const availableHeight = window.innerHeight - controlBarHeight;
                 const availableWidth = window.innerWidth;
                 
-                console.log('=== v15.01.8 Fullscreen Debug ===');
+                console.log('=== v15.01.9 Fullscreen Debug ===');
                 console.log('window.innerHeight:', window.innerHeight);
                 console.log('window.innerWidth:', window.innerWidth);
                 console.log('controlBarHeight:', controlBarHeight);
@@ -12516,12 +12521,18 @@
                 console.log('availableWidth:', availableWidth);
                 console.log('savedScaleBeforeFullscreen:', savedScaleBeforeFullscreen);
                 
+                // v15.01.9: 設定後のcanvas containerの実際のサイズを確認
+                if (canvasContainer) {
+                    console.log('canvasContainer actual height:', canvasContainer.offsetHeight);
+                    console.log('canvasContainer actual width:', canvasContainer.offsetWidth);
+                }
+                
                 if (pdfDoc && currentPage > 0) {
                     pdfDoc.getPage(currentPage).then(page => {
                         const viewport = page.getViewport({ scale: 1 });
                         console.log('PDF viewport (scale=1):', viewport.width, 'x', viewport.height);
                         
-                        // v15.01.8: 高さ基準で99%（画面いっぱいに表示）
+                        // v15.01.9: 高さ基準で99%（画面いっぱいに表示）
                         scale = (availableHeight / viewport.height) * 0.99;
                         console.log('calculated scale (height-based 99%):', scale);
                         
@@ -12594,20 +12605,25 @@
                     canvasContainer.style.bottom = '';
                     canvasContainer.style.width = '';
                     canvasContainer.style.height = '';
+                    canvasContainer.style.maxHeight = '';  // v15.01.9: maxHeightもリセット
+                    canvasContainer.style.padding = '';  // v15.01.9: paddingもリセット
+                    canvasContainer.style.margin = '';  // v15.01.9: marginもリセット
                     canvasContainer.style.zIndex = '';
                     canvasContainer.style.background = '';
                     canvasContainer.style.overflow = '';  // v15.01.6: overflowもリセット
                 }
                 
-                // v15.01.8: canvas-wrapperの高さもリセット
+                // v15.01.9: canvas-wrapperもリセット
                 const canvasWrapper = document.getElementById('canvasWrapper');
                 if (canvasWrapper) {
                     canvasWrapper.style.height = '';
+                    canvasWrapper.style.padding = '';
+                    canvasWrapper.style.margin = '';
                 }
                 
-                // v15.01.8: scaleを元に戻してPDFを再描画（デバッグ情報付き）
+                // v15.01.9: scaleを元に戻してPDFを再描画（デバッグ情報付き）
                 if (savedScaleBeforeFullscreen !== null) {
-                    console.log('=== v15.01.8 Fullscreen OFF Debug ===');
+                    console.log('=== v15.01.9 Fullscreen OFF Debug ===');
                     console.log('Restoring scale from:', scale, 'to:', savedScaleBeforeFullscreen);
                     scale = savedScaleBeforeFullscreen;
                     savedScaleBeforeFullscreen = null;
