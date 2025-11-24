@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.16</title>
+    <title>MyAnkiApp v16.00.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.16</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.00.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -3039,12 +3039,10 @@
                 currentUser = user;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'block';
-                console.log('ログイン済み:', user.email);
             } else {
                 currentUser = null;
                 document.getElementById('loginScreen').style.display = 'flex';
                 document.getElementById('mainApp').style.display = 'none';
-                console.log('未ログイン');
             }
         });
         
@@ -3062,7 +3060,6 @@
             
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    console.log('ログイン成功');
                     errorDiv.style.display = 'none';
                 })
                 .catch((error) => {
@@ -3082,7 +3079,7 @@
         function logout() {
             if (confirm('ログアウトしますか？')) {
                 auth.signOut().then(() => {
-                    console.log('ログアウト成功');
+                    // ログアウト成功
                 }).catch((error) => {
                     console.error('ログアウトエラー:', error);
                 });
@@ -3618,13 +3615,6 @@
                     }, 3000);
                 }
                 
-                console.log('バックアップ完了:', {
-                    decks: decks.length,
-                    flashcards: flashcards.length,
-                    studySessions: studySessions.length,
-                    pdfMarkers: pdfMarkers.length
-                });
-                
             } catch (error) {
                 console.error('バックアップエラー:', error);
                 const statusEl = document.getElementById('exportStatus');
@@ -3791,8 +3781,6 @@
                         statusEl.style.display = 'none';
                     }, 3000);
                 }
-                
-                console.log('カスタムバックアップ完了:', exportOptions);
                 
             } catch (error) {
                 console.error('カスタムバックアップエラー:', error);
@@ -6033,7 +6021,16 @@
         async function loadAutoBackupSettings() {
             const settings = localStorage.getItem('autoBackupSettings');
             if (settings) {
-                autoBackupSettings = JSON.parse(settings);
+                // v16.00.00: デフォルト値とマージして読み込み
+                const savedSettings = JSON.parse(settings);
+                autoBackupSettings = {
+                    enabled: false,
+                    frequency: 1,
+                    maxBackups: 5,
+                    lastBackupTime: null,
+                    nextBackupTime: null,
+                    ...savedSettings // 保存された値で上書き
+                };
                 
                 // UI更新
                 document.getElementById('autoBackupEnabled').checked = autoBackupSettings.enabled;
@@ -6056,6 +6053,19 @@
         
         // v14.02.7: 自動バックアップ設定を保存
         function saveAutoBackupSettings() {
+            // v16.00.00: フォームの値を読み取って保存
+            const maxBackupsSelect = document.getElementById('maxBackups');
+            const backupFrequencySelect = document.getElementById('backupFrequency');
+            
+            if (maxBackupsSelect) {
+                const value = maxBackupsSelect.value;
+                autoBackupSettings.maxBackups = value === 'unlimited' ? 'unlimited' : parseInt(value);
+            }
+            
+            if (backupFrequencySelect && backupFrequencySelect.value !== 'custom') {
+                autoBackupSettings.frequency = parseInt(backupFrequencySelect.value);
+            }
+            
             localStorage.setItem('autoBackupSettings', JSON.stringify(autoBackupSettings));
         }
         
