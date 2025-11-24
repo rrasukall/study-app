@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.9</title>
+    <title>MyAnkiApp v15.01.10</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -339,9 +339,9 @@
             background: #667eea;
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 8px 16px;  /* v15.01.10: マーカーボタンサイズに統一 */
+            border-radius: 6px;  /* v15.01.10: マーカーボタンサイズに統一 */
+            font-size: 14px;  /* v15.01.10: マーカーボタンサイズに統一 */
             cursor: pointer;
             font-weight: bold;
             transition: background 0.3s;
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.9</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.10</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2863,10 +2863,10 @@
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
-                    <!-- v15.01.3: 全画面表示チェックボックス（確実に表示） -->
+                    <!-- v15.01.10: 全画面表示チェックボックス（ラベル短縮） -->
                     <label style="margin-left: 15px; display: inline-block; cursor: pointer; user-select: none; background: rgba(0, 0, 0, 0.7); padding: 8px 14px; border-radius: 4px; visibility: hidden;" id="fullscreenLabel">
                         <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()" style="cursor: pointer; margin-right: 8px; vertical-align: middle; width: 16px; height: 16px;">
-                        <span style="color: white; font-size: 15px; font-weight: 500; vertical-align: middle; white-space: nowrap;">学習モード時に全画面表示</span>
+                        <span style="color: white; font-size: 14px; font-weight: 500; vertical-align: middle; white-space: nowrap;">全画面表示</span>
                     </label>
                     <!-- v7.02: 学習統計パネル（2行構成） -->
                     <div class="study-stats inactive" id="studyStats" style="display: none;">
@@ -12585,8 +12585,9 @@
                 if (h1) h1.style.display = '';
                 if (syncStatus) syncStatus.style.display = '';
                 
+                // v15.01.10: 学習モード中の場合、学習統計を明示的に表示
                 if (studyMode && studyStats) {
-                    studyStats.style.display = '';
+                    studyStats.style.display = 'flex';
                 }
                 
                 const pdfControls = document.querySelectorAll('.pdf-controls-row');
