@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.12</title>
+    <title>MyAnkiApp v15.01.13</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.12</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.13</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -2906,9 +2906,13 @@
                         <button class="color-btn green" id="markerGreen" onclick="selectMarkerColor('green')">緑</button>
                         <button class="color-btn blue" id="markerBlue" onclick="selectMarkerColor('blue')">青</button>
                         <button class="btn btn-mode-off" onclick="toggleMarkerMode()" id="markerModeBtn">マーカーOFF</button>
-                        <button class="btn btn-danger" id="clearPageMarkersBtn" onclick="clearPageMarkers()">ページ内全削除</button>
-                        <button class="btn btn-danger" id="clearAllMarkersBtn" onclick="clearAllMarkers()">PDF内全削除</button>
-                        ｜ <button class="btn" onclick="openMarkerSearch()" style="font-size: 13px; background: #3498db; color: white;">🔍 マーカー情報検索</button>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; white-space: nowrap;">
+                            <input type="checkbox" id="fixHeightCheckbox" onchange="toggleFixHeightMode()" style="width: 16px; height: 16px; cursor: pointer;">
+                            <span style="font-size: 14px;">高さ固定</span>
+                        </label>
+                        <button class="btn btn-danger" id="clearPageMarkersBtn" onclick="clearPageMarkers()" style="font-size: 12px; padding: 8px 12px;">ページ内全削除</button>
+                        <button class="btn btn-danger" id="clearAllMarkersBtn" onclick="clearAllMarkers()" style="font-size: 12px; padding: 8px 12px;">PDF内全削除</button>
+                        ｜ <button class="btn" onclick="openMarkerSearch()" style="font-size: 12px; padding: 8px 12px; background: #3498db; color: white;">🔍 マーカー情報検索</button>
                     </div>
 
                     <div class="pdf-controls-row">
@@ -7443,6 +7447,8 @@
         let dragStartX, dragStartY;
         let instantDeleteMode = false;
         let resizingHandle = null;
+        let lastMarkerHeight = 0; // v15.01.13: 直前のマーカー高さを記憶
+        let fixHeightMode = false; // v15.01.13: 高さ固定モード
         
         // v7.00: 学習モード管理
         let studyMode = false;
@@ -11826,6 +11832,18 @@
             }
         }
         
+        // v15.01.13: 高さ固定モードのトグル
+        function toggleFixHeightMode() {
+            fixHeightMode = document.getElementById('fixHeightCheckbox').checked;
+            
+            // 高さ固定モードをONにした時、直前のマーカー高さがない場合は警告
+            if (fixHeightMode && lastMarkerHeight === 0) {
+                alert('高さ固定モードを使用するには、まず基準となるマーカーを1つ作成してください。');
+                document.getElementById('fixHeightCheckbox').checked = false;
+                fixHeightMode = false;
+            }
+        }
+        
         function toggleEditMode() {
             // v7.00: 学習モード時は操作不可
             if (studyMode) return;
@@ -13167,8 +13185,17 @@
             drawMarkers();
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = getMarkerColor(currentMarkerColor);
-            ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
-                        Math.abs(currentX - startX), Math.abs(currentY - startY));
+            
+            // v15.01.13: 高さ固定モードの処理
+            if (fixHeightMode && lastMarkerHeight > 0) {
+                // 高さ固定：Y座標は開始位置から固定高さ、X座標のみ変化
+                ctx.fillRect(Math.min(startX, currentX), startY, 
+                            Math.abs(currentX - startX), lastMarkerHeight);
+            } else {
+                // 通常モード：自由に描画
+                ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
+                            Math.abs(currentX - startX), Math.abs(currentY - startY));
+            }
         }
         
         function stopDrawing(e) {
@@ -13192,11 +13219,23 @@
             const endX = e.clientX - rect.left;
             const endY = e.clientY - rect.top;
             
+            // v15.01.13: 高さ固定モードの処理
+            let markerY, markerHeight;
+            if (fixHeightMode && lastMarkerHeight > 0) {
+                // 高さ固定：開始位置から固定高さ
+                markerY = startY;
+                markerHeight = lastMarkerHeight;
+            } else {
+                // 通常モード：自由な高さ
+                markerY = Math.min(startY, endY);
+                markerHeight = Math.abs(endY - startY);
+            }
+            
             const marker = {
                 x: Math.min(startX, endX),
-                y: Math.min(startY, endY),
+                y: markerY,
                 width: Math.abs(endX - startX),
-                height: Math.abs(endY - startY),
+                height: markerHeight,
                 color: currentMarkerColor,
                 scale: scale,
                 // v7.00.2: studyStateは設定しない（undefined = 学習ON時は暗転からスタート）
@@ -13207,6 +13246,10 @@
             };
             
             if (marker.width > 5 && marker.height > 5) {
+                // v15.01.13: 通常モードでマーカーを作成した場合、次回の高さ固定用に高さを記憶
+                if (!fixHeightMode) {
+                    lastMarkerHeight = marker.height;
+                }
                 saveMarker(marker);
                 drawMarkers();
             }
@@ -13422,8 +13465,17 @@
             drawMarkers();
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = getMarkerColor(currentMarkerColor);
-            ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
-                        Math.abs(currentX - startX), Math.abs(currentY - startY));
+            
+            // v15.01.13: 高さ固定モードの処理
+            if (fixHeightMode && lastMarkerHeight > 0) {
+                // 高さ固定：Y座標は開始位置から固定高さ、X座標のみ変化
+                ctx.fillRect(Math.min(startX, currentX), startY, 
+                            Math.abs(currentX - startX), lastMarkerHeight);
+            } else {
+                // 通常モード：自由に描画
+                ctx.fillRect(Math.min(startX, currentX), Math.min(startY, currentY), 
+                            Math.abs(currentX - startX), Math.abs(currentY - startY));
+            }
         }
         
         function updateCanvasPosition() {
@@ -13462,17 +13514,33 @@
             const endX = touch.clientX - rect.left;
             const endY = touch.clientY - rect.top;
             
+            // v15.01.13: 高さ固定モードの処理
+            let markerY, markerHeight;
+            if (fixHeightMode && lastMarkerHeight > 0) {
+                // 高さ固定：開始位置から固定高さ
+                markerY = startY;
+                markerHeight = lastMarkerHeight;
+            } else {
+                // 通常モード：自由な高さ
+                markerY = Math.min(startY, endY);
+                markerHeight = Math.abs(endY - startY);
+            }
+            
             const marker = {
                 x: Math.min(startX, endX),
-                y: Math.min(startY, endY),
+                y: markerY,
                 width: Math.abs(endX - startX),
-                height: Math.abs(endY - startY),
+                height: markerHeight,
                 color: currentMarkerColor,
                 scale: scale
                 // v7.00.2: studyStateは設定しない（undefined = 学習ON時は暗転からスタート）
             };
             
             if (marker.width > 5 && marker.height > 5) {
+                // v15.01.13: 通常モードでマーカーを作成した場合、次回の高さ固定用に高さを記憶
+                if (!fixHeightMode) {
+                    lastMarkerHeight = marker.height;
+                }
                 saveMarker(marker);
                 drawMarkers();
             }
