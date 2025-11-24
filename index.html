@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v15.01.11</title>
+    <title>MyAnkiApp v15.01.12</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1521,7 +1521,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.11</span></h1>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v15.01.12</span></h1>
         
         <div class="sync-status" id="syncStatus">🔄 同期中...</div>
         
@@ -12585,25 +12585,11 @@
                 if (h1) h1.style.display = '';
                 if (syncStatus) syncStatus.style.display = '';
                 
-                // v15.01.11: 学習統計の表示処理をデバッグ
-                console.log('=== v15.01.11 Study Stats Debug ===');
-                console.log('studyMode:', studyMode);
-                console.log('studyStats element:', studyStats);
-                console.log('studyStats exists:', !!studyStats);
-                
+                // v15.01.12: 学習統計を常に表示（学習モードに関係なく）
                 if (studyStats) {
-                    console.log('studyStats display before:', studyStats.style.display);
-                    console.log('studyStats computed display before:', window.getComputedStyle(studyStats).display);
-                }
-                
-                // v15.01.11: 学習モード中の場合、学習統計を明示的に表示
-                if (studyMode && studyStats) {
                     studyStats.style.display = 'flex';
-                    console.log('studyStats display set to flex');
-                    console.log('studyStats display after:', studyStats.style.display);
-                    console.log('studyStats computed display after:', window.getComputedStyle(studyStats).display);
-                } else {
-                    console.log('Study stats NOT shown - studyMode:', studyMode, 'studyStats:', !!studyStats);
+                    console.log('=== v15.01.12 Study Stats Restored ===');
+                    console.log('studyStats.style.display set to: flex');
                 }
                 
                 const pdfControls = document.querySelectorAll('.pdf-controls-row');
