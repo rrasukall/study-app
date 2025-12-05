@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.00.00</title>
+    <title>MyAnkiApp v16.01.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.00.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.01.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -2974,7 +2974,7 @@
                     
                     <div class="pdf-controls">
                         <button class="btn" onclick="previousPage()">← 前のページ</button>
-                        <span class="pdf-info" id="pageInfo">1 / 1</span>
+                        <span class="pdf-info" id="pageInfo" onclick="showPageJumpInput()" style="cursor: pointer; user-select: none;">1 / 1</span>
                         <button class="btn" onclick="nextPage()">次のページ →</button>
                         
                         <div class="zoom-controls">
@@ -2999,7 +2999,7 @@
                         <button class="sheet-btn blue" id="fullscreenSheetBlue" onclick="toggleRedSheetColor('blue')" style="padding: 8px 16px;">青</button>
                         <span style="color: #888;">|</span>
                         <button class="btn btn-secondary" onclick="previousPage()" style="padding: 8px 16px;">◀</button>
-                        <span style="font-size: 14px; min-width: 80px; text-align: center;" id="fullscreenPageInfo">1 / 1</span>
+                        <span style="font-size: 14px; min-width: 80px; text-align: center; cursor: pointer; user-select: none;" id="fullscreenPageInfo" onclick="showPageJumpInput()">1 / 1</span>
                         <button class="btn btn-secondary" onclick="nextPage()" style="padding: 8px 16px;">▶</button>
                     </div>
                 </div>
@@ -11858,6 +11858,67 @@
                 currentPage--;
                 await renderPage(currentPage);
             }
+        }
+
+        // v16.01.00: ページジャンプ機能
+        function showPageJumpInput() {
+            if (!pdfDoc) return;
+            
+            const pageInfo = document.getElementById('pageInfo');
+            const fullscreenPageInfo = document.getElementById('fullscreenPageInfo');
+            
+            // 全画面モードかどうかを判定
+            const isFullscreen = document.getElementById('fullscreenControls').style.display !== 'none';
+            const targetElement = isFullscreen ? fullscreenPageInfo : pageInfo;
+            
+            if (!targetElement) return;
+            
+            // 入力フィールドを作成
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1';
+            input.max = totalPages.toString();
+            input.value = currentPage.toString();
+            input.style.width = '60px';
+            input.style.textAlign = 'center';
+            input.style.fontSize = isFullscreen ? '14px' : '16px';
+            input.style.padding = '4px';
+            input.style.border = '2px solid #2196f3';
+            input.style.borderRadius = '4px';
+            
+            // 元のテキストを保存
+            const originalText = targetElement.textContent;
+            
+            // 入力フィールドに置き換え
+            targetElement.textContent = '';
+            targetElement.appendChild(input);
+            input.focus();
+            input.select();
+            
+            // Enterキーで移動
+            input.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    const pageNum = parseInt(input.value);
+                    if (pageNum >= 1 && pageNum <= totalPages) {
+                        currentPage = pageNum;
+                        await renderPage(currentPage);
+                    }
+                    // 元の表示に戻す
+                    targetElement.textContent = `${currentPage} / ${totalPages}`;
+                }
+            });
+            
+            // フォーカスを失ったら元に戻す
+            input.addEventListener('blur', () => {
+                targetElement.textContent = `${currentPage} / ${totalPages}`;
+            });
+            
+            // Escapeキーでキャンセル
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    targetElement.textContent = `${currentPage} / ${totalPages}`;
+                }
+            });
         }
 
         async function zoomIn() {
