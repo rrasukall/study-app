@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.02.00</title>
+    <title>MyAnkiApp v16.02.01</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.02.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.02.01</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -11089,12 +11089,24 @@
         }
 
         async function deleteCard(cardId) {
-            if (confirm('このカードを削除しますか？')) {
+            // v16.02.01: 削除するカードを取得してメッセージを変更
+            const card = cards.find(c => c.id === cardId);
+            
+            let confirmMsg = '';
+            if (card && card.reverseOf) {
+                // 逆転カードの場合
+                confirmMsg = 'この逆転カードを削除しますか？\n※元のカードは削除されません';
+            } else if (card && card.reverseCardId) {
+                // 元カード（逆転カードあり）の場合
+                confirmMsg = 'このカードを削除しますか？\n※逆転カードも同時に削除されます（計2枚）';
+            } else {
+                // 通常のカード
+                confirmMsg = 'このカードを削除しますか？';
+            }
+            
+            if (confirm(confirmMsg)) {
                 updateSyncStatus('syncing');
                 try {
-                    // v16.02.00: 削除するカードを取得
-                    const card = cards.find(c => c.id === cardId);
-                    
                     // v8.02.3: 書き込みカウンター（逆転カードがある場合は2回分）
                     const requiredWrites = card && card.reverseCardId ? 2 : 1;
                     for (let i = 0; i < requiredWrites; i++) {
