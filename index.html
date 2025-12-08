@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.01.00</title>
+    <title>MyAnkiApp v16.02.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.01.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.02.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -5416,7 +5416,8 @@
                     document.getElementById('editBasicInputs').style.display = 'block';
                     document.getElementById('editQuestion').value = card.question;
                     document.getElementById('editAnswer').value = card.answer;
-                    document.getElementById('editEnableReverse').checked = card.enableReverse || false;
+                    // v16.02.00: 逆転カードの有無で判定
+                    document.getElementById('editEnableReverse').checked = !!card.reverseCardId;
                 }
                 
                 // 編集中のカードIDを設定
@@ -5800,7 +5801,8 @@
                     document.getElementById('editBasicInputs').style.display = 'block';
                     document.getElementById('editQuestion').value = card.question;
                     document.getElementById('editAnswer').value = card.answer;
-                    document.getElementById('editEnableReverse').checked = card.enableReverse || false;
+                    // v16.02.00: 逆転カードの有無で判定
+                    document.getElementById('editEnableReverse').checked = !!card.reverseCardId;
                 }
                 
                 // 編集中のカードIDを設定
@@ -8538,12 +8540,8 @@
                         <div id="studyTypingResult" style="margin-top: 15px;"></div>
                     `;
                 } else {
-                    // 基本カード
-                    if (card.enableReverse && Math.random() < 0.5) {
-                        questionContent = card.answer;
-                    } else {
-                        questionContent = card.question;
-                    }
+                    // 基本カード - v16.02.00: 逆転判定を削除、カードをそのまま表示
+                    questionContent = card.question;
                 }
                 
                 // v10.03: カードタイプによって表示方法を変更
@@ -8617,7 +8615,7 @@
                         </div>
                     `;
                 } else {
-                    // 基本カード
+                    // 基本カード - v16.02.00: 逆転カードは既に問題と答えが入れ替わっているのでそのまま表示
                     answerContent = card.answer;
                 }
                 
@@ -9314,18 +9312,22 @@
                     }
                     
                     // v8.02.3: 書き込みカウンター
-                    if (!incrementWriteCounter()) {
-                        alert('書き込み上限に達しています。カードを保存できません。');
-                        updateSyncStatus('synced');
-                        return;
+                    // v16.02.00: 逆方向onの場合は2枚分のカウンター
+                    const requiredWrites = enableReverse ? 2 : 1;
+                    for (let i = 0; i < requiredWrites; i++) {
+                        if (!incrementWriteCounter()) {
+                            alert('書き込み上限に達しています。カードを保存できません。');
+                            updateSyncStatus('synced');
+                            return;
+                        }
                     }
                     
-                    await db.collection('flashcards').add({
-                        type: enableReverse ? 'basic-reversed' : 'basic',
+                    // v16.02.00: 元のカードを作成
+                    const originalCardRef = await db.collection('flashcards').add({
+                        type: 'basic',
                         deckId: deckId,
                         question: question,
                         answer: answer,
-                        enableReverse: enableReverse,
                         tags: tags, // v10.01: タグ追加
                         order: cards.length, // v10.02: 順序番号
                         state: 'new',
@@ -9338,6 +9340,33 @@
                         lapses: 0,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
+                    
+                    // v16.02.00: 逆方向onの場合は逆転カードも作成
+                    if (enableReverse) {
+                        const reverseCardRef = await db.collection('flashcards').add({
+                            type: 'basic',
+                            deckId: deckId,
+                            question: answer,  // 問題と答えを入れ替え
+                            answer: question,
+                            tags: tags,
+                            order: cards.length + 1,
+                            state: 'new',
+                            easeFactor: getStudySettings(deckId).startingEase,
+                            interval: 0,
+                            learningStep: 0,
+                            repetitions: 0,
+                            nextReview: Date.now(),
+                            lastReviewed: null,
+                            lapses: 0,
+                            reverseOf: originalCardRef.id,  // 元カードへの参照
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // 元のカードに逆転カードのIDを記録
+                        await originalCardRef.update({
+                            reverseCardId: reverseCardRef.id
+                        });
+                    }
                     
                     document.getElementById('question').value = '';
                     document.getElementById('answer').value = '';
@@ -9627,34 +9656,18 @@
                 return;
             }
             
-            // 基本カード・逆転カードの処理
-            if (showingQuestion && card.enableReverse) {
-                currentCardIsReversed = Math.random() < 0.5;
-            }
-            
-            let content, directionLabel;
+            // 基本カード・逆転カードの処理 - v16.02.00: 逆転カードは既に問題と答えが入れ替わっているのでそのまま表示
+            let content;
             if (showingQuestion) {
-                if (currentCardIsReversed) {
-                    content = card.answer;
-                    directionLabel = '逆転';
-                } else {
-                    content = card.question;
-                    directionLabel = '通常';
-                }
+                content = card.question;
             } else {
-                if (currentCardIsReversed) {
-                    content = card.question;
-                    directionLabel = '逆転';
-                } else {
-                    content = card.answer;
-                    directionLabel = '通常';
-                }
+                content = card.answer;
             }
             
             display.innerHTML = `
                 <div class="card" onclick="flipCard()" style="position: relative;">
                     <div class="card-category">${deckName}</div>
-                    ${card.enableReverse ? `<div class="card-direction">⇆ ${directionLabel}</div>` : ''}
+                    ${card.reverseOf ? `<div class="card-direction">⇆ 逆転</div>` : ''}
                     <div class="card-content">
                         ${content}
                     </div>
@@ -10047,7 +10060,7 @@
                                 </div>
                                 <div>
                                     <span class="card-item-category">${deckName}</span>
-                                    ${card.enableReverse ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
+                                    ${card.reverseOf ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
                                 </div>
                             </div>
                             <div class="card-item-content">
@@ -10121,8 +10134,7 @@
                 // カードタイプフィルター
                 let matchesType = true;
                 if (cardTypeFilter) {
-                    matchesType = card.type === cardTypeFilter || 
-                                 (cardTypeFilter === 'basic' && (card.type === 'basic' || card.type === 'basic-reversed'));
+                    matchesType = card.type === cardTypeFilter;
                 }
                 
                 // 学習状態フィルター
@@ -10268,7 +10280,7 @@
                                 </div>
                                 <div>
                                     <span class="card-item-category">${deckName}</span>
-                                    ${card.enableReverse ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
+                                    ${card.reverseOf ? '<span class="card-item-reverse-badge">⇆ 逆転</span>' : ''}
                                 </div>
                             </div>
                             <div class="card-item-content">
@@ -10368,8 +10380,7 @@
                 // カードタイプフィルター
                 let matchesType = true;
                 if (cardTypeFilter) {
-                    matchesType = card.type === cardTypeFilter || 
-                                 (cardTypeFilter === 'basic' && (card.type === 'basic' || card.type === 'basic-reversed'));
+                    matchesType = card.type === cardTypeFilter;
                 }
                 
                 // 学習状態フィルター
@@ -10519,7 +10530,7 @@
                     
                 case 'cardType':
                     sortedCards.sort((a, b) => {
-                        const typeOrder = { 'basic': 0, 'basic-reversed': 0, 'cloze': 1, 'typing': 2 };
+                        const typeOrder = { 'basic': 0, 'cloze': 1, 'typing': 2 };
                         const orderA = typeOrder[a.type] || 99;
                         const orderB = typeOrder[b.type] || 99;
                         return sortOrder === 'asc' ? orderA - orderB : orderB - orderA;
@@ -10936,7 +10947,8 @@
                         text: card.text,
                         answers: card.answers,
                         caseSensitive: card.caseSensitive,
-                        enableReverse: card.enableReverse,
+                        reverseCardId: card.reverseCardId, // v16.02.00: 逆転カードID
+                        reverseOf: card.reverseOf, // v16.02.00: 元カードID
                         deckId: card.deckId,
                         category: card.category,
                         tags: card.tags || [], // v10.01: タグ追加
@@ -10999,9 +11011,17 @@
         // v12.01: カード複製機能
         // v12.01.3: コレクション名とカードタイプ判定を修正
         // v12.01.4: loadCards削除、Firestoreの自動更新に任せる
+        // v16.02.00: 逆転カード対応
         async function duplicateCard(cardId) {
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
+            
+            // v16.02.00: 逆転カードの場合は元カードを複製
+            if (card.reverseOf) {
+                alert('これは逆転カードです。元のカードを複製します。');
+                duplicateCard(card.reverseOf);
+                return;
+            }
             
             // カードタイプに応じた確認メッセージ
             let confirmMsg = '';
@@ -11010,7 +11030,7 @@
             } else if (card.type === 'cloze') {
                 confirmMsg = `穴埋めカード「${card.text.substring(0, 30)}...」を複製しますか？`;
             } else {
-                confirmMsg = `「${card.question}」を複製しますか？`;
+                confirmMsg = `「${card.question}」を複製しますか？${card.reverseCardId ? '\n（逆転カードも一緒に複製されます）' : ''}`;
             }
             
             if (!confirm(confirmMsg)) {
@@ -11035,16 +11055,30 @@
                 } else if (card.type === 'cloze') {
                     newCard.text = card.text + ' (コピー)';
                 } else {
-                    // basic または basic-reversed
+                    // basic
                     newCard.question = card.question + ' (コピー)';
                     newCard.answer = card.answer;
-                    if (card.type === 'basic-reversed') {
-                        newCard.enableReverse = card.enableReverse;
-                    }
                 }
                 
-                // Firestoreに追加（onSnapshotリスナーが自動的にUIを更新）
-                await db.collection('flashcards').add(newCard);
+                // Firestoreに追加
+                const newCardRef = await db.collection('flashcards').add(newCard);
+                
+                // v16.02.00: 逆転カードがある場合は逆転カードも複製
+                if (card.reverseCardId) {
+                    const reverseCardRef = await db.collection('flashcards').add({
+                        type: 'basic',
+                        deckId: card.deckId,
+                        question: card.answer,
+                        answer: card.question + ' (コピー)',
+                        tags: card.tags || [],
+                        reverseOf: newCardRef.id,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    await newCardRef.update({
+                        reverseCardId: reverseCardRef.id
+                    });
+                }
                 
                 alert('カードを複製しました');
                 
@@ -11058,11 +11092,29 @@
             if (confirm('このカードを削除しますか？')) {
                 updateSyncStatus('syncing');
                 try {
-                    // v8.02.3: 書き込みカウンター
-                    if (!incrementWriteCounter()) {
-                        alert('書き込み上限に達しています。カードを削除できません。');
-                        updateSyncStatus('synced');
-                        return;
+                    // v16.02.00: 削除するカードを取得
+                    const card = cards.find(c => c.id === cardId);
+                    
+                    // v8.02.3: 書き込みカウンター（逆転カードがある場合は2回分）
+                    const requiredWrites = card && card.reverseCardId ? 2 : 1;
+                    for (let i = 0; i < requiredWrites; i++) {
+                        if (!incrementWriteCounter()) {
+                            alert('書き込み上限に達しています。カードを削除できません。');
+                            updateSyncStatus('synced');
+                            return;
+                        }
+                    }
+                    
+                    // v16.02.00: 逆転カードも削除
+                    if (card && card.reverseCardId) {
+                        await db.collection('flashcards').doc(card.reverseCardId).delete();
+                    }
+                    
+                    // v16.02.00: 逆転カードの場合は元カードの参照を更新
+                    if (card && card.reverseOf) {
+                        await db.collection('flashcards').doc(card.reverseOf).update({
+                            reverseCardId: firebase.firestore.FieldValue.delete()
+                        });
                     }
                     
                     await db.collection('flashcards').doc(cardId).delete();
@@ -11087,6 +11139,14 @@
         function editCard(cardId) {
             const card = cards.find(c => c.id === cardId);
             if (!card) return;
+            
+            // v16.02.00: 逆転カードの場合は元カードを編集
+            if (card.reverseOf) {
+                alert('これは逆転カードです。元のカードを編集してください。');
+                // 元カードを開く
+                editCard(card.reverseOf);
+                return;
+            }
             
             document.getElementById('editDeckId').value = card.deckId || '';
             
@@ -11115,7 +11175,8 @@
                 document.getElementById('editBasicInputs').style.display = 'block';
                 document.getElementById('editQuestion').value = card.question;
                 document.getElementById('editAnswer').value = card.answer;
-                document.getElementById('editEnableReverse').checked = card.enableReverse || false;
+                // v16.02.00: 逆転カードの有無で判定
+                document.getElementById('editEnableReverse').checked = !!card.reverseCardId;
             }
             
             editingCardId = cardId;
@@ -11285,23 +11346,79 @@
                         return;
                     }
                     
+                    // v16.02.00: 元のカード情報を取得
+                    const originalCard = cards.find(c => c.id === editingCardId);
+                    const hadReverseCard = !!originalCard.reverseCardId;
+                    
                     // v8.02.3: 書き込みカウンター
-                    if (!incrementWriteCounter()) {
-                        alert('書き込み上限に達しています。カードを保存できません。');
-                        updateSyncStatus('synced');
-                        return;
+                    let requiredWrites = 1; // 元カードの更新
+                    if (enableReverse && !hadReverseCard) {
+                        requiredWrites += 2; // 逆転カード作成（add + update）
+                    } else if (!enableReverse && hadReverseCard) {
+                        requiredWrites += 1; // 逆転カード削除
+                    } else if (enableReverse && hadReverseCard) {
+                        requiredWrites += 1; // 逆転カード更新
                     }
                     
+                    for (let i = 0; i < requiredWrites; i++) {
+                        if (!incrementWriteCounter()) {
+                            alert('書き込み上限に達しています。カードを保存できません。');
+                            updateSyncStatus('synced');
+                            return;
+                        }
+                    }
+                    
+                    // v16.02.00: 元のカードを更新
                     await db.collection('flashcards').doc(editingCardId).update({
-                        type: enableReverse ? 'basic-reversed' : 'basic',
+                        type: 'basic',
                         deckId: deckId,
                         question: question,
                         answer: answer,
-                        enableReverse: enableReverse,
                         tags: tags, // v10.01: タグ追加
                         text: firebase.firestore.FieldValue.delete(),
                         clozes: firebase.firestore.FieldValue.delete()
                     });
+                    
+                    // v16.02.00: 逆転カードの処理
+                    if (enableReverse && !hadReverseCard) {
+                        // 逆転カードを新規作成
+                        const reverseCardRef = await db.collection('flashcards').add({
+                            type: 'basic',
+                            deckId: deckId,
+                            question: answer,
+                            answer: question,
+                            tags: tags,
+                            order: cards.length,
+                            state: 'new',
+                            easeFactor: getStudySettings(deckId).startingEase,
+                            interval: 0,
+                            learningStep: 0,
+                            repetitions: 0,
+                            nextReview: Date.now(),
+                            lastReviewed: null,
+                            lapses: 0,
+                            reverseOf: editingCardId,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        await db.collection('flashcards').doc(editingCardId).update({
+                            reverseCardId: reverseCardRef.id
+                        });
+                    } else if (!enableReverse && hadReverseCard) {
+                        // 逆転カードを削除
+                        await db.collection('flashcards').doc(originalCard.reverseCardId).delete();
+                        await db.collection('flashcards').doc(editingCardId).update({
+                            reverseCardId: firebase.firestore.FieldValue.delete()
+                        });
+                    } else if (enableReverse && hadReverseCard) {
+                        // 逆転カードを更新
+                        await db.collection('flashcards').doc(originalCard.reverseCardId).update({
+                            deckId: deckId,
+                            question: answer,
+                            answer: question,
+                            tags: tags
+                        });
+                    }
                     
                 } else if (cardType === 'cloze') {
                     const text = document.getElementById('editClozeText').value.trim();
@@ -11345,7 +11462,8 @@
                         tags: tags, // v10.01: タグ追加
                         question: firebase.firestore.FieldValue.delete(),
                         answer: firebase.firestore.FieldValue.delete(),
-                        enableReverse: firebase.firestore.FieldValue.delete(),
+                        reverseCardId: firebase.firestore.FieldValue.delete(), // v16.02.00
+                        reverseOf: firebase.firestore.FieldValue.delete(), // v16.02.00
                         answers: firebase.firestore.FieldValue.delete(),
                         caseSensitive: firebase.firestore.FieldValue.delete()
                     });
@@ -11378,7 +11496,8 @@
                         text: firebase.firestore.FieldValue.delete(),
                         clozes: firebase.firestore.FieldValue.delete(),
                         answers: firebase.firestore.FieldValue.delete(),
-                        enableReverse: firebase.firestore.FieldValue.delete()
+                        reverseCardId: firebase.firestore.FieldValue.delete(), // v16.02.00
+                        reverseOf: firebase.firestore.FieldValue.delete() // v16.02.00
                     });
                 }
                 
@@ -11439,6 +11558,11 @@
             let typingCount = 0;
             
             targetCards.forEach(card => {
+                // v16.02.00: 逆転カード（reverseOfを持つカード）はスキップ
+                if (card.reverseOf) {
+                    return;
+                }
+                
                 const tags = card.tags || [];
                 const tagsStr = tags.join(' ');
                 const deckName = card.deckId ? getDeckNameById(card.deckId) : '';
@@ -11461,7 +11585,7 @@
                     csv += `${question},${answer},${deck},${tagField}\n`;
                     typingCount++;
                 } else {
-                    // 基本カード
+                    // 基本カード（v16.02.00: 逆転カードは別カードとして既に存在するので特別な処理は不要）
                     const question = escapeCSVField(card.question);
                     const answer = escapeCSVField(card.answer);
                     const deck = escapeCSVField(deckName);
@@ -11469,11 +11593,6 @@
                     
                     csv += `${question},${answer},${deck},${tagField}\n`;
                     basicCount++;
-                    
-                    // 逆方向カード
-                    if (card.enableReverse) {
-                        csv += `${answer},${question},${deck},${tagField}\n`;
-                    }
                 }
             });
             
