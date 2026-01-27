@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.03.01</title>
+    <title>MyAnkiApp v16.03.02</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.01</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.02</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -16163,7 +16163,7 @@
             
             // PDFマーカー復元でPDFが選択されている場合はプレビュー表示
             if (restorePdfMarkers && selectedPdfMarkersForRestore.length > 0) {
-                showPdfMarkerRestorePreview();
+                await showPdfMarkerRestorePreview();
                 return;
             }
             
@@ -16361,7 +16361,7 @@
         }
         
         // PDFマーカー復元プレビューを表示
-        function showPdfMarkerRestorePreview() {
+        async function showPdfMarkerRestorePreview() {
             if (selectedPdfMarkersForRestore.length === 0) {
                 alert('復元するPDFファイルを選択してください。\n\n「PDFマーカー情報」にチェックを入れた後、\n表示される一覧から復元したいPDFを個別に選択してください。');
                 return;
@@ -16373,8 +16373,20 @@
             
             document.getElementById('previewFileName').textContent = pdfMarker.fileName || 'ファイル名不明';
             
-            // 現在のマーカー情報を取得
-            const currentMarker = pdfMarkersData.find(pm => pm.fileName === pdfMarker.fileName);
+            // v16.03.02: Firestoreから現在のマーカー情報を取得
+            let currentMarker = null;
+            try {
+                const snapshot = await db.collection('pdfMarkers')
+                    .where('userId', '==', currentUser.uid)
+                    .where('fileName', '==', pdfMarker.fileName)
+                    .get();
+                
+                if (!snapshot.empty) {
+                    currentMarker = snapshot.docs[0].data();
+                }
+            } catch (error) {
+                console.error('現在のマーカー情報取得エラー:', error);
+            }
             
             if (currentMarker && currentMarker.markers && Object.keys(currentMarker.markers).length > 0) {
                 const currentMarkerCount = Object.keys(currentMarker.markers).reduce((sum, pageNum) => {
@@ -16850,13 +16862,16 @@
                 <h3 style="color: #667eea; margin-bottom: 15px;">復元する項目を選択</h3>
                 
                 <!-- データ項目 -->
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; text-align: left;">
                     <div style="font-weight: bold; margin-bottom: 10px;">📦 データ</div>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="restoreDecks" onchange="updateRestorePreview()">
                             <span>デッキ構造 (<span id="deckCount">0</span>個)</span>
                         </label>
+                        <div style="margin-left: 30px; font-size: 12px; color: #999; margin-top: -5px; margin-bottom: 5px;">
+                            ※通常はカードと一緒に復元されるため不要
+                        </div>
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="restoreCards" onchange="toggleCardOptions()">
                             <span>カードデータ (<span id="cardCount">0</span>枚)</span>
@@ -16902,7 +16917,7 @@
                 </div>
                 
                 <!-- 設定項目 -->
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px;">
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: left;">
                     <div style="font-weight: bold; margin-bottom: 10px;">⚙️ 設定</div>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
