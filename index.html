@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.02.01</title>
+    <title>MyAnkiApp v16.03.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.02.01</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -2790,6 +2790,17 @@
                             </label>
                             <div style="color: #666; font-size: 13px; margin-top: 8px; margin-left: 5px;">
                                 v14.00で作成したバックアップファイルから復元します
+                            </div>
+                        </div>
+                        
+                        <!-- v16.03.00: 選択的復元ボタン -->
+                        <div style="margin-top: 20px;">
+                            <label class="btn" style="cursor: pointer; display: inline-block; width: auto; background: #3498db; border-color: #3498db;">
+                                🔍 選択的復元 (JSON)
+                                <input type="file" id="selectiveRestoreInput" accept=".json" style="display: none;" onchange="loadSelectiveRestoreFile(event)">
+                            </label>
+                            <div style="color: #666; font-size: 13px; margin-top: 8px; margin-left: 5px;">
+                                バックアップから復元する項目を選択できます
                             </div>
                         </div>
                     </div>
@@ -15994,6 +16005,486 @@
         // ============================================
         // v14.00.2: マーカー情報検索機能 ここまで
         // ============================================
+        
+        // ============================================
+        // v16.03.00: 選択的復元機能
+        // ============================================
+        
+        let selectiveRestoreData = null;
+        let selectedPdfMarkersForRestore = [];
+        
+        // 選択的復元ファイルを読み込む
+        function loadSelectiveRestoreFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    selectiveRestoreData = JSON.parse(e.target.result);
+                    
+                    // バックアップ情報を表示
+                    const info = [
+                        `ファイル名: ${file.name}`,
+                        `エクスポート日時: ${new Date(selectiveRestoreData.exportDate).toLocaleString('ja-JP')}`,
+                        `アプリバージョン: ${selectiveRestoreData.appVersion || 'v14.00'}`,
+                    ].join('<br>');
+                    document.getElementById('backupInfo').innerHTML = info;
+                    
+                    // 各項目の件数を表示
+                    const data = selectiveRestoreData.data;
+                    document.getElementById('deckCount').textContent = data.decks?.length || 0;
+                    document.getElementById('cardCount').textContent = data.cards?.length || 0;
+                    document.getElementById('sessionCount').textContent = data.studySessionHistory?.length || 0;
+                    document.getElementById('pdfMarkerCount').textContent = data.pdfMarkers?.length || 0;
+                    document.getElementById('pdfMetadataCount').textContent = data.pdfMetadata?.length || 0;
+                    
+                    // モーダルを開く
+                    document.getElementById('selectiveRestoreModal').style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('バックアップファイル読み込みエラー:', error);
+                    alert('バックアップファイルの読み込みに失敗しました。\n正しいJSONファイルを選択してください。');
+                }
+            };
+            reader.readAsText(file);
+            
+            // input要素をリセット（同じファイルを再選択可能にする）
+            event.target.value = '';
+        }
+        
+        // 選択的復元モーダルを閉じる
+        function closeSelectiveRestoreModal() {
+            document.getElementById('selectiveRestoreModal').style.display = 'none';
+            selectiveRestoreData = null;
+            selectedPdfMarkersForRestore = [];
+            
+            // チェックボックスをリセット
+            document.querySelectorAll('#selectiveRestoreModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('cardRestoreOptions').style.display = 'none';
+            document.getElementById('pdfMarkerList').style.display = 'none';
+        }
+        
+        // カードオプションの表示切替
+        function toggleCardOptions() {
+            const checked = document.getElementById('restoreCards').checked;
+            document.getElementById('cardRestoreOptions').style.display = checked ? 'block' : 'none';
+        }
+        
+        // PDFマーカーオプションの表示切替
+        function togglePdfMarkerOptions() {
+            const checked = document.getElementById('restorePdfMarkers').checked;
+            const listDiv = document.getElementById('pdfMarkerList');
+            
+            if (checked) {
+                // PDFマーカー一覧を生成
+                const pdfMarkers = selectiveRestoreData.data.pdfMarkers || [];
+                let html = '<div style="font-size: 13px; color: #666; margin-bottom: 10px;">復元するPDFを選択:</div>';
+                
+                pdfMarkers.forEach((pm, index) => {
+                    const markerCount = pm.markers ? Object.keys(pm.markers).reduce((sum, pageNum) => {
+                        return sum + (pm.markers[pageNum]?.length || 0);
+                    }, 0) : 0;
+                    
+                    const lastUpdated = pm.lastUpdated ? new Date(pm.lastUpdated).toLocaleDateString('ja-JP') : '不明';
+                    
+                    html += `
+                        <label style="display: flex; align-items: start; gap: 8px; cursor: pointer; margin-bottom: 8px; padding: 8px; background: white; border-radius: 5px;">
+                            <input type="checkbox" class="pdf-marker-checkbox" data-index="${index}" onchange="updatePdfMarkerSelection()">
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; margin-bottom: 3px;">${pm.fileName || 'ファイル名不明'}</div>
+                                <div style="font-size: 12px; color: #666;">
+                                    マーカー: ${markerCount}個 | 最終更新: ${lastUpdated}
+                                </div>
+                            </div>
+                        </label>
+                    `;
+                });
+                
+                if (pdfMarkers.length === 0) {
+                    html += '<div style="color: #999; text-align: center; padding: 20px;">PDFマーカー情報がありません</div>';
+                }
+                
+                listDiv.innerHTML = html;
+                listDiv.style.display = 'block';
+            } else {
+                listDiv.style.display = 'none';
+                selectedPdfMarkersForRestore = [];
+            }
+        }
+        
+        // PDFマーカー選択を更新
+        function updatePdfMarkerSelection() {
+            selectedPdfMarkersForRestore = [];
+            document.querySelectorAll('.pdf-marker-checkbox:checked').forEach(cb => {
+                selectedPdfMarkersForRestore.push(parseInt(cb.dataset.index));
+            });
+        }
+        
+        // 復元プレビューを更新（将来的に拡張可能）
+        function updateRestorePreview() {
+            // 現在は特に何もしないが、将来的にプレビュー表示を追加可能
+        }
+        
+        // 選択的復元を実行
+        async function executeSelectiveRestore() {
+            if (!selectiveRestoreData) {
+                alert('バックアップデータが読み込まれていません');
+                return;
+            }
+            
+            // 選択された項目を確認
+            const restoreDecks = document.getElementById('restoreDecks').checked;
+            const restoreCards = document.getElementById('restoreCards').checked;
+            const restoreSessions = document.getElementById('restoreSessions').checked;
+            const restorePdfMarkers = document.getElementById('restorePdfMarkers').checked;
+            const restorePdfMetadata = document.getElementById('restorePdfMetadata').checked;
+            const restoreTheme = document.getElementById('restoreTheme').checked;
+            const restoreFontSize = document.getElementById('restoreFontSize').checked;
+            const restoreGlobalSettings = document.getElementById('restoreGlobalSettings').checked;
+            const restoreDeckSettings = document.getElementById('restoreDeckSettings').checked;
+            const restoreUIState = document.getElementById('restoreUIState').checked;
+            
+            // 何も選択されていない場合
+            if (!restoreDecks && !restoreCards && !restoreSessions && !restorePdfMarkers && !restorePdfMetadata &&
+                !restoreTheme && !restoreFontSize && !restoreGlobalSettings && !restoreDeckSettings && !restoreUIState) {
+                alert('復元する項目を選択してください');
+                return;
+            }
+            
+            // カード復元でCSV出力が選択された場合
+            if (restoreCards) {
+                const cardMethod = document.querySelector('input[name="cardRestoreMethod"]:checked').value;
+                if (cardMethod === 'csv') {
+                    exportCardsToCSV();
+                    return;
+                }
+            }
+            
+            // PDFマーカー復元でPDFが選択されている場合はプレビュー表示
+            if (restorePdfMarkers && selectedPdfMarkersForRestore.length > 0) {
+                showPdfMarkerRestorePreview();
+                return;
+            }
+            
+            // 確認ダイアログ
+            let confirmMsg = '以下の項目を復元します:\n\n';
+            if (restoreDecks) confirmMsg += '- デッキ構造\n';
+            if (restoreCards) confirmMsg += '- カードデータ\n';
+            if (restoreSessions) confirmMsg += '- 学習セッション記録\n';
+            if (restorePdfMarkers) confirmMsg += '- PDFマーカー情報\n';
+            if (restorePdfMetadata) confirmMsg += '- PDFメタデータ\n';
+            if (restoreTheme || restoreFontSize || restoreGlobalSettings || restoreDeckSettings || restoreUIState) {
+                confirmMsg += '- 設定\n';
+            }
+            confirmMsg += '\n続行しますか？';
+            
+            if (!confirm(confirmMsg)) return;
+            
+            try {
+                updateSyncStatus('syncing');
+                
+                // 復元前の自動バックアップを作成
+                await createPreRestoreBackup();
+                
+                // 各項目を復元
+                if (restoreDecks) await restoreDecksData();
+                if (restoreCards) await restoreCardsData();
+                if (restoreSessions) await restoreSessionsData();
+                if (restorePdfMetadata) await restorePdfMetadataData();
+                if (restoreTheme || restoreFontSize || restoreGlobalSettings || restoreDeckSettings || restoreUIState) {
+                    await restoreSettingsData({restoreTheme, restoreFontSize, restoreGlobalSettings, restoreDeckSettings, restoreUIState});
+                }
+                
+                updateSyncStatus('synced');
+                showToast('✅ 選択した項目の復元が完了しました', 5000, 'success');
+                closeSelectiveRestoreModal();
+                
+            } catch (error) {
+                console.error('復元エラー:', error);
+                alert('復元中にエラーが発生しました:\n' + error.message);
+                updateSyncStatus('error');
+            }
+        }
+        
+        // 復元前の自動バックアップを作成
+        async function createPreRestoreBackup() {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `復元前バックアップ_${timestamp}.json`;
+            
+            // 現在のデータをエクスポート
+            const exportData = await exportAllData();
+            
+            // IndexedDBに保存（容量制限に注意）
+            try {
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                console.log('復元前バックアップ作成:', filename);
+                
+                // 通知
+                showToast(`📦 復元前のバックアップを作成しました`, 3000, 'info');
+                
+            } catch (error) {
+                console.warn('復元前バックアップ作成に失敗:', error);
+            }
+        }
+        
+        // デッキデータを復元
+        async function restoreDecksData() {
+            const decks = selectiveRestoreData.data.decks || [];
+            for (const deck of decks) {
+                // IDの重複チェック
+                const existingDeck = await db.collection('decks').doc(deck.id).get();
+                if (!existingDeck.exists) {
+                    await db.collection('decks').doc(deck.id).set(deck);
+                }
+            }
+        }
+        
+        // カードデータを復元
+        async function restoreCardsData() {
+            const cards = selectiveRestoreData.data.cards || [];
+            const method = document.querySelector('input[name="cardRestoreMethod"]:checked').value;
+            
+            if (method === 'replace') {
+                // 既存カードを全削除
+                const snapshot = await db.collection('flashcards').get();
+                const batch = db.batch();
+                snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
+            
+            // カードを復元
+            for (const card of cards) {
+                if (method === 'add') {
+                    // 新規追加
+                    await db.collection('flashcards').add(card);
+                } else {
+                    // 上書きまたは置き換え
+                    if (card.id) {
+                        await db.collection('flashcards').doc(card.id).set(card);
+                    } else {
+                        await db.collection('flashcards').add(card);
+                    }
+                }
+            }
+        }
+        
+        // 学習セッションデータを復元
+        async function restoreSessionsData() {
+            const sessions = selectiveRestoreData.data.studySessionHistory || [];
+            for (const session of sessions) {
+                await db.collection('studySessionHistory').add(session);
+            }
+        }
+        
+        // PDFメタデータを復元
+        async function restorePdfMetadataData() {
+            const metadata = selectiveRestoreData.data.pdfMetadata || [];
+            for (const meta of metadata) {
+                if (meta.id) {
+                    await db.collection('pdfMetadata').doc(meta.id).set(meta);
+                } else {
+                    await db.collection('pdfMetadata').add(meta);
+                }
+            }
+        }
+        
+        // 設定を復元
+        async function restoreSettingsData(options) {
+            const settings = selectiveRestoreData.settings || {};
+            
+            if (options.restoreTheme && settings.theme) {
+                localStorage.setItem('theme', settings.theme);
+            }
+            if (options.restoreFontSize && settings.fontSize) {
+                localStorage.setItem('fontSize', settings.fontSize);
+            }
+            if (options.restoreGlobalSettings && settings.globalStudySettings) {
+                localStorage.setItem('globalStudySettings', settings.globalStudySettings);
+            }
+            if (options.restoreDeckSettings && settings.deckStudySettings) {
+                localStorage.setItem('deckStudySettings', settings.deckStudySettings);
+            }
+            if (options.restoreUIState) {
+                if (settings.collapsedDecks) localStorage.setItem('collapsedDecks', settings.collapsedDecks);
+                if (settings.cardsPerPage) localStorage.setItem('cardsPerPage', settings.cardsPerPage);
+                if (settings.lastSelectedDeckId) localStorage.setItem('lastSelectedDeckId', settings.lastSelectedDeckId);
+            }
+        }
+        
+        // カードをCSVとして出力
+        function exportCardsToCSV() {
+            const cards = selectiveRestoreData.data.cards || [];
+            
+            if (cards.length === 0) {
+                alert('エクスポートするカードがありません');
+                return;
+            }
+            
+            // CSV生成
+            let csv = '\ufeff'; // BOM
+            
+            cards.forEach(card => {
+                if (card.type === 'cloze') {
+                    const clozeText = escapeCSVField(card.text);
+                    const deckId = card.deckId || '';
+                    const deckName = deckId ? getDeckNameById(deckId) : '';
+                    const tags = (card.tags || []).join(' ');
+                    csv += `${clozeText},${escapeCSVField(deckName)},${escapeCSVField(tags)}\n`;
+                } else if (card.type === 'typing' || card.type === 'basic') {
+                    const question = escapeCSVField(card.question);
+                    const answer = escapeCSVField(card.answer);
+                    const deckId = card.deckId || '';
+                    const deckName = deckId ? getDeckNameById(deckId) : '';
+                    const tags = (card.tags || []).join(' ');
+                    csv += `${question},${answer},${escapeCSVField(deckName)},${escapeCSVField(tags)}\n`;
+                }
+            });
+            
+            // ダウンロード
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().slice(0, 10);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `cards_from_backup_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast(`✅ ${cards.length}枚のカードをCSVで出力しました`, 5000, 'success');
+            closeSelectiveRestoreModal();
+        }
+        
+        // PDFマーカー復元プレビューを表示
+        function showPdfMarkerRestorePreview() {
+            if (selectedPdfMarkersForRestore.length === 0) {
+                alert('復元するPDFを選択してください');
+                return;
+            }
+            
+            // 最初のPDFのプレビューを表示
+            const index = selectedPdfMarkersForRestore[0];
+            const pdfMarker = selectiveRestoreData.data.pdfMarkers[index];
+            
+            document.getElementById('previewFileName').textContent = pdfMarker.fileName || 'ファイル名不明';
+            
+            // 現在のマーカー情報を取得
+            const currentMarker = pdfMarkersData.find(pm => pm.fileName === pdfMarker.fileName);
+            
+            if (currentMarker && currentMarker.markers && Object.keys(currentMarker.markers).length > 0) {
+                const currentMarkerCount = Object.keys(currentMarker.markers).reduce((sum, pageNum) => {
+                    return sum + (currentMarker.markers[pageNum]?.length || 0);
+                }, 0);
+                
+                document.getElementById('currentMarkerInfo').innerHTML = `
+                    <div style="margin-bottom: 10px;">マーカー数: <strong>${currentMarkerCount}個</strong></div>
+                    <div style="font-size: 12px; color: #666;">
+                        最終更新: ${currentMarker.lastUpdated ? new Date(currentMarker.lastUpdated).toLocaleString('ja-JP') : '不明'}
+                    </div>
+                `;
+            } else {
+                document.getElementById('currentMarkerInfo').innerHTML = `
+                    <div style="color: #999;">マーカー情報なし</div>
+                `;
+            }
+            
+            // 復元後のマーカー情報
+            const restoreMarkerCount = pdfMarker.markers ? Object.keys(pdfMarker.markers).reduce((sum, pageNum) => {
+                return sum + (pdfMarker.markers[pageNum]?.length || 0);
+            }, 0) : 0;
+            
+            let pageInfo = '';
+            if (pdfMarker.markers) {
+                const pages = Object.keys(pdfMarker.markers).sort((a, b) => parseInt(a) - parseInt(b));
+                pageInfo = pages.map(pageNum => {
+                    const count = pdfMarker.markers[pageNum]?.length || 0;
+                    return `ページ${pageNum}: ${count}個`;
+                }).join('<br>');
+            }
+            
+            document.getElementById('restoreMarkerInfo').innerHTML = `
+                <div style="margin-bottom: 10px;">マーカー数: <strong>${restoreMarkerCount}個</strong></div>
+                <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                    最終更新: ${pdfMarker.lastUpdated ? new Date(pdfMarker.lastUpdated).toLocaleString('ja-JP') : '不明'}
+                </div>
+                ${pageInfo ? `<div style="font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">${pageInfo}</div>` : ''}
+            `;
+            
+            document.getElementById('pdfMarkerRestorePreviewModal').style.display = 'block';
+        }
+        
+        // PDFマーカー復元プレビューを閉じる
+        function closePdfMarkerRestorePreview() {
+            document.getElementById('pdfMarkerRestorePreviewModal').style.display = 'none';
+        }
+        
+        // PDFマーカー復元を確定
+        async function confirmPdfMarkerRestore() {
+            if (!confirm('選択したPDFマーカー情報を復元しますか？\n現在のマーカー情報は上書きされます。')) {
+                return;
+            }
+            
+            try {
+                updateSyncStatus('syncing');
+                
+                // 復元前バックアップを作成
+                await createPreRestoreBackup();
+                
+                // 選択されたPDFマーカーを復元
+                for (const index of selectedPdfMarkersForRestore) {
+                    const pdfMarker = selectiveRestoreData.data.pdfMarkers[index];
+                    
+                    // 既存のマーカー情報を検索
+                    const snapshot = await db.collection('pdfMarkers')
+                        .where('userId', '==', currentUser.uid)
+                        .where('fileName', '==', pdfMarker.fileName)
+                        .get();
+                    
+                    if (!snapshot.empty) {
+                        // 既存データを更新
+                        const docId = snapshot.docs[0].id;
+                        await db.collection('pdfMarkers').doc(docId).update({
+                            markers: pdfMarker.markers || {},
+                            lastUpdated: Date.now(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    } else {
+                        // 新規作成
+                        await db.collection('pdfMarkers').add({
+                            userId: currentUser.uid,
+                            fileName: pdfMarker.fileName,
+                            fileSize: pdfMarker.fileSize,
+                            totalPages: pdfMarker.totalPages,
+                            pdfHash: pdfMarker.pdfHash,
+                            markers: pdfMarker.markers || {},
+                            lastUpdated: Date.now(),
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+                
+                updateSyncStatus('synced');
+                showToast(`✅ ${selectedPdfMarkersForRestore.length}個のPDFマーカーを復元しました`, 5000, 'success');
+                
+                closePdfMarkerRestorePreview();
+                closeSelectiveRestoreModal();
+                
+            } catch (error) {
+                console.error('PDFマーカー復元エラー:', error);
+                alert('PDFマーカーの復元中にエラーが発生しました:\n' + error.message);
+                updateSyncStatus('error');
+            }
+        }
+        
+        // ============================================
+        // v16.03.00: 選択的復元機能 ここまで
+        // ============================================
     </script>
     
     <div id="deckModal" class="modal">
@@ -16336,6 +16827,147 @@
                 <button class="btn" onclick="startCanvasPreview()" style="flex: 1; background: #f39c12; border-color: #f39c12;">📍 Canvas上でプレビュー</button>
                 <button class="btn" onclick="confirmApplyMarkerData()" style="flex: 1;">この情報を適用</button>
                 <button class="btn btn-secondary" onclick="closeMarkerPreviewModal()" style="flex: 1;">閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- v16.03.00: 選択的復元モーダル -->
+    <div id="selectiveRestoreModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <span class="close" onclick="closeSelectiveRestoreModal()">&times;</span>
+                <h2>🔍 選択的復元</h2>
+            </div>
+            
+            <!-- バックアップ情報 -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 10px; color: #667eea;">バックアップ情報</div>
+                <div id="backupInfo" style="color: #666; font-size: 14px;"></div>
+            </div>
+            
+            <!-- 復元項目選択 -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">復元する項目を選択</h3>
+                
+                <!-- データ項目 -->
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">📦 データ</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreDecks" onchange="updateRestorePreview()">
+                            <span>デッキ構造 (<span id="deckCount">0</span>個)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreCards" onchange="toggleCardOptions()">
+                            <span>カードデータ (<span id="cardCount">0</span>枚)</span>
+                        </label>
+                        <div id="cardRestoreOptions" style="display: none; margin-left: 30px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                            <div style="margin-bottom: 10px; font-size: 13px; color: #666;">復元方法を選択:</div>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px;">
+                                <input type="radio" name="cardRestoreMethod" value="add" checked>
+                                <span style="font-size: 14px;">既存データに追加</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px;">
+                                <input type="radio" name="cardRestoreMethod" value="overwrite">
+                                <span style="font-size: 14px;">既存データを上書き</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px;">
+                                <input type="radio" name="cardRestoreMethod" value="replace">
+                                <span style="font-size: 14px;">既存データを削除して復元</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="cardRestoreMethod" value="csv">
+                                <span style="font-size: 14px;">CSVファイルとして出力</span>
+                            </label>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreSessions" onchange="updateRestorePreview()">
+                            <span>学習セッション記録 (<span id="sessionCount">0</span>件)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restorePdfMarkers" onchange="togglePdfMarkerOptions()">
+                            <span>PDFマーカー情報 (<span id="pdfMarkerCount">0</span>個)</span>
+                        </label>
+                        <div id="pdfMarkerList" style="display: none; margin-left: 30px; max-height: 200px; overflow-y: auto; background: #f8f9fa; border-radius: 5px; padding: 10px;">
+                            <!-- PDFマーカー一覧が動的に生成される -->
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restorePdfMetadata" onchange="updateRestorePreview()">
+                            <span>PDFメタデータ対応表 (<span id="pdfMetadataCount">0</span>件)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 設定項目 -->
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">⚙️ 設定</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreTheme" onchange="updateRestorePreview()">
+                            <span>テーマ設定</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreFontSize" onchange="updateRestorePreview()">
+                            <span>フォント設定</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreGlobalSettings" onchange="updateRestorePreview()">
+                            <span>グローバル学習設定</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreDeckSettings" onchange="updateRestorePreview()">
+                            <span>デッキ別学習設定</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="restoreUIState" onchange="updateRestorePreview()">
+                            <span>UI状態設定</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 実行ボタン -->
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="executeSelectiveRestore()" id="executeRestoreBtn" style="flex: 1;">復元実行</button>
+                <button class="btn btn-secondary" onclick="closeSelectiveRestoreModal()" style="flex: 1;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- v16.03.00: PDFマーカープレビューモーダル -->
+    <div id="pdfMarkerRestorePreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <span class="close" onclick="closePdfMarkerRestorePreview()">&times;</span>
+                <h2>📄 マーカー復元プレビュー</h2>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 10px; color: #667eea;">ファイル名</div>
+                <div id="previewFileName" style="color: #333; font-size: 16px; margin-bottom: 20px;"></div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- 現在のマーカー -->
+                    <div>
+                        <div style="font-weight: bold; margin-bottom: 10px; color: #666;">現在のマーカー</div>
+                        <div id="currentMarkerInfo" style="background: #f8f9fa; padding: 15px; border-radius: 8px; min-height: 150px;"></div>
+                    </div>
+                    
+                    <!-- 復元後のマーカー -->
+                    <div>
+                        <div style="font-weight: bold; margin-bottom: 10px; color: #667eea;">復元後のマーカー</div>
+                        <div id="restoreMarkerInfo" style="background: #e3f2fd; padding: 15px; border-radius: 8px; min-height: 150px;"></div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #f39c12;">
+                    <strong>⚠️ 注意:</strong> 復元すると現在のマーカー情報は上書きされます
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="confirmPdfMarkerRestore()" style="flex: 1;">復元実行</button>
+                <button class="btn btn-secondary" onclick="closePdfMarkerRestorePreview()" style="flex: 1;">キャンセル</button>
             </div>
         </div>
     </div>
