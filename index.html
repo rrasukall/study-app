@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.03.00</title>
+    <title>MyAnkiApp v16.03.01</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.01</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -16034,8 +16034,8 @@
                     // 各項目の件数を表示
                     const data = selectiveRestoreData.data;
                     document.getElementById('deckCount').textContent = data.decks?.length || 0;
-                    document.getElementById('cardCount').textContent = data.cards?.length || 0;
-                    document.getElementById('sessionCount').textContent = data.studySessionHistory?.length || 0;
+                    document.getElementById('cardCount').textContent = data.flashcards?.length || 0;
+                    document.getElementById('sessionCount').textContent = (data.studySessionHistory?.length || data.studySessions?.length) || 0;
                     document.getElementById('pdfMarkerCount').textContent = data.pdfMarkers?.length || 0;
                     document.getElementById('pdfMetadataCount').textContent = data.pdfMetadata?.length || 0;
                     
@@ -16079,7 +16079,7 @@
             if (checked) {
                 // PDFマーカー一覧を生成
                 const pdfMarkers = selectiveRestoreData.data.pdfMarkers || [];
-                let html = '<div style="font-size: 13px; color: #666; margin-bottom: 10px;">復元するPDFを選択:</div>';
+                let html = '<div style="font-size: 14px; color: #667eea; margin-bottom: 10px; font-weight: bold;">📌 復元するPDFを個別に選択してください:</div>';
                 
                 pdfMarkers.forEach((pm, index) => {
                     const markerCount = pm.markers ? Object.keys(pm.markers).reduce((sum, pageNum) => {
@@ -16089,11 +16089,11 @@
                     const lastUpdated = pm.lastUpdated ? new Date(pm.lastUpdated).toLocaleDateString('ja-JP') : '不明';
                     
                     html += `
-                        <label style="display: flex; align-items: start; gap: 8px; cursor: pointer; margin-bottom: 8px; padding: 8px; background: white; border-radius: 5px;">
-                            <input type="checkbox" class="pdf-marker-checkbox" data-index="${index}" onchange="updatePdfMarkerSelection()">
+                        <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 8px; padding: 12px; background: white; border-radius: 5px; border: 1px solid #e0e0e0; transition: all 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                            <input type="checkbox" class="pdf-marker-checkbox" data-index="${index}" onchange="updatePdfMarkerSelection()" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0;">
                             <div style="flex: 1;">
-                                <div style="font-weight: bold; margin-bottom: 3px;">${pm.fileName || 'ファイル名不明'}</div>
-                                <div style="font-size: 12px; color: #666;">
+                                <div style="font-weight: bold; margin-bottom: 4px; font-size: 15px; color: #333;">${pm.fileName || 'ファイル名不明'}</div>
+                                <div style="font-size: 13px; color: #666;">
                                     マーカー: ${markerCount}個 | 最終更新: ${lastUpdated}
                                 </div>
                             </div>
@@ -16243,7 +16243,7 @@
         
         // カードデータを復元
         async function restoreCardsData() {
-            const cards = selectiveRestoreData.data.cards || [];
+            const cards = selectiveRestoreData.data.flashcards || [];
             const method = document.querySelector('input[name="cardRestoreMethod"]:checked').value;
             
             if (method === 'replace') {
@@ -16272,7 +16272,7 @@
         
         // 学習セッションデータを復元
         async function restoreSessionsData() {
-            const sessions = selectiveRestoreData.data.studySessionHistory || [];
+            const sessions = selectiveRestoreData.data.studySessionHistory || selectiveRestoreData.data.studySessions || [];
             for (const session of sessions) {
                 await db.collection('studySessionHistory').add(session);
             }
@@ -16315,7 +16315,7 @@
         
         // カードをCSVとして出力
         function exportCardsToCSV() {
-            const cards = selectiveRestoreData.data.cards || [];
+            const cards = selectiveRestoreData.data.flashcards || [];
             
             if (cards.length === 0) {
                 alert('エクスポートするカードがありません');
@@ -16363,7 +16363,7 @@
         // PDFマーカー復元プレビューを表示
         function showPdfMarkerRestorePreview() {
             if (selectedPdfMarkersForRestore.length === 0) {
-                alert('復元するPDFを選択してください');
+                alert('復元するPDFファイルを選択してください。\n\n「PDFマーカー情報」にチェックを入れた後、\n表示される一覧から復元したいPDFを個別に選択してください。');
                 return;
             }
             
@@ -16895,6 +16895,9 @@
                             <input type="checkbox" id="restorePdfMetadata" onchange="updateRestorePreview()">
                             <span>PDFメタデータ対応表 (<span id="pdfMetadataCount">0</span>件)</span>
                         </label>
+                        <div style="margin-left: 30px; font-size: 12px; color: #999; margin-top: -5px;">
+                            ※PDFファイル情報の管理テーブル（通常は不要）
+                        </div>
                     </div>
                 </div>
                 
