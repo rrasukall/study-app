@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.03.04</title>
+    <title>MyAnkiApp v16.03.05</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.04</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.05</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -16950,48 +16950,48 @@
                 <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; text-align: left;">
                     <div style="font-weight: bold; margin-bottom: 10px;">📦 データ</div>
                     <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreDecks" onchange="updateRestorePreview()">
                             <span>デッキ構造 (<span id="deckCount">0</span>個)</span>
                         </label>
                         <div style="margin-left: 30px; font-size: 12px; color: #999; margin-top: -5px; margin-bottom: 5px;">
                             ※通常はカードと一緒に復元されるため不要
                         </div>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreCards" onchange="toggleCardOptions()">
                             <span>カードデータ (<span id="cardCount">0</span>枚)</span>
                         </label>
                         <div id="cardRestoreOptions" style="display: none; margin-left: 30px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
                             <div style="margin-bottom: 10px; font-size: 13px; color: #666;">復元方法を選択:</div>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px; white-space: nowrap;">
                                 <input type="radio" name="cardRestoreMethod" value="add" checked>
                                 <span style="font-size: 14px;">既存データに追加</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px; white-space: nowrap;">
                                 <input type="radio" name="cardRestoreMethod" value="overwrite">
                                 <span style="font-size: 14px;">既存データを上書き</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 5px; white-space: nowrap;">
                                 <input type="radio" name="cardRestoreMethod" value="replace">
                                 <span style="font-size: 14px;">既存データを削除して復元</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                                 <input type="radio" name="cardRestoreMethod" value="csv">
                                 <span style="font-size: 14px;">CSVファイルとして出力</span>
                             </label>
                         </div>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreSessions" onchange="updateRestorePreview()">
                             <span>学習セッション記録 (<span id="sessionCount">0</span>件)</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restorePdfMarkers" onchange="togglePdfMarkerOptions()">
                             <span>PDFマーカー情報 (<span id="pdfMarkerCount">0</span>個)</span>
                         </label>
                         <div id="pdfMarkerList" style="display: none; margin-left: 30px; max-height: 200px; overflow-y: auto; background: #f8f9fa; border-radius: 5px; padding: 10px;">
                             <!-- PDFマーカー一覧が動的に生成される -->
                         </div>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restorePdfMetadata" onchange="updateRestorePreview()">
                             <span>PDFメタデータ対応表 (<span id="pdfMetadataCount">0</span>件)</span>
                         </label>
@@ -17005,23 +17005,23 @@
                 <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: left;">
                     <div style="font-weight: bold; margin-bottom: 10px;">⚙️ 設定</div>
                     <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreTheme" onchange="updateRestorePreview()">
                             <span>テーマ設定</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreFontSize" onchange="updateRestorePreview()">
                             <span>フォント設定</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreGlobalSettings" onchange="updateRestorePreview()">
                             <span>グローバル学習設定</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreDeckSettings" onchange="updateRestorePreview()">
                             <span>デッキ別学習設定</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap;">
                             <input type="checkbox" id="restoreUIState" onchange="updateRestorePreview()">
                             <span>UI状態設定</span>
                         </label>
