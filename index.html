@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.04.01</title>
+    <title>MyAnkiApp v16.04.02</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.01</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.02</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -3009,7 +3009,10 @@
                 <!-- v15.01.2: 全画面表示用コントロールバー（z-index: 2001） -->
                 <div id="fullscreenControls" style="display: none; position: fixed; top: 0; left: 0; right: 0; background: rgba(0, 0, 0, 0.85); color: white; padding: 10px 20px; z-index: 2001; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: nowrap;">
-                        <button class="btn" onclick="toggleStudyMode()" id="fullscreenStudyModeBtn" style="background: #e74c3c; color: white; padding: 8px 16px;">学習OFF</button>
+                        <!-- v16.04.02: 通常学習モード用ボタン -->
+                        <button class="btn" onclick="toggleStudyMode()" id="fullscreenStudyModeBtn" style="background: #e74c3c; color: white; padding: 8px 16px; display: none;">学習OFF</button>
+                        <!-- v16.04.02: 苦手学習モード用ボタン -->
+                        <button class="btn" onclick="toggleWeakStudyMode()" id="fullscreenWeakStudyModeBtn" style="background: #e74c3c; color: white; padding: 8px 16px; display: none;">苦手学習OFF</button>
                         <span style="color: #888;">|</span>
                         <button class="sheet-btn yellow" id="fullscreenSheetYellow" onclick="toggleRedSheetColor('yellow')" style="padding: 8px 16px;">黄</button>
                         <button class="sheet-btn red" id="fullscreenSheetRed" onclick="toggleRedSheetColor('red')" style="padding: 8px 16px;">赤</button>
@@ -12927,6 +12930,19 @@
                 // 全画面表示ON
                 fullscreenMode = true;
                 
+                // v16.04.02: 全画面ボタンの表示制御
+                const fullscreenStudyBtn = document.getElementById('fullscreenStudyModeBtn');
+                const fullscreenWeakStudyBtn = document.getElementById('fullscreenWeakStudyModeBtn');
+                if (studyMode) {
+                    // 通常学習モード：学習OFFボタンのみ表示
+                    if (fullscreenStudyBtn) fullscreenStudyBtn.style.display = 'block';
+                    if (fullscreenWeakStudyBtn) fullscreenWeakStudyBtn.style.display = 'none';
+                } else if (weakStudyMode) {
+                    // 苦手学習モード：苦手学習OFFボタンのみ表示
+                    if (fullscreenStudyBtn) fullscreenStudyBtn.style.display = 'none';
+                    if (fullscreenWeakStudyBtn) fullscreenWeakStudyBtn.style.display = 'block';
+                }
+                
                 // v15.01.3: bodyの背景色を変更（下の紫色を消す）
                 document.body.style.background = '#333';
                 
@@ -13119,6 +13135,15 @@
                     console.log('renderPage called with restored scale:', scale);
                 }
                 
+                // v16.04.02: 全画面ボタンを非表示
+                const fullscreenStudyBtn = document.getElementById('fullscreenStudyModeBtn');
+                const fullscreenWeakStudyBtn = document.getElementById('fullscreenWeakStudyModeBtn');
+                if (fullscreenStudyBtn) fullscreenStudyBtn.style.display = 'none';
+                if (fullscreenWeakStudyBtn) fullscreenWeakStudyBtn.style.display = 'none';
+                
+                // v16.04.02: マーカー表示を更新
+                drawMarkers();
+                
                 // 全画面コントロールバーを非表示
                 const fullscreenControls = document.getElementById('fullscreenControls');
                 if (fullscreenControls) {
@@ -13285,7 +13310,8 @@
             const y = e.clientY - rect.top;
             
             // v7.00: 学習モード時のマーカートグル
-            if (studyMode) {
+            // v16.04.02: weakStudyModeも考慮
+            if (studyMode || weakStudyMode) {
                 toggleMarkerState(x, y);
                 return;
             }
