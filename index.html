@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.04.02</title>
+    <title>MyAnkiApp v16.04.03</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.02</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.03</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -2897,9 +2897,9 @@
                 <!-- v7.02: PDF学習ヘッダーと統計パネル -->
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
-                    <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
+                    <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習ON</button>
                     <!-- v16.04.00: 苦手学習ボタン -->
-                    <button class="btn btn-mode-off" onclick="toggleWeakStudyMode()" id="weakStudyModeBtn" style="display: none;">苦手学習OFF</button>
+                    <button class="btn btn-mode-off" onclick="toggleWeakStudyMode()" id="weakStudyModeBtn" style="display: none;">苦手学習ON</button>
                     <!-- v16.04.00: 苦手アイコン表示チェックボックス -->
                     <label style="margin-left: 15px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; visibility: hidden;" id="weakIconLabel">
                         <input type="checkbox" id="weakIconCheckbox" onchange="toggleWeakIconDisplay()" checked style="width: 16px; height: 16px; cursor: pointer;">
@@ -12659,7 +12659,7 @@
                     weakStudyMode = false;
                     const weakBtn = document.getElementById('weakStudyModeBtn');
                     if (weakBtn) {
-                        weakBtn.textContent = '苦手学習OFF';
+                        weakBtn.textContent = '苦手学習ON';  // v16.04.03: OFF時は「苦手学習ON」
                         weakBtn.className = 'btn btn-mode-off';
                     }
                 }
@@ -12674,7 +12674,7 @@
                 }
                 
                 // 学習モードON
-                btn.textContent = '学習ON';
+                btn.textContent = '学習OFF';  // v16.04.03: ON時は「学習OFF」
                 btn.className = 'btn btn-mode-on';
                 
                 // 既存のモードをすべてOFF
@@ -12723,7 +12723,7 @@
                 
             } else {
                 // 学習モードOFF
-                btn.textContent = '学習OFF';
+                btn.textContent = '学習ON';  // v16.04.03: OFF時は「学習ON」
                 btn.className = 'btn btn-mode-off';
                 
                 // キャンバスのカーソルを元に戻す
@@ -12781,7 +12781,7 @@
                     studyMode = false;
                     const normalBtn = document.getElementById('studyModeBtn');
                     if (normalBtn) {
-                        normalBtn.textContent = '学習OFF';
+                        normalBtn.textContent = '学習ON';  // v16.04.03: OFF時は「学習ON」
                         normalBtn.className = 'btn btn-mode-off';
                     }
                 }
@@ -12796,7 +12796,7 @@
                 }
                 
                 // 苦手学習モードON
-                btn.textContent = '苦手学習ON';
+                btn.textContent = '苦手学習OFF';  // v16.04.03: ON時は「苦手学習OFF」
                 btn.className = 'btn btn-mode-on';
                 
                 // 既存のモードをすべてOFF
@@ -12845,7 +12845,7 @@
                 
             } else {
                 // 苦手学習モードOFF
-                btn.textContent = '苦手学習OFF';
+                btn.textContent = '苦手学習ON';  // v16.04.03: OFF時は「苦手学習ON」
                 btn.className = 'btn btn-mode-off';
                 
                 // キャンバスのカーソルを元に戻す
