@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.04.00</title>
+    <title>MyAnkiApp v16.04.01</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.01</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -12661,6 +12661,15 @@
                     }
                 }
                 
+                // v16.04.01: 全マーカーのstudyStateをリセット
+                if (pdfHash && markers[pdfHash]) {
+                    Object.keys(markers[pdfHash]).forEach(page => {
+                        markers[pdfHash][page].forEach(marker => {
+                            marker.studyState = 'hidden';
+                        });
+                    });
+                }
+                
                 // 学習モードON
                 btn.textContent = '学習ON';
                 btn.className = 'btn btn-mode-on';
@@ -12774,6 +12783,15 @@
                     }
                 }
                 
+                // v16.04.01: 全マーカーのstudyStateをリセット
+                if (pdfHash && markers[pdfHash]) {
+                    Object.keys(markers[pdfHash]).forEach(page => {
+                        markers[pdfHash][page].forEach(marker => {
+                            marker.studyState = 'hidden';
+                        });
+                    });
+                }
+                
                 // 苦手学習モードON
                 btn.textContent = '苦手学習ON';
                 btn.className = 'btn btn-mode-on';
@@ -12883,8 +12901,8 @@
             const checkbox = document.getElementById('fullscreenCheckbox');
             localStorage.setItem('fullscreenMode', checkbox.checked);
             
-            // 学習モード中の場合は即座に反映
-            if (studyMode) {
+            // v16.04.01: 学習モード中の場合は即座に反映（weakStudyModeも考慮）
+            if (studyMode || weakStudyMode) {
                 updateFullscreenDisplay();
             }
         }
@@ -12904,7 +12922,8 @@
             const checkbox = document.getElementById('fullscreenCheckbox');
             const fullscreenEnabled = checkbox && checkbox.checked;
             
-            if (studyMode && fullscreenEnabled) {
+            // v16.04.01: weakStudyModeも考慮
+            if ((studyMode || weakStudyMode) && fullscreenEnabled) {
                 // 全画面表示ON
                 fullscreenMode = true;
                 
