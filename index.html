@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.03.05</title>
+    <title>MyAnkiApp v16.04.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.03.05</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -2898,6 +2898,13 @@
                 <div class="pdf-header">
                     <h2>📖 PDF学習</h2>
                     <button class="btn btn-mode-off" onclick="toggleStudyMode()" id="studyModeBtn" style="display: none;">学習OFF</button>
+                    <!-- v16.04.00: 苦手学習ボタン -->
+                    <button class="btn btn-mode-off" onclick="toggleWeakStudyMode()" id="weakStudyModeBtn" style="display: none;">苦手学習OFF</button>
+                    <!-- v16.04.00: 苦手アイコン表示チェックボックス -->
+                    <label style="margin-left: 15px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; visibility: hidden;" id="weakIconLabel">
+                        <input type="checkbox" id="weakIconCheckbox" onchange="toggleWeakIconDisplay()" checked style="width: 16px; height: 16px; cursor: pointer;">
+                        <span style="font-size: 14px; white-space: nowrap;">苦手アイコン表示</span>
+                    </label>
                     <!-- v15.01.10: 全画面表示チェックボックス（ラベル短縮） -->
                     <label style="margin-left: 15px; display: inline-block; cursor: pointer; user-select: none; background: rgba(0, 0, 0, 0.7); padding: 8px 14px; border-radius: 4px; visibility: hidden;" id="fullscreenLabel">
                         <input type="checkbox" id="fullscreenCheckbox" onchange="saveFullscreenSetting()" style="cursor: pointer; margin-right: 8px; vertical-align: middle; width: 16px; height: 16px;">
@@ -7553,6 +7560,8 @@
         
         // v7.00: 学習モード管理
         let studyMode = false;
+        let weakStudyMode = false; // v16.04.00: 苦手学習モード
+        let showWeakIcons = true; // v16.04.00: 苦手アイコン表示フラグ
         let savedRedSheetColors = null; // v14.00.9: 学習モード開始前のシート状態を保存
         
         // v7.00.2: 学習OFF時のシート機能でのクリック明転管理（ページ・シートボタン変更でリセット）
@@ -11745,6 +11754,13 @@
                 // v7.00: 学習モードボタンを表示
                 document.getElementById('studyModeBtn').style.display = 'block';
                 
+                // v16.04.00: 苦手学習ボタンと苦手アイコン表示チェックボックスを表示
+                document.getElementById('weakStudyModeBtn').style.display = 'block';
+                const weakIconLabel = document.getElementById('weakIconLabel');
+                if (weakIconLabel) {
+                    weakIconLabel.style.visibility = 'visible';
+                }
+                
                 // v15.01.3: 全画面表示チェックボックスを表示し、設定を読み込む
                 const fullscreenLabel = document.getElementById('fullscreenLabel');
                 if (fullscreenLabel) {
@@ -11808,6 +11824,13 @@
                 
                 // v7.00: 学習モードボタンを表示
                 document.getElementById('studyModeBtn').style.display = 'block';
+                
+                // v16.04.00: 苦手学習ボタンと苦手アイコン表示チェックボックスを表示
+                document.getElementById('weakStudyModeBtn').style.display = 'block';
+                const weakIconLabel = document.getElementById('weakIconLabel');
+                if (weakIconLabel) {
+                    weakIconLabel.style.visibility = 'visible';
+                }
                 
                 // v7.01: 統計パネルを表示し、統計をリセット
                 const statsPanel = document.getElementById('studyStats');
@@ -12628,6 +12651,16 @@
             const statsPanel = document.getElementById('studyStats');
             
             if (studyMode) {
+                // v16.04.00: 苦手学習モードがONの場合はOFFにする
+                if (weakStudyMode) {
+                    weakStudyMode = false;
+                    const weakBtn = document.getElementById('weakStudyModeBtn');
+                    if (weakBtn) {
+                        weakBtn.textContent = '苦手学習OFF';
+                        weakBtn.className = 'btn btn-mode-off';
+                    }
+                }
+                
                 // 学習モードON
                 btn.textContent = '学習ON';
                 btn.className = 'btn btn-mode-on';
@@ -12721,6 +12754,128 @@
             
             // v15.01.0: 全画面表示の切り替え
             updateFullscreenDisplay();
+        }
+        
+        // v16.04.00: 苦手学習モード切り替え
+        async function toggleWeakStudyMode() {
+            weakStudyMode = !weakStudyMode;
+            const btn = document.getElementById('weakStudyModeBtn');
+            const canvas = document.getElementById('markerCanvas');
+            const statsPanel = document.getElementById('studyStats');
+            
+            if (weakStudyMode) {
+                // v16.04.00: 通常学習モードがONの場合はOFFにする
+                if (studyMode) {
+                    studyMode = false;
+                    const normalBtn = document.getElementById('studyModeBtn');
+                    if (normalBtn) {
+                        normalBtn.textContent = '学習OFF';
+                        normalBtn.className = 'btn btn-mode-off';
+                    }
+                }
+                
+                // 苦手学習モードON
+                btn.textContent = '苦手学習ON';
+                btn.className = 'btn btn-mode-on';
+                
+                // 既存のモードをすべてOFF
+                if (markerMode) toggleMarkerMode();
+                if (editMode) toggleEditMode();
+                if (deleteMode) toggleDeleteMode();
+                
+                // キャンバスのカーソルを変更
+                if (canvas) {
+                    canvas.classList.add('study-mode');
+                    canvas.style.cursor = 'pointer';
+                }
+                
+                // ボタンをグレーアウト
+                disableButtons();
+                
+                // v14.00.9: 学習モード開始前のシート状態を保存
+                savedRedSheetColors = { ...redSheetColors };
+                
+                // v7.03: 学習モードON時は全色シートをONにする
+                redSheetColors.yellow = true;
+                redSheetColors.red = true;
+                redSheetColors.green = true;
+                redSheetColors.blue = true;
+                
+                // シートボタンの表示を更新
+                ['yellow', 'red', 'green', 'blue'].forEach(color => {
+                    const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                    if (btn) {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                // v7.01: タイマー開始と統計パネルをアクティブ化
+                startStudyTimer();
+                if (statsPanel) {
+                    statsPanel.classList.remove('inactive');
+                }
+                updateStudyStats();
+                
+                // v9.00: セッション開始時刻を記録
+                currentSessionStartTime = Date.now();
+                sessionCorrectCount = 0;
+                sessionIncorrectCount = 0;
+                sessionStudiedMarkers = new Set();
+                
+            } else {
+                // 苦手学習モードOFF
+                btn.textContent = '苦手学習OFF';
+                btn.className = 'btn btn-mode-off';
+                
+                // キャンバスのカーソルを元に戻す
+                if (canvas) {
+                    canvas.classList.remove('study-mode');
+                    canvas.style.cursor = 'default';
+                }
+                
+                // ボタンを有効化
+                enableButtons();
+                
+                // v14.00.9: 学習モード開始前のシート状態を復元
+                if (savedRedSheetColors) {
+                    redSheetColors = { ...savedRedSheetColors };
+                    
+                    // シートボタンの表示を復元
+                    ['yellow', 'red', 'green', 'blue'].forEach(color => {
+                        const btn = document.getElementById('redsheet' + color.charAt(0).toUpperCase() + color.slice(1));
+                        if (btn) {
+                            if (redSheetColors[color]) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        }
+                    });
+                }
+                
+                // v7.01: タイマー一時停止と統計パネルを非アクティブ化
+                pauseStudyTimer();
+                if (statsPanel) {
+                    statsPanel.classList.add('inactive');
+                }
+                
+                // v7.02: 学習記録を保存
+                await saveStudySessionToFirebase();
+            }
+            
+            drawMarkers();
+            
+            // v15.01.0: 全画面表示の切り替え
+            updateFullscreenDisplay();
+        }
+        
+        // v16.04.00: 苦手アイコン表示切り替え
+        function toggleWeakIconDisplay() {
+            const checkbox = document.getElementById('weakIconCheckbox');
+            showWeakIcons = checkbox.checked;
+            
+            // 再描画して表示を更新
+            drawMarkers();
         }
         
         // v15.01.0: 全画面表示の設定を保存
@@ -14019,10 +14174,21 @@
                 const mw = marker.width * scaleRatio;
                 const mh = marker.height * scaleRatio;
                 
+                // v16.04.00: 苦手マーカー判定
+                const correctCount = marker.correctCount || 0;
+                const incorrectCount = marker.incorrectCount || 0;
+                const totalCount = correctCount + incorrectCount;
+                const isWeakMarker = totalCount >= 2 && incorrectCount / totalCount >= 0.5;
+                
                 // v7.03: 学習モードOFF時は通常表示、ON時はシート設定とstudyStateに応じた表示
-                if (studyMode) {
-                    // v7.03: 学習モードON時：シートOFFの色は明転（学習対象外）、シートONの色はstudyStateに応じて表示
-                    if (!redSheetColors[marker.color]) {
+                // v16.04.00: 苦手学習モード追加
+                if (studyMode || weakStudyMode) {
+                    // v16.04.00: 苦手学習モード時は、苦手マーカー以外を明転表示
+                    if (weakStudyMode && !isWeakMarker) {
+                        // 苦手学習モードで苦手でないマーカーは明転（学習対象外）
+                        ctx.fillStyle = getMarkerColor(marker.color);
+                        ctx.fillRect(mx, my, mw, mh);
+                    } else if (!redSheetColors[marker.color]) {
                         // シートOFFの色 = 明転（学習対象外として読める状態）
                         ctx.fillStyle = getMarkerColor(marker.color);
                         ctx.fillRect(mx, my, mw, mh);
@@ -14103,7 +14269,8 @@
             });
             
             // v9.00: 苦手マーカーの判定とビックリマーク表示
-            if (studyMode && pdfHash && markers[pdfHash] && markers[pdfHash][currentPage]) {
+            // v16.04.00: showWeakIconsフラグで表示/非表示を制御
+            if (showWeakIcons && pdfHash && markers[pdfHash] && markers[pdfHash][currentPage]) {
                 markers[pdfHash][currentPage].forEach((marker, index) => {
                     const correctCount = marker.correctCount || 0;
                     const incorrectCount = marker.incorrectCount || 0;
