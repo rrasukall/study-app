@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.04.03</title>
+    <title>MyAnkiApp v16.05.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -9395,6 +9395,7 @@
                     document.getElementById('answer').value = '';
                     document.getElementById('enableReverse').checked = false;
                     document.getElementById('cardTags').value = ''; // v10.01: タグ入力欄をクリア
+                    document.getElementById('question').focus(); // v16.05.00: 連続登録用フォーカス
                     
                 } else if (currentCardType === 'cloze') {
                     // v5.01: 穴埋めカード
@@ -9458,6 +9459,7 @@
                     document.getElementById('cardTags').value = ''; // v10.01: タグ入力欄をクリア
                     clozeCounter = 1;
                     updateClozePreview();
+                    document.getElementById('clozeText').focus(); // v16.05.00: 連続登録用フォーカス
                     
                 } else if (currentCardType === 'typing') {
                     // v5.02: タイピング式カード
@@ -9505,6 +9507,7 @@
                     document.getElementById('typingAnswer').value = '';
                     document.getElementById('typingCaseSensitive').checked = false;
                     document.getElementById('cardTags').value = ''; // v10.01: タグ入力欄をクリア
+                    document.getElementById('typingQuestion').focus(); // v16.05.00: 連続登録用フォーカス
                 }
                 
                 // v6.00.2: 選択したデッキを記憶
@@ -9579,9 +9582,14 @@
                         </div>
                     `;
                     
+                    // v16.05.00: カード作成セクションがアクティブな場合はプレビューへのfocusを実行しない
                     setTimeout(() => {
-                        const input = document.getElementById('typingInput');
-                        if (input) input.focus();
+                        const cardsSection = document.getElementById('cards-section');
+                        const isCardCreationActive = cardsSection && cardsSection.classList.contains('active');
+                        if (!isCardCreationActive) {
+                            const input = document.getElementById('typingInput');
+                            if (input) input.focus();
+                        }
                     }, 100);
                 } else {
                     const questionWithBreaks = card.question.replace(/\n/g, '<br>');
