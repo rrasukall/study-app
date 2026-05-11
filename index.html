@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.05.00</title>
+    <title>MyAnkiApp v16.06.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.05.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.04.03</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -8786,25 +8786,70 @@
                 // v10.03.3: 判定結果をセッションに保存（正答率計算用）
                 studySession.lastTypingResult = isCorrect;
                 
+                // v16.06.00: 文字ごとの差分表示用に正規化済み文字列を生成
+                const normalizeForDiff = (str) => {
+                    if (!str) return '';
+                    str = str.trim().replace(/　/g, ' ').replace(/\s+/g, ' ');
+                    if (!caseSensitive) {
+                        str = str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+                        str = str.toLowerCase();
+                    }
+                    return str;
+                };
+                const diffUser = normalizeForDiff(userAnswer);
+                const diffCorrect = normalizeForDiff(correctAnswer);
+                const lengthMatch = diffUser.length === diffCorrect.length;
+
                 // 結果表示
                 input.disabled = true;
                 if (isCorrect) {
                     input.className = 'typing-input correct';
+                    let correctDisplay = '';
+                    for (let i = 0; i < diffUser.length; i++) {
+                        const displayChar = diffUser[i] === ' ' ? '␣' : diffUser[i];
+                        correctDisplay += `<span class="char-correct">${displayChar}</span>`;
+                    }
                     result.innerHTML = `
-                        <div style="color: #2ecc71; font-size: 18px; font-weight: bold;">
+                        <div style="color: #2ecc71; font-size: 18px; font-weight: bold; margin-bottom: 8px;">
                             ✅ 正解！
+                        </div>
+                        <div class="typing-character-result">
+                            <div class="typing-character-result-label">あなたの入力：</div>
+                            <div class="typing-character-display">${correctDisplay}</div>
                         </div>
                     `;
                 } else {
                     input.className = 'typing-input incorrect';
-                    result.innerHTML = `
-                        <div style="color: #e74c3c; font-size: 18px; font-weight: bold; margin-bottom: 10px;">
+                    const maxLen = Math.max(diffUser.length, diffCorrect.length);
+                    let characterDisplay = '';
+                    for (let i = 0; i < maxLen; i++) {
+                        const userChar = diffUser[i] || '';
+                        const correctChar = diffCorrect[i] || '';
+                        const displayChar = userChar === ' ' ? '␣' : userChar;
+                        if (userChar === correctChar && userChar !== '') {
+                            characterDisplay += `<span class="char-correct">${displayChar}</span>`;
+                        } else if (userChar !== '') {
+                            characterDisplay += `<span class="char-incorrect">${displayChar}</span>`;
+                        }
+                    }
+                    let incorrectHTML = `
+                        <div style="color: #e74c3c; font-size: 18px; font-weight: bold; margin-bottom: 8px;">
                             ❌ 不正解
                         </div>
-                        <div style="font-size: 16px; color: rgba(255,255,255,0.9);">
+                    `;
+                    if (!lengthMatch) {
+                        incorrectHTML += '<div class="length-warning">⚠️ 文字数が異なります</div>';
+                    }
+                    incorrectHTML += `
+                        <div class="typing-character-result">
+                            <div class="typing-character-result-label">あなたの入力：</div>
+                            <div class="typing-character-display">${characterDisplay}</div>
+                        </div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-top: 8px;">
                             <strong>正解:</strong> ${correctAnswer}
                         </div>
                     `;
+                    result.innerHTML = incorrectHTML;
                 }
                 
                 // v10.03.3: 4つのボタンを表示（ユーザーが評価を選択）
