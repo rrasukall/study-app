@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英単語手書き学習 v0.2.00</title>
+    <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+    <style>
+        /* v0.1.00: CSS変数 */
+        :root {
+            --bg-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-section: #ffffff;
+            --text-main: #333333;
+            --text-sub: #666666;
+            --border-color: #dddddd;
+            --btn-primary-bg: #667eea;
+            --btn-primary-text: #ffffff;
+            --btn-secondary-bg: #95a5a6;
+            --btn-danger-bg: #e74c3c;
+            --btn-success-bg: #27ae60;
+            --btn-warning-bg: #f39c12;
+            --color-success: #27ae60;
+            --color-error: #e74c3c;
+            --card-bg-start: #f093fb;
+            --card-bg-end: #f5576c;
+            --shadow: rgba(0,0,0,0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Meiryo, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 2em;
+        }
+
+        /* タブ */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .tab:hover:not(.active) { background: rgba(255,255,255,0.3); }
+
+        /* セクション */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .panel {
+            background: white;
+            padding: 28px;
+            border-radius: 14px;
+            box-shadow: 0 8px 30px var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        /* フォーム */
+        .input-group { margin-bottom: 16px; }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #555;
+            font-size: 14px;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea { min-height: 80px; resize: vertical; }
+
+        /* ボタン共通 */
+        .btn {
+            background: var(--btn-primary-bg);
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; opacity: 0.7; }
+
+        .btn-secondary { background: var(--btn-secondary-bg); }
+        .btn-danger { background: var(--btn-danger-bg); }
+        .btn-success { background: var(--btn-success-bg); }
+        .btn-warning { background: var(--btn-warning-bg); }
+        .btn-info { background: #3498db; }
+
+        /* 単語リスト */
+        .word-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #fafafa;
+            gap: 12px;
+        }
+
+        .word-item-main { flex: 1; }
+        .word-en { font-size: 16px; font-weight: bold; color: #333; }
+        .word-ja { font-size: 13px; color: #777; margin-top: 2px; }
+        .word-alias { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+        .word-status {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .status-new { background: #e8f4fd; color: #2980b9; }
+        .status-learning { background: #fef9e7; color: #d35400; }
+        .status-weak { background: #fdedec; color: #e74c3c; }
+        .status-mastered { background: #eafaf1; color: #27ae60; }
+
+        /* 学習カード */
+        .study-card {
+            background: linear-gradient(135deg, var(--card-bg-start) 0%, var(--card-bg-end) 100%);
+            border-radius: 14px;
+            padding: 36px 28px 28px;
+            margin-bottom: 20px;
+            color: white;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .study-question {
+            font-size: 26px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .study-hint {
+            font-size: 14px;
+            opacity: 0.85;
+            margin-bottom: 20px;
+        }
+
+        /* 入力エリア（テキスト＋認識ボタン） */
+        .answer-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto 8px;
+        }
+
+        .typing-input {
+            flex: 1;
+            padding: 14px 16px;
+            font-size: 20px;
+            border: 3px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.92);
+            color: #333;
+            text-align: center;
+        }
+
+        .typing-input:focus {
+            outline: none;
+            border-color: white;
+            background: white;
+        }
+
+        .typing-input.correct {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .typing-input.incorrect {
+            border-color: #e74c3c;
+            background: #fadbd8;
+        }
+
+        .btn-ocr {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.6);
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-ocr:hover { background: rgba(255,255,255,0.4); }
+        .btn-ocr:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* キャンバス */
+        .canvas-area {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .canvas-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.75);
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.95);
+            overflow: hidden;
+        }
+
+        #handwritingCanvas {
+            display: block;
+            width: 100%;
+            height: 120px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .canvas-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .btn-canvas {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.5);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-canvas:hover { background: rgba(255,255,255,0.35); }
+
+        /* OCR状態 */
+        .ocr-status {
+            font-size: 13px;
+            color: rgba(255,255,255,0.85);
+            text-align: center;
+            min-height: 20px;
+            margin-top: 6px;
+        }
+
+        /* 判定結果 */
+        #studyTypingResult {
+            width: 100%;
+            max-width: 600px;
+            margin: 10px auto 0;
+        }
+
+        .result-correct {
+            background: rgba(39,174,96,0.15);
+            border: 2px solid #27ae60;
+            border-radius: 10px;
+            padding: 14px 18px;
+            color: white;
+        }
+
+        .result-incorrect {
+            background: rgba(231,76,60,0.15);
+            border: 2px solid #e74c3c;
+            border-radius: 10px;
+            padding: 14px 18px;
+            color: white;
+        }
+
+        .result-label {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .typing-character-display {
+            font-size: 22px;
+            letter-spacing: 2px;
+            font-family: monospace;
+            margin: 6px 0;
+        }
+
+        .char-correct { color: #2ecc71; font-weight: bold; }
+        .char-incorrect { color: #e74c3c; font-weight: bold; }
+
+        .length-warning {
+            background: rgba(243,156,18,0.3);
+            border-left: 4px solid #f39c12;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin: 6px 0;
+        }
+
+        /* 評価ボタン */
+        .rating-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .btn-rating {
+            min-width: 90px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-rating:hover { opacity: 0.85; }
+        .btn-rating .next-time { font-size: 11px; margin-top: 4px; opacity: 0.9; }
+
+        /* 進捗バー */
+        .progress-bar-wrap {
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            height: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: white;
+            border-radius: 6px;
+            transition: width 0.4s;
+        }
+
+        .progress-info {
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        /* 空状態 */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #aaa;
+        }
+
+        .empty-state p { margin-top: 10px; font-size: 14px; }
+
+        /* CSV */
+        .csv-area { margin-top: 20px; }
+
+        .csv-example {
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 13px;
+            font-family: monospace;
+            color: #555;
+            margin-top: 8px;
+            white-space: pre-wrap;
+        }
+
+        /* セッション結果 */
+        .session-result {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin: 20px 0;
+        }
+
+        .result-box {
+            text-align: center;
+            padding: 16px;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+
+        .result-box .num {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .result-box .lbl {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* トースト */
+        #toastContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 14px;
+            animation: fadeIn 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .toast.success { background: #27ae60; }
+        .toast.error { background: #e74c3c; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 統計 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-card .num { font-size: 28px; font-weight: bold; color: #667eea; }
+        .stat-card .lbl { font-size: 13px; color: #888; margin-top: 4px; }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .study-question { font-size: 20px; }
+            .typing-input { font-size: 17px; }
+            .session-result { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>✍️ 英単語手書き学習 <span style="font-size:0.5em; opacity:0.8;">v0.2.00</span></h1>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('study')">📖 学習</button>
+        <button class="tab" onclick="switchTab('words')">📝 単語リスト</button>
+        <button class="tab" onclick="switchTab('stats')">📊 統計</button>
+    </div>
+
+    <!-- ===== 学習タブ ===== -->
+    <div id="tab-study" class="section active">
+        <div class="panel" id="studySetupPanel">
+            <h2>学習設定</h2>
+            <div class="input-group">
+                <label>出題方向</label>
+                <select id="studyDirection">
+                    <option value="ja-en">日本語 → 英語</option>
+                    <option value="en-ja">英語 → 日本語</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>出題数</label>
+                <select id="studyCount">
+                    <option value="10">10問</option>
+                    <option value="20">20問</option>
+                    <option value="all">全問</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>対象</label>
+                <select id="studyFilter">
+                    <option value="all">すべて</option>
+                    <option value="new">未学習のみ</option>
+                    <option value="weak">苦手のみ</option>
+                    <option value="review">復習対象のみ</option>
+                </select>
+            </div>
+            <button class="btn" onclick="startStudy()">学習開始</button>
+        </div>
+
+        <!-- 学習中パネル -->
+        <div id="studyPanel" style="display:none;">
+            <div class="progress-info">
+                <span id="progressText">1 / 10</span>
+            </div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+            </div>
+
+            <div class="study-card">
+                <div class="study-question" id="studyQuestion">-</div>
+                <div class="study-hint" id="studyHint"></div>
+
+                <!-- 入力欄（キャンバスと同幅） -->
+                <div class="canvas-area">
+                    <input type="text" class="typing-input" id="studyTypingInput"
+                           placeholder="答えを入力"
+                           onkeypress="if(event.key==='Enter') checkAnswer()"
+                           style="width:100%; margin-bottom:10px;">
+                </div>
+
+                <!-- キャンバス + 右側に認識ボタン -->
+                <div class="canvas-area">
+                    <div class="canvas-label">↓ ここに手書きで入力（ペンまたは指）</div>
+                    <div style="display:flex; gap:10px; align-items:stretch;">
+                        <div style="flex:1;">
+                            <div class="canvas-wrapper">
+                                <canvas id="handwritingCanvas"></canvas>
+                            </div>
+                            <div class="canvas-controls">
+                                <button class="btn-canvas" onclick="clearCanvas()">🗑️ 消去</button>
+                                <button class="btn-canvas" onclick="undoCanvas()">↩ 戻す</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; justify-content:center;">
+                            <button class="btn-ocr" id="ocrBtn" onclick="runOCR()">✍️<br>認識</button>
+                        </div>
+                    </div>
+                    <div class="ocr-status" id="ocrStatus"></div>
+                </div>
+
+                <!-- 判定結果 -->
+                <div id="studyTypingResult"></div>
+
+                <!-- 評価ボタン（判定後に表示） -->
+                <div class="rating-buttons" id="ratingButtons" style="display:none;">
+                    <button class="btn-rating" style="background:#e74c3c;" onclick="rateCard('again')">
+                        もう一度<div class="next-time" id="timeAgain"></div>
+                    </button>
+                    <button class="btn-rating" style="background:#f39c12;" onclick="rateCard('hard')">
+                        難しい<div class="next-time" id="timeHard"></div>
+                    </button>
+                    <button class="btn-rating" style="background:#27ae60;" onclick="rateCard('good')">
+                        普通<div class="next-time" id="timeGood"></div>
+                    </button>
+                    <button class="btn-rating" style="background:#3498db;" onclick="rateCard('easy')">
+                        簡単<div class="next-time" id="timeEasy"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top: 10px;">
+                <button class="btn btn-secondary" onclick="endStudy()">学習を終了</button>
+            </div>
+        </div>
+
+        <!-- セッション結果パネル -->
+        <div id="sessionResultPanel" style="display:none;">
+            <div class="panel">
+                <h2>🎉 セッション結果</h2>
+                <div class="session-result">
+                    <div class="result-box">
+                        <div class="num" id="resTotal">0</div>
+                        <div class="lbl">出題数</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="num" style="color:#27ae60;" id="resCorrect">0</div>
+                        <div class="lbl">正解</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="num" style="color:#e74c3c;" id="resWrong">0</div>
+                        <div class="lbl">不正解</div>
+                    </div>
+                </div>
+                <div style="text-align:center; color:#888; margin-bottom:20px;" id="resRate"></div>
+                <div style="text-align:center;">
+                    <button class="btn" onclick="startStudy()">もう一度</button>
+                    <button class="btn btn-secondary" onclick="backToSetup()">設定に戻る</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 単語リストタブ ===== -->
+    <div id="tab-words" class="section">
+        <div class="panel">
+            <h2>単語を追加</h2>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="input-group">
+                    <label>英語 <span style="color:#e74c3c;">*</span></label>
+                    <input type="text" id="addEnglish" placeholder="例: improve">
+                </div>
+                <div class="input-group">
+                    <label>日本語 <span style="color:#e74c3c;">*</span></label>
+                    <input type="text" id="addJapanese" placeholder="例: 改善する">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>別解（カンマ区切り）</label>
+                <input type="text" id="addAliases" placeholder="例: make better, get better">
+            </div>
+            <div class="input-group">
+                <label>メモ</label>
+                <input type="text" id="addMemo" placeholder="例: TOEIC頻出">
+            </div>
+            <button class="btn" onclick="addWord()">追加</button>
+        </div>
+
+        <div class="panel csv-area">
+            <h2>CSVインポート / エクスポート</h2>
+            <div style="margin-bottom:12px;">
+                <input type="file" id="csvFile" accept=".csv" style="display:none;" onchange="importCSV(event)">
+                <button class="btn" onclick="document.getElementById('csvFile').click()">📂 CSVインポート</button>
+                <button class="btn btn-secondary" onclick="exportCSV()">💾 CSVエクスポート</button>
+            </div>
+            <div style="font-size:13px; color:#888; margin-bottom:6px;">CSV形式（1行目はヘッダー）:</div>
+            <div class="csv-example">english,japanese,answer_aliases,memo
+improve,改善する,make better,TOEIC頻出
+look up,調べる,search for,</div>
+        </div>
+
+        <div class="panel">
+            <h2>単語一覧 <span id="wordCountLabel" style="font-size:14px; color:#aaa; font-weight:normal;"></span></h2>
+            <div style="margin-bottom:12px; display:flex; gap:10px;">
+                <input type="text" id="searchWord" placeholder="検索..." style="flex:1;" oninput="renderWordList()">
+                <select id="filterStatus" onchange="renderWordList()" style="width:120px;">
+                    <option value="all">すべて</option>
+                    <option value="new">未学習</option>
+                    <option value="learning">学習中</option>
+                    <option value="weak">苦手</option>
+                    <option value="mastered">習得済み</option>
+                </select>
+            </div>
+            <div id="wordList">
+                <div class="empty-state">
+                    <div style="font-size:40px;">📚</div>
+                    <p>単語がまだありません。上のフォームまたはCSVで追加してください。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 統計タブ ===== -->
+    <div id="tab-stats" class="section">
+        <div class="panel">
+            <h2>📊 学習統計</h2>
+            <div class="stats-grid" id="statsGrid"></div>
+            <button class="btn btn-danger" onclick="resetAllProgress()" style="margin-top:8px;">学習履歴をリセット</button>
+        </div>
+    </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+// ===== v0.1.00: データ管理 =====
+
+const STORAGE_KEY = 'vocab_handwriting_v01';
+
+function loadData() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { words: [], sessions: [] };
+        return JSON.parse(raw);
+    } catch(e) {
+        return { words: [], sessions: [] };
+    }
+}
+
+function saveData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ===== 単語操作 =====
+
+function addWord() {
+    const en = document.getElementById('addEnglish').value.trim();
+    const ja = document.getElementById('addJapanese').value.trim();
+    if (!en || !ja) { showToast('英語と日本語は必須です', 'error'); return; }
+
+    const aliasRaw = document.getElementById('addAliases').value.trim();
+    const aliases = aliasRaw ? aliasRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const memo = document.getElementById('addMemo').value.trim();
+
+    const data = loadData();
+
+    // 重複チェック
+    if (data.words.some(w => w.english.toLowerCase() === en.toLowerCase() && w.japanese === ja)) {
+        showToast('同じ単語がすでに存在します', 'error');
+        return;
+    }
+
+    data.words.push({
+        id: genId(),
+        english: en,
+        japanese: ja,
+        aliases,
+        memo,
+        status: 'new',          // new / learning / weak / mastered
+        correctCount: 0,
+        wrongCount: 0,
+        streak: 0,
+        nextReviewAt: null,
+        createdAt: new Date().toISOString()
+    });
+
+    saveData(data);
+    document.getElementById('addEnglish').value = '';
+    document.getElementById('addJapanese').value = '';
+    document.getElementById('addAliases').value = '';
+    document.getElementById('addMemo').value = '';
+    document.getElementById('addEnglish').focus();
+    renderWordList();
+    showToast('単語を追加しました', 'success');
+}
+
+function deleteWord(id) {
+    if (!confirm('この単語を削除しますか？')) return;
+    const data = loadData();
+    data.words = data.words.filter(w => w.id !== id);
+    saveData(data);
+    renderWordList();
+    showToast('削除しました');
+}
+
+function renderWordList() {
+    const data = loadData();
+    const q = document.getElementById('searchWord').value.toLowerCase();
+    const filter = document.getElementById('filterStatus').value;
+
+    let words = data.words.filter(w => {
+        const matchSearch = !q || w.english.toLowerCase().includes(q) || w.japanese.includes(q);
+        const matchFilter = filter === 'all' || w.status === filter;
+        return matchSearch && matchFilter;
+    });
+
+    document.getElementById('wordCountLabel').textContent = `(${words.length}件)`;
+
+    const container = document.getElementById('wordList');
+    if (words.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div style="font-size:40px;">🔍</div><p>該当する単語がありません</p></div>';
+        return;
+    }
+
+    const statusLabel = { new:'未学習', learning:'学習中', weak:'苦手', mastered:'習得済み' };
+    const statusClass = { new:'status-new', learning:'status-learning', weak:'status-weak', mastered:'status-mastered' };
+
+    container.innerHTML = words.map(w => `
+        <div class="word-item">
+            <div class="word-item-main">
+                <div class="word-en">${escHtml(w.english)}</div>
+                <div class="word-ja">${escHtml(w.japanese)}</div>
+                ${w.aliases.length ? `<div class="word-alias">別解: ${escHtml(w.aliases.join(', '))}</div>` : ''}
+                ${w.memo ? `<div class="word-alias">📝 ${escHtml(w.memo)}</div>` : ''}
+            </div>
+            <span class="word-status ${statusClass[w.status] || 'status-new'}">${statusLabel[w.status] || '未学習'}</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <span style="font-size:12px; color:#aaa;">${w.correctCount}✓ ${w.wrongCount}✗</span>
+                <button class="btn btn-danger" style="padding:5px 10px; font-size:12px; margin:0;" onclick="deleteWord('${w.id}')">削除</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ===== CSV =====
+
+function importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const lines = e.target.result.split('\n').filter(l => l.trim());
+        if (lines.length < 2) { showToast('データがありません', 'error'); return; }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const enIdx = headers.indexOf('english');
+        const jaIdx = headers.indexOf('japanese');
+        if (enIdx === -1 || jaIdx === -1) { showToast('english, japaneseカラムが必要です', 'error'); return; }
+
+        const aliasIdx = headers.indexOf('answer_aliases');
+        const memoIdx = headers.indexOf('memo');
+
+        const data = loadData();
+        let added = 0, skipped = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+            const cols = parseCSVLine(lines[i]);
+            const en = (cols[enIdx] || '').trim();
+            const ja = (cols[jaIdx] || '').trim();
+            if (!en || !ja) { skipped++; continue; }
+
+            if (data.words.some(w => w.english.toLowerCase() === en.toLowerCase() && w.japanese === ja)) {
+                skipped++;
+                continue;
+            }
+
+            const aliasRaw = aliasIdx >= 0 ? (cols[aliasIdx] || '') : '';
+            const aliases = aliasRaw ? aliasRaw.split('|').map(s => s.trim()).filter(Boolean) : [];
+            const memo = memoIdx >= 0 ? (cols[memoIdx] || '').trim() : '';
+
+            data.words.push({
+                id: genId(), english: en, japanese: ja, aliases, memo,
+                status: 'new', correctCount: 0, wrongCount: 0, streak: 0,
+                nextReviewAt: null, createdAt: new Date().toISOString()
+            });
+            added++;
+        }
+
+        saveData(data);
+        renderWordList();
+        showToast(`${added}件追加・${skipped}件スキップ`, 'success');
+        event.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSVLine(line) {
+    const result = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+        else { cur += c; }
+    }
+    result.push(cur);
+    return result;
+}
+
+function exportCSV() {
+    const data = loadData();
+    if (!data.words.length) { showToast('単語がありません', 'error'); return; }
+    const rows = [['english','japanese','answer_aliases','memo','status','correctCount','wrongCount']];
+    data.words.forEach(w => {
+        rows.push([w.english, w.japanese, w.aliases.join('|'), w.memo || '', w.status, w.correctCount, w.wrongCount]);
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vocab_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast('エクスポートしました', 'success');
+}
+
+// ===== 統計 =====
+
+function renderStats() {
+    const data = loadData();
+    const words = data.words;
+    const total = words.length;
+    const newW = words.filter(w => w.status === 'new').length;
+    const learning = words.filter(w => w.status === 'learning').length;
+    const weak = words.filter(w => w.status === 'weak').length;
+    const mastered = words.filter(w => w.status === 'mastered').length;
+    const totalCorrect = words.reduce((s, w) => s + w.correctCount, 0);
+    const totalWrong = words.reduce((s, w) => s + w.wrongCount, 0);
+    const rate = (totalCorrect + totalWrong) > 0
+        ? Math.round(totalCorrect / (totalCorrect + totalWrong) * 100) : 0;
+
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="num">${total}</div><div class="lbl">総単語数</div></div>
+        <div class="stat-card"><div class="num" style="color:#2980b9;">${newW}</div><div class="lbl">未学習</div></div>
+        <div class="stat-card"><div class="num" style="color:#d35400;">${learning}</div><div class="lbl">学習中</div></div>
+        <div class="stat-card"><div class="num" style="color:#e74c3c;">${weak}</div><div class="lbl">苦手</div></div>
+        <div class="stat-card"><div class="num" style="color:#27ae60;">${mastered}</div><div class="lbl">習得済み</div></div>
+        <div class="stat-card"><div class="num">${rate}%</div><div class="lbl">累計正解率</div></div>
+    `;
+}
+
+function resetAllProgress() {
+    if (!confirm('全単語の学習履歴をリセットしますか？')) return;
+    const data = loadData();
+    data.words.forEach(w => {
+        w.status = 'new';
+        w.correctCount = 0;
+        w.wrongCount = 0;
+        w.streak = 0;
+        w.nextReviewAt = null;
+    });
+    saveData(data);
+    renderStats();
+    showToast('リセットしました');
+}
+
+// ===== 学習セッション =====
+
+let session = null;
+
+function startStudy() {
+    const data = loadData();
+    const direction = document.getElementById('studyDirection').value;
+    const countSel = document.getElementById('studyCount').value;
+    const filter = document.getElementById('studyFilter').value;
+    const now = new Date();
+
+    let words = data.words.filter(w => {
+        if (filter === 'new') return w.status === 'new';
+        if (filter === 'weak') return w.status === 'weak';
+        if (filter === 'review') return w.nextReviewAt && new Date(w.nextReviewAt) <= now;
+        return true;
+    });
+
+    if (words.length === 0) {
+        showToast('対象の単語がありません', 'error');
+        return;
+    }
+
+    // シャッフル
+    words = words.sort(() => Math.random() - 0.5);
+
+    const count = countSel === 'all' ? words.length : Math.min(parseInt(countSel), words.length);
+    words = words.slice(0, count);
+
+    session = {
+        words,
+        direction,
+        currentIndex: 0,
+        correctCount: 0,
+        wrongCount: 0,
+        answered: false
+    };
+
+    document.getElementById('studySetupPanel').style.display = 'none';
+    document.getElementById('sessionResultPanel').style.display = 'none';
+    document.getElementById('studyPanel').style.display = 'block';
+
+    showCurrentCard();
+}
+
+function showCurrentCard() {
+    if (!session) return;
+    const word = session.words[session.currentIndex];
+    const total = session.words.length;
+    const current = session.currentIndex + 1;
+
+    // 進捗
+    document.getElementById('progressText').textContent = `${current} / ${total}`;
+    document.getElementById('progressBar').style.width = `${Math.round((session.currentIndex / total) * 100)}%`;
+
+    // 問題
+    const isJaEn = session.direction === 'ja-en';
+    document.getElementById('studyQuestion').textContent = isJaEn ? word.japanese : word.english;
+    document.getElementById('studyHint').textContent = isJaEn ? '→ 英語で入力してください' : '→ 日本語で入力してください';
+
+    // リセット
+    const input = document.getElementById('studyTypingInput');
+    input.value = '';
+    input.disabled = false;
+    input.className = 'typing-input';
+    document.getElementById('studyTypingResult').innerHTML = '';
+    document.getElementById('ratingButtons').style.display = 'none';
+    document.getElementById('ocrStatus').textContent = '';
+    document.getElementById('ocrBtn').disabled = false;
+    clearCanvas();
+
+    session.answered = false;
+
+    // フォーカス
+    setTimeout(() => input.focus(), 80);
+}
+
+function checkAnswer() {
+    if (session.answered) return;
+
+    const input = document.getElementById('studyTypingInput');
+    const userAnswer = input.value.trim();
+
+    if (!userAnswer) {
+        showToast('答えを入力してください', 'error');
+        return;
+    }
+
+    session.answered = true;
+    const word = session.words[session.currentIndex];
+    const isJaEn = session.direction === 'ja-en';
+
+    const correctAnswer = isJaEn ? word.english : word.japanese;
+    const aliases = isJaEn ? word.aliases : [];
+
+    // 正規化
+    const normalize = str => {
+        if (!str) return '';
+        return str.trim()
+            .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+            .replace(/[A-Z]/g, c => c.toLowerCase())
+            .replace(/\s+/g, ' ');
+    };
+
+    const normUser = normalize(userAnswer);
+    const normCorrect = normalize(correctAnswer);
+    const normAliases = aliases.map(a => normalize(a));
+
+    const isCorrect = normUser === normCorrect || normAliases.some(a => normUser === a);
+
+    // 文字差分
+    const diffUser = normUser;
+    const diffCorrect = normCorrect;
+    const maxLen = Math.max(diffUser.length, diffCorrect.length);
+    const lengthMatch = diffUser.length === diffCorrect.length;
+
+    let charDisplay = '';
+    for (let i = 0; i < maxLen; i++) {
+        const uc = diffUser[i] || '';
+        const cc = diffCorrect[i] || '';
+        const disp = uc === ' ' ? '␣' : uc;
+        if (uc === cc && uc !== '') {
+            charDisplay += `<span class="char-correct">${disp}</span>`;
+        } else if (uc !== '') {
+            charDisplay += `<span class="char-incorrect">${disp}</span>`;
+        }
+    }
+
+    const resultDiv = document.getElementById('studyTypingResult');
+
+    if (isCorrect) {
+        input.className = 'typing-input correct';
+        resultDiv.innerHTML = `
+            <div class="result-correct">
+                <div class="result-label">✅ 正解！</div>
+                <div>あなたの入力：<span class="typing-character-display">${charDisplay || escHtml(userAnswer)}</span></div>
+            </div>
+        `;
+        session.correctCount++;
+    } else {
+        input.className = 'typing-input incorrect';
+        let html = `<div class="result-incorrect"><div class="result-label">❌ 不正解</div>`;
+        if (!lengthMatch) html += `<div class="length-warning">⚠️ 文字数が異なります</div>`;
+        html += `<div>あなたの入力：<span class="typing-character-display">${charDisplay || escHtml(userAnswer)}</span></div>`;
+        html += `<div style="margin-top:8px;">正解：<strong>${escHtml(correctAnswer)}</strong>`;
+        if (aliases.length) html += ` <span style="font-size:13px; opacity:0.8;">/ ${aliases.map(escHtml).join(' / ')}</span>`;
+        html += `</div></div>`;
+        resultDiv.innerHTML = html;
+        session.wrongCount++;
+    }
+
+    // 評価ボタン表示
+    showRatingButtons(word);
+
+    // 学習データ更新
+    updateWordProgress(word.id, isCorrect);
+}
+
+function showRatingButtons(word) {
+    const srsIntervals = {
+        again: '1分',
+        hard: '10分',
+        good: word.streak >= 3 ? '7日' : word.streak >= 1 ? '1日' : '10分',
+        easy: word.streak >= 3 ? '14日' : '4日'
+    };
+
+    document.getElementById('timeAgain').textContent = srsIntervals.again;
+    document.getElementById('timeHard').textContent = srsIntervals.hard;
+    document.getElementById('timeGood').textContent = srsIntervals.good;
+    document.getElementById('timeEasy').textContent = srsIntervals.easy;
+    document.getElementById('ratingButtons').style.display = 'flex';
+}
+
+function rateCard(rating) {
+    if (!session) return;
+
+    // SRS間隔更新
+    const word = session.words[session.currentIndex];
+    const data = loadData();
+    const w = data.words.find(x => x.id === word.id);
+    if (w) {
+        const now = new Date();
+        let minutesNext = 1;
+        if (rating === 'again') { minutesNext = 1; }
+        else if (rating === 'hard') { minutesNext = 10; }
+        else if (rating === 'good') {
+            if (w.streak >= 3) minutesNext = 60 * 24 * 7;
+            else if (w.streak >= 1) minutesNext = 60 * 24;
+            else minutesNext = 10;
+        } else if (rating === 'easy') {
+            minutesNext = w.streak >= 3 ? 60 * 24 * 14 : 60 * 24 * 4;
+        }
+        w.nextReviewAt = new Date(now.getTime() + minutesNext * 60 * 1000).toISOString();
+        if (rating === 'again') { w.streak = 0; }
+        saveData(data);
+    }
+
+    // 次の問題へ
+    session.currentIndex++;
+    if (session.currentIndex >= session.words.length) {
+        showSessionResult();
+    } else {
+        showCurrentCard();
+    }
+}
+
+function updateWordProgress(id, isCorrect) {
+    const data = loadData();
+    const w = data.words.find(x => x.id === id);
+    if (!w) return;
+
+    if (isCorrect) {
+        w.correctCount++;
+        w.streak = (w.streak || 0) + 1;
+    } else {
+        w.wrongCount++;
+        w.streak = 0;
+    }
+
+    // ステータス更新
+    const total = w.correctCount + w.wrongCount;
+    const rate = total > 0 ? w.correctCount / total : 0;
+
+    if (w.streak >= 4) {
+        w.status = 'mastered';
+    } else if (!isCorrect && total >= 3 && rate < 0.5) {
+        w.status = 'weak';
+    } else if (total > 0) {
+        w.status = 'learning';
+    }
+
+    saveData(data);
+}
+
+function showSessionResult() {
+    document.getElementById('studyPanel').style.display = 'none';
+    document.getElementById('sessionResultPanel').style.display = 'block';
+    document.getElementById('resTotal').textContent = session.correctCount + session.wrongCount;
+    document.getElementById('resCorrect').textContent = session.correctCount;
+    document.getElementById('resWrong').textContent = session.wrongCount;
+    const total = session.correctCount + session.wrongCount;
+    const rate = total > 0 ? Math.round(session.correctCount / total * 100) : 0;
+    document.getElementById('resRate').textContent = `正解率: ${rate}%`;
+    session = null;
+}
+
+function endStudy() {
+    if (session && (session.correctCount + session.wrongCount) > 0) {
+        showSessionResult();
+    } else {
+        backToSetup();
+    }
+}
+
+function backToSetup() {
+    session = null;
+    document.getElementById('studyPanel').style.display = 'none';
+    document.getElementById('sessionResultPanel').style.display = 'none';
+    document.getElementById('studySetupPanel').style.display = 'block';
+}
+
+// ===== キャンバス / 手書き =====
+
+let canvas, ctx;
+let drawing = false;
+let strokes = []; // 戻す用
+let currentStroke = [];
+
+function initCanvas() {
+    canvas = document.getElementById('handwritingCanvas');
+    // DPR対応
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = canvas.offsetWidth || 560;
+    const h = 120;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.height = h + 'px';
+    ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // マウス
+    canvas.addEventListener('mousedown', e => { drawing = true; currentStroke = []; startPath(getPos(e)); });
+    canvas.addEventListener('mousemove', e => { if (drawing) drawTo(getPos(e)); });
+    canvas.addEventListener('mouseup', () => { if (drawing) { drawing = false; strokes.push([...currentStroke]); } });
+    canvas.addEventListener('mouseleave', () => { if (drawing) { drawing = false; strokes.push([...currentStroke]); } });
+
+    // タッチ / ペン
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; currentStroke = []; startPath(getTouchPos(e)); }, { passive: false });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); if (drawing) drawTo(getTouchPos(e)); }, { passive: false });
+    canvas.addEventListener('touchend', e => { e.preventDefault(); if (drawing) { drawing = false; strokes.push([...currentStroke]); } }, { passive: false });
+}
+
+function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function getTouchPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+
+function startPath(pos) {
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    currentStroke.push(pos);
+}
+
+function drawTo(pos) {
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    currentStroke.push(pos);
+}
+
+function clearCanvas() {
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    strokes = [];
+    currentStroke = [];
+    document.getElementById('ocrStatus').textContent = '';
+}
+
+function undoCanvas() {
+    if (!ctx || strokes.length === 0) return;
+    strokes.pop();
+    redrawStrokes();
+}
+
+function redrawStrokes() {
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    strokes.forEach(stroke => {
+        if (stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x, stroke[0].y);
+        for (let i = 1; i < stroke.length; i++) {
+            ctx.lineTo(stroke[i].x, stroke[i].y);
+        }
+        ctx.stroke();
+    });
+}
+
+// ===== OCR (Tesseract.js v2) =====
+
+let tesseractWorker = null;
+let tesseractReady = false;
+
+async function initTesseract() {
+    try {
+        document.getElementById('ocrStatus').textContent = '⏳ OCRエンジン初期化中...';
+        tesseractWorker = Tesseract.createWorker({
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    document.getElementById('ocrStatus').textContent = `⏳ 認識中... ${Math.round(m.progress * 100)}%`;
+                }
+            }
+        });
+        await tesseractWorker.load();
+        await tesseractWorker.loadLanguage('eng');
+        await tesseractWorker.initialize('eng');
+        // 手書き向け設定
+        await tesseractWorker.setParameters({
+            tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 \'-',
+        });
+        tesseractReady = true;
+        document.getElementById('ocrStatus').textContent = '';
+        console.log('Tesseract v2 ready');
+    } catch(e) {
+        console.warn('Tesseract init failed:', e);
+        document.getElementById('ocrStatus').textContent = '❌ OCR初期化に失敗しました';
+    }
+}
+
+async function runOCR() {
+    if (!tesseractReady) {
+        await initTesseract();
+        if (!tesseractReady) return;
+    }
+
+    if (strokes.length === 0) {
+        showToast('キャンバスに文字を書いてから認識ボタンを押してください', 'error');
+        return;
+    }
+
+    const ocrBtn = document.getElementById('ocrBtn');
+    const statusEl = document.getElementById('ocrStatus');
+    ocrBtn.disabled = true;
+    statusEl.textContent = '⏳ 認識中...';
+
+    try {
+        // 白背景で画像合成
+        const offscreen = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        offscreen.width = canvas.width;
+        offscreen.height = canvas.height;
+        const offCtx = offscreen.getContext('2d');
+        offCtx.fillStyle = 'white';
+        offCtx.fillRect(0, 0, offscreen.width, offscreen.height);
+        offCtx.drawImage(canvas, 0, 0);
+
+        const { data: { text } } = await tesseractWorker.recognize(offscreen);
+        let result = text.trim()
+            .replace(/[^a-zA-Z0-9\s\-']/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (result) {
+            document.getElementById('studyTypingInput').value = result;
+            statusEl.textContent = `✅ 認識結果: "${result}"`;
+            clearCanvas();
+            document.getElementById('studyTypingInput').focus();
+        } else {
+            statusEl.textContent = '⚠️ 文字を認識できませんでした。もう一度お試しください。';
+        }
+    } catch(e) {
+        console.error('OCR error:', e);
+        statusEl.textContent = '❌ 認識エラーが発生しました';
+    } finally {
+        ocrBtn.disabled = false;
+    }
+}
+
+// ===== タブ切り替え =====
+
+function switchTab(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => {
+        if (t.textContent.includes(name === 'study' ? '学習' : name === 'words' ? '単語' : '統計')) {
+            t.classList.add('active');
+        }
+    });
+    if (name === 'words') renderWordList();
+    if (name === 'stats') renderStats();
+}
+
+// ===== ユーティリティ =====
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, type = '') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// ===== 初期化 =====
+
+window.addEventListener('load', () => {
+    initCanvas();
+    initTesseract(); // v0.2.00: バックグラウンドで初期化（ocrStatusに進捗表示）
+    renderWordList();
+});
+
+// キャンバスリサイズ対応
+window.addEventListener('resize', () => {
+    if (canvas) {
+        const savedStrokes = [...strokes];
+        initCanvas();
+        strokes = savedStrokes;
+        redrawStrokes();
+    }
+});
+</script>
+</body>
+</html>
