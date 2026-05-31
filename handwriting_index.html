@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英単語手書き学習 v0.2.00</title>
+    <title>英単語手書き学習 v1.03</title>
     <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
     <style>
         /* v0.1.00: CSS変数 */
@@ -511,7 +511,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>✍️ 英単語手書き学習 <span style="font-size:0.5em; opacity:0.8;">v0.2.00</span></h1>
+    <h1>✍️ 英単語手書き学習 <span style="font-size:0.5em; opacity:0.8;">v1.03</span></h1>
 
     <div class="tabs">
         <button class="tab active" onclick="switchTab('study')">📖 学習</button>
@@ -563,17 +563,20 @@
                 <div class="study-question" id="studyQuestion">-</div>
                 <div class="study-hint" id="studyHint"></div>
 
-                <!-- 入力欄（キャンバスと同幅） -->
+                <!-- v1.03: 入力欄 + クリアボタン -->
                 <div class="canvas-area">
-                    <input type="text" class="typing-input" id="studyTypingInput"
-                           placeholder="答えを入力"
-                           onkeypress="if(event.key==='Enter') checkAnswer()"
-                           style="width:100%; margin-bottom:10px;">
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                        <input type="text" class="typing-input" id="studyTypingInput"
+                               placeholder="答えを入力（認識ボタンで自動入力）"
+                               onkeypress="if(event.key==='Enter') checkAnswer()"
+                               style="flex:1;">
+                        <button class="btn-ocr" onclick="clearInput()" style="white-space:nowrap;">✕<br>クリア</button>
+                    </div>
                 </div>
 
-                <!-- キャンバス + 右側に認識ボタン -->
+                <!-- v1.03: キャンバス + 右側に認識ボタン -->
                 <div class="canvas-area">
-                    <div class="canvas-label">↓ ここに手書きで入力（ペンまたは指）</div>
+                    <div class="canvas-label">↓ 1単語ずつ書いて認識ボタンを押してください</div>
                     <div style="display:flex; gap:10px; align-items:stretch;">
                         <div style="flex:1;">
                             <div class="canvas-wrapper">
@@ -1044,13 +1047,14 @@ function checkAnswer() {
     const correctAnswer = isJaEn ? word.english : word.japanese;
     const aliases = isJaEn ? word.aliases : [];
 
-    // 正規化
+    // v1.03: 正規化（前後トリム・小文字化・全角半角統一）
     const normalize = str => {
         if (!str) return '';
         return str.trim()
             .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
             .replace(/[A-Z]/g, c => c.toLowerCase())
-            .replace(/\s+/g, ' ');
+            .replace(/\s+/g, ' ')
+            .trim();
     };
 
     const normUser = normalize(userAnswer);
@@ -1269,6 +1273,16 @@ function drawTo(pos) {
     currentStroke.push(pos);
 }
 
+// v1.03: 入力欄クリア
+function clearInput() {
+    const inputEl = document.getElementById('studyTypingInput');
+    if (inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+    }
+    document.getElementById('ocrStatus').textContent = '';
+}
+
 function clearCanvas() {
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
@@ -1357,16 +1371,26 @@ async function runOCR() {
         offCtx.drawImage(canvas, 0, 0);
 
         const { data: { text } } = await tesseractWorker.recognize(offscreen);
-        let result = text.trim()
-            .replace(/[^a-zA-Z0-9\s\-']/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
 
-        if (result) {
-            document.getElementById('studyTypingInput').value = result;
-            statusEl.textContent = `✅ 認識結果: "${result}"`;
+        // v1.03: 小文字化・単語内スペース除去
+        let word = text.trim()
+            .replace(/[^a-zA-Z0-9\-']/g, '')  // 英数字・ハイフン・アポストロフィのみ残す
+            .toLowerCase();
+
+        if (word) {
+            const inputEl = document.getElementById('studyTypingInput');
+            const current = inputEl.value;
+
+            // v1.03: 入力欄が空なら直接挿入、文字があればスペース+単語を追加
+            if (current === '') {
+                inputEl.value = word;
+            } else {
+                inputEl.value = current + ' ' + word;
+            }
+
+            statusEl.textContent = `✅ 認識: "${word}"`;
             clearCanvas();
-            document.getElementById('studyTypingInput').focus();
+            inputEl.focus();
         } else {
             statusEl.textContent = '⚠️ 文字を認識できませんでした。もう一度お試しください。';
         }
