@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.06.00</title>
+    <title>MyAnkiApp v16.07.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.06.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.07.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -12717,15 +12717,6 @@
                     }
                 }
                 
-                // v16.04.01: 全マーカーのstudyStateをリセット
-                if (pdfHash && markers[pdfHash]) {
-                    Object.keys(markers[pdfHash]).forEach(page => {
-                        markers[pdfHash][page].forEach(marker => {
-                            marker.studyState = 'hidden';
-                        });
-                    });
-                }
-                
                 // 学習モードON
                 btn.textContent = '学習OFF';  // v16.04.03: ON時は「学習OFF」
                 btn.className = 'btn btn-mode-on';
@@ -12837,15 +12828,6 @@
                         normalBtn.textContent = '学習ON';  // v16.04.03: OFF時は「学習ON」
                         normalBtn.className = 'btn btn-mode-off';
                     }
-                }
-                
-                // v16.04.01: 全マーカーのstudyStateをリセット
-                if (pdfHash && markers[pdfHash]) {
-                    Object.keys(markers[pdfHash]).forEach(page => {
-                        markers[pdfHash][page].forEach(marker => {
-                            marker.studyState = 'hidden';
-                        });
-                    });
                 }
                 
                 // 苦手学習モードON
