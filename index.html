@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyAnkiApp v16.07.00</title>
+    <title>MyAnkiApp v16.08.00</title>
     <style>
         /* v12.03.2: CSS変数定義（カラーカスタマイズ） */
         :root {
@@ -1543,7 +1543,7 @@
     <!-- v15.01.16: メインアプリ画面 -->
     <div id="mainApp" style="display: none;">
     <div class="container">
-        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.07.00</span>
+        <h1>📚 MyAnkiApp <span style="font-size: 0.5em; color: rgba(255,255,255,0.8);">v16.08.00</span>
             <button onclick="logout()" style="float: right; background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 10px;">ログアウト</button>
         </h1>
         
@@ -2955,6 +2955,7 @@
                         <button class="btn btn-danger" id="clearPageMarkersBtn" onclick="clearPageMarkers()" style="font-size: 12px; padding: 8px 12px;">ページ内全削除</button>
                         <button class="btn btn-danger" id="clearAllMarkersBtn" onclick="clearAllMarkers()" style="font-size: 12px; padding: 8px 12px;">PDF内全削除</button>
                         ｜ <button class="btn" onclick="openMarkerSearch()" style="font-size: 12px; padding: 8px 12px; background: #3498db; color: white;">🔍 マーカー情報検索</button>
+                        <button class="btn" onclick="restoreMarkersFromHistory()" style="font-size: 12px; padding: 8px 12px; background: #8e44ad; color: white;">⏪ 1世代前に復元</button>
                     </div>
 
                     <div class="pdf-controls-row">
@@ -7542,6 +7543,17 @@
         };
         
         let markers = {};
+        
+        // v16.08.00: 同期保護用の状態管理
+        let markersLoadedForHash = null;      // マーカー読み込みに成功したpdfHash（対策1: 読み込み完了ガード）
+        let markersLoadedRevision = null;     // 読み込み時点のリビジョンID（対策2: 競合チェック）
+        let studySessionLoadedForHash = null; // 学習記録読み込みに成功したpdfHash（対策1）
+        let markersSnapshotSavedForSession = false; // このPDFセッションでスナップショット退避済みか（対策4）
+        
+        // v16.08.00: リビジョンID生成（クライアント生成のランダムID）
+        function generateRevisionId() {
+            return Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 10);
+        }
         let currentMarkerColor = 'yellow';
         let markerMode = false;
         let isDrawing = false;
@@ -12603,6 +12615,12 @@
         async function saveStudySessionToFirebase() {
             if (!pdfHash) return;
             
+            // v16.08.00 対策1: 読み込み完了ガード（読み込み成功前は保存禁止）
+            if (studySessionLoadedForHash !== pdfHash) {
+                console.warn('学習記録が未読み込みのため保存をスキップしました（データ保護）');
+                return;
+            }
+            
             // v8.02.3: 書き込みカウンター
             if (!incrementWriteCounter()) {
                 console.warn('書き込み上限に達しています。PDF学習記録を保存できません。');
@@ -12655,6 +12673,9 @@
         async function loadStudySessionFromFirebase() {
             if (!pdfHash) return;
             
+            // v16.08.00: 読み込み開始時にガードをリセット
+            studySessionLoadedForHash = null;
+            
             try {
                 const doc = await db.collection('studySessions').doc(pdfHash).get();
                 if (doc.exists) {
@@ -12669,6 +12690,9 @@
                     studyElapsedTime = 0;
                 }
                 
+                // v16.08.00: 読み込み成功 → 保存を許可
+                studySessionLoadedForHash = pdfHash;
+                
                 updateTimerDisplay();
                 updateLapDisplay();
             } catch (error) {
@@ -12676,6 +12700,8 @@
                 totalStudyTime = 0;
                 lapCount = 1;
                 studyElapsedTime = 0;
+                // v16.08.00: 読み込み失敗時は保存を無効化（古い値での上書き防止）
+                showToast('⚠️ 学習記録の読み込みに失敗しました。データ保護のため学習記録の保存は無効化されています。', 10000, 'error');
             }
         }
         
@@ -14400,6 +14426,53 @@
             }
         }
         
+        // v16.08.00: 1世代前のスナップショットからマーカーを復元
+        async function restoreMarkersFromHistory() {
+            if (!pdfHash) return;
+            
+            if (markersLoadedForHash !== pdfHash) {
+                showToast('⚠️ マーカーが読み込まれていないため復元できません。ページを再読み込みしてください。', 10000, 'error');
+                return;
+            }
+            
+            try {
+                const doc = await db.collection('pdfMarkersHistory').doc(pdfHash).get();
+                if (!doc.exists) {
+                    alert('このPDFの退避データ（1世代前のマーカー）は存在しません。');
+                    return;
+                }
+                
+                const data = doc.data();
+                const historyCount = countTotalMarkers(data.markers);
+                const currentCount = countTotalMarkers(markers[pdfHash]);
+                const snapStr = (data.snapshotAt && data.snapshotAt.toDate)
+                    ? data.snapshotAt.toDate().toLocaleString('ja-JP')
+                    : '不明';
+                
+                const proceed = confirm(
+                    `1世代前のマーカーに復元しますか？\n\n` +
+                    `退避日時: ${snapStr}\n` +
+                    `退避データのマーカー数: ${historyCount}個\n` +
+                    `現在のマーカー数: ${currentCount}個\n\n` +
+                    `※現在のFirebase上の状態は、復元前に退避データとして保存されます`
+                );
+                if (!proceed) return;
+                
+                // 復元前の状態を必ず退避させるため、セッション退避済みフラグを解除
+                markersSnapshotSavedForSession = false;
+                
+                markers[pdfHash] = data.markers || {};
+                drawMarkers();
+                updateStudyStats();
+                await saveMarkersToFirebase();
+                
+                showToast(`✅ ${historyCount}個のマーカーを復元しました`, 5000, 'success');
+            } catch (error) {
+                console.error('マーカー復元エラー:', error);
+                showToast('❌ マーカーの復元に失敗しました', 5000, 'error');
+            }
+        }
+        
         // v7.01: PDF内全削除
         function clearAllMarkers() {
             if (!pdfHash) return;
@@ -14415,25 +14488,109 @@
             }
         }
         
+        // v16.08.00: マーカーデータ内の総マーカー数をカウント
+        function countTotalMarkers(markersObj) {
+            if (!markersObj) return 0;
+            let total = 0;
+            Object.keys(markersObj).forEach(pageNum => {
+                if (Array.isArray(markersObj[pageNum])) {
+                    total += markersObj[pageNum].length;
+                }
+            });
+            return total;
+        }
+        
         async function saveMarkersToFirebase() {
             if (!pdfHash) return;
             
-            // v8.02.3: 書き込みカウンター
-            if (!incrementWriteCounter()) {
-                console.warn('書き込み上限に達しています。マーカーを保存できません。');
+            // v16.08.00 対策1: 読み込み完了ガード（読み込み成功前は保存禁止）
+            if (markersLoadedForHash !== pdfHash) {
+                console.warn('マーカーが未読み込みのため保存をスキップしました（データ保護）');
+                showToast('⚠️ マーカーが読み込まれていないため保存できません。ページを再読み込みしてください。', 10000, 'error');
                 return;
             }
             
             try {
+                const docRef = db.collection('pdfMarkers').doc(pdfHash);
+                
+                // v16.08.00 対策2: 保存前にFirebase側の状態を取得して競合チェック
+                const remoteDoc = await docRef.get();
+                const remoteData = remoteDoc.exists ? remoteDoc.data() : null;
+                const localCount = countTotalMarkers(markers[pdfHash]);
+                const remoteCount = remoteData ? countTotalMarkers(remoteData.markers) : 0;
+                let forceSnapshot = false;
+                
+                if (remoteData && (remoteData.revision || null) !== markersLoadedRevision) {
+                    // 他の端末が更新している（リビジョン不一致）
+                    const updatedStr = (remoteData.updatedAt && remoteData.updatedAt.toDate)
+                        ? remoteData.updatedAt.toDate().toLocaleString('ja-JP')
+                        : '不明';
+                    const overwrite = confirm(
+                        `⚠️ 他の端末でこのPDFのマーカーが更新されています。\n\n` +
+                        `Firebase側の最終更新: ${updatedStr}\n` +
+                        `Firebase側のマーカー数: ${remoteCount}個\n` +
+                        `この端末のマーカー数: ${localCount}個\n\n` +
+                        `OK: この端末の内容で上書きする\n` +
+                        `キャンセル: 保存を中止し、Firebase側の内容を読み込み直す`
+                    );
+                    if (!overwrite) {
+                        await loadMarkersFromFirebase();
+                        updateStudyStats();
+                        showToast('Firebase側のマーカーを読み込み直しました', 5000, 'info');
+                        return;
+                    }
+                    // 上書きを選択 → 危険な操作なので必ずスナップショットを退避
+                    forceSnapshot = true;
+                }
+                
+                // v16.08.00 対策3: 空上書き防止（Firebase側にあるのにローカルが0個）
+                if (remoteCount > 0 && localCount === 0) {
+                    const proceed = confirm(
+                        `⚠️ Firebase上に${remoteCount}個のマーカーがありますが、この保存によりすべて削除されます。\n\n` +
+                        `本当に保存しますか？\n` +
+                        `（意図せずこの表示が出た場合は「キャンセル」を押し、ページを再読み込みしてください）`
+                    );
+                    if (!proceed) {
+                        return;
+                    }
+                    forceSnapshot = true;
+                }
+                
+                // v16.08.00 対策4: 上書き前スナップショット（セッション初回の保存時、または危険な上書き時）
+                if (remoteData && (forceSnapshot || !markersSnapshotSavedForSession)) {
+                    if (incrementWriteCounter()) {
+                        await db.collection('pdfMarkersHistory').doc(pdfHash).set({
+                            ...remoteData,
+                            snapshotAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        markersSnapshotSavedForSession = true;
+                    } else {
+                        console.warn('書き込み上限のためスナップショットを退避できません。');
+                    }
+                }
+                
+                // v8.02.3: 書き込みカウンター（本体保存）
+                if (!incrementWriteCounter()) {
+                    console.warn('書き込み上限に達しています。マーカーを保存できません。');
+                    return;
+                }
+                
+                // v16.08.00: 新しいリビジョンIDを発行して保存
+                const newRevision = generateRevisionId();
+                
                 // v14.00: PDFメタデータも保存
-                await db.collection('pdfMarkers').doc(pdfHash).set({
+                await docRef.set({
                     markers: markers[pdfHash] || {},
                     fileName: currentPdfMetadata.fileName,
                     totalPages: currentPdfMetadata.totalPages,
                     fileSize: currentPdfMetadata.fileSize,
                     lastUpdated: currentPdfMetadata.lastUpdated,
+                    revision: newRevision,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                
+                // v16.08.00: 保存成功 → 記憶しているリビジョンを更新
+                markersLoadedRevision = newRevision;
             } catch (error) {
                 console.error('マーカー保存エラー:', error);
                 if (error.code === 'resource-exhausted') {
@@ -14445,15 +14602,29 @@
         async function loadMarkersFromFirebase() {
             if (!pdfHash) return;
             
+            // v16.08.00: 読み込み開始時にガードをリセット
+            markersLoadedForHash = null;
+            markersLoadedRevision = null;
+            markersSnapshotSavedForSession = false;
+            
             try {
                 const doc = await db.collection('pdfMarkers').doc(pdfHash).get();
                 if (doc.exists) {
                     const data = doc.data();
                     markers[pdfHash] = data.markers || {};
+                    markersLoadedRevision = data.revision || null; // v16.08.00: リビジョン記憶（旧データはnull）
                     drawMarkers();
+                } else {
+                    // v16.08.00: 新規PDF（ドキュメント未存在）も読み込み成功として扱う
+                    markers[pdfHash] = {};
+                    markersLoadedRevision = null;
                 }
+                // v16.08.00: 読み込み成功 → 保存を許可
+                markersLoadedForHash = pdfHash;
             } catch (error) {
                 console.error('マーカー読み込みエラー:', error);
+                // v16.08.00: 読み込み失敗時は保存を無効化（空上書き事故の防止）
+                showToast('⚠️ マーカーの読み込みに失敗しました。データ保護のため保存は無効化されています。ページを再読み込みしてください。', 15000, 'error');
             }
         }
 
